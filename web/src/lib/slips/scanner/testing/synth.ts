@@ -9,7 +9,7 @@
                                   lighting gradient, a hand shadow), quantised to 8 bits
 */
 import type { SlipLayout } from '../../../../../../shared/src/morse-slip';
-import { type Homography, type Pt, apply, homography, invert } from '../geometry';
+import { type Homography, type Pt, homography, invert } from '../geometry';
 import type { Gray } from '../image';
 
 export interface FloatImage {

@@ -428,5 +428,5 @@ export function layoutSlip(design: SlipDesign): SlipLayout {
 
 /** Where an attendee holds the slip: which slip edge is at the bottom for a clockwise quarter-turn count. */
 export function edgeForQuarterTurns(quarterTurnsClockwise: number): SlipEdge {
-  return SLIP_EDGES[(((quarterTurnsClockwise % 4) + 4) % 4) as 0 | 1 | 2 | 3];
+  return SLIP_EDGES[((quarterTurnsClockwise % 4) + 4) % 4] as SlipEdge;
 }

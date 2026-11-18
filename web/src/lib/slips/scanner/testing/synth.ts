@@ -211,6 +211,38 @@ function valueNoise(w: number, h: number, cell: number, r: () => number): Float3
   return out;
 }
 
+/** 64k standard-normal samples, indexed by the seeded PRNG (much cheaper than Box-Muller per pixel). */
+const GAUSS = (() => {
+  const r = rng(424242);
+  const out = new Float32Array(65536);
+  for (let i = 0; i < out.length; i++) out[i] = Math.sqrt(-2 * Math.log(r() || 1e-9)) * Math.cos(2 * Math.PI * r());
+  return out;
+})();
+
+const BACKGROUNDS = new Map<string, Float32Array>();
+function background(W: number, H: number, bg: 'desk' | 'dark' | 'light', variant: number): Float32Array {
+  const key = `${W}x${H}/${bg}/${variant}`;
+  const hit = BACKGROUNDS.get(key);
+  if (hit) return hit;
+  const r = rng(variant * 31 + 5);
+  const base = bg === 'dark' ? 0.18 : bg === 'light' ? 0.85 : 0.5;
+  const lo = valueNoise(W, H, 160, r);
+  const hi = valueNoise(W, H, 9, r);
+  const d = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i++) d[i] = base + ((lo[i] as number) - 0.5) * 0.25 + ((hi[i] as number) - 0.5) * 0.06;
+  // desk clutter: dark and light blocks (a pen, a phone, printed text)
+  for (let k = 0; k < 14; k++) {
+    const bw = 20 + r() * 160;
+    const bh = 10 + r() * 90;
+    const bx = r() * W;
+    const by = r() * H;
+    const v = r() < 0.6 ? 0.05 + r() * 0.2 : 0.8 + r() * 0.15;
+    for (let y = Math.max(0, by | 0); y < Math.min(H, by + bh); y++) for (let x = Math.max(0, bx | 0); x < Math.min(W, bx + bw); x++) d[y * W + x] = v;
+  }
+  BACKGROUNDS.set(key, d);
+  return d;
+}
+
 function boxBlurH(src: Float32Array, w: number, h: number, r: number): Float32Array {
   const out = new Float32Array(src.length);
   const n = 2 * r + 1;
@@ -245,17 +277,23 @@ export function blur(img: FloatImage, sigma: number): FloatImage {
 }
 
 function bilinear(img: FloatImage, x: number, y: number): number {
-  const x0 = Math.floor(x);
-  const y0 = Math.floor(y);
+  const w = img.width;
+  const h = img.height;
+  if (x < 0) x = 0;
+  else if (x > w - 1.001) x = w - 1.001;
+  if (y < 0) y = 0;
+  else if (y > h - 1.001) y = h - 1.001;
+  const x0 = x | 0;
+  const y0 = y | 0;
   const fx = x - x0;
   const fy = y - y0;
-  const w = img.width;
-  const at = (xx: number, yy: number) => img.data[Math.min(img.height - 1, Math.max(0, yy)) * w + Math.min(w - 1, Math.max(0, xx))] as number;
-  const a = at(x0, y0);
-  const b = at(x0 + 1, y0);
-  const c = at(x0, y0 + 1);
-  const d = at(x0 + 1, y0 + 1);
-  return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  const i = y0 * w + x0;
+  const d = img.data;
+  const a = d[i] as number;
+  const b = d[i + 1] as number;
+  const c = d[i + w] as number;
+  const e = d[i + w + 1] as number;
+  return a + (b - a) * fx + (c - a) * fy + (a - b - c + e) * fx * fy;
 }
 
 /** Photograph a printed slip. Returns the 8-bit grayscale frame the pipeline sees. */
@@ -274,32 +312,30 @@ export function cameraScene(slip: FloatImage, o: CameraOptions): Gray {
     corners,
   ) as Homography;
   const inv = invert(Hs) as Homography;
-  // background
+  // background (cached: building value noise is the slow part)
   const bg = o.background ?? 'desk';
-  const base = bg === 'dark' ? 0.18 : bg === 'light' ? 0.85 : 0.5;
-  const lo = valueNoise(W, H, 160, r);
-  const hi = valueNoise(W, H, 9, r);
-  const img: FloatImage = { width: W, height: H, data: new Float32Array(W * H) };
-  for (let i = 0; i < W * H; i++) img.data[i] = base + ((lo[i] as number) - 0.5) * 0.25 + ((hi[i] as number) - 0.5) * 0.06;
-  // desk clutter: dark and light blocks (a pen, a phone, printed text)
-  for (let k = 0; k < 14; k++) {
-    const bw = 20 + r() * 160;
-    const bh = 10 + r() * 90;
-    const bx = r() * W;
-    const by = r() * H;
-    const v = r() < 0.6 ? 0.05 + r() * 0.2 : 0.8 + r() * 0.15;
-    for (let y = Math.max(0, by | 0); y < Math.min(H, by + bh); y++) for (let x = Math.max(0, bx | 0); x < Math.min(W, bx + bw); x++) img.data[y * W + x] = v;
-  }
-  // the slip on top, supersampled 2x2 for clean edges
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
+  const img: FloatImage = { width: W, height: H, data: background(W, H, bg, (o.seed ?? 1) % 6).slice() };
+  // the slip on top, supersampled 2x2 for clean edges, only inside its bounding box
+  const bx0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.x))) - 1);
+  const bx1 = Math.min(W - 1, Math.ceil(Math.max(...corners.map((c) => c.x))) + 1);
+  const by0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.y))) - 1);
+  const by1 = Math.min(H - 1, Math.ceil(Math.max(...corners.map((c) => c.y))) + 1);
+  const [h0, h1, h2, h3, h4, h5, h6, h7, h8] = inv as unknown as number[] as [number, number, number, number, number, number, number, number, number];
+  const sw = slip.width;
+  const sh = slip.height;
+  for (let y = by0; y <= by1; y++)
+    for (let x = bx0; x <= bx1; x++) {
       let acc = 0;
       let n = 0;
       for (let sy = 0; sy < 2; sy++)
         for (let sx = 0; sx < 2; sx++) {
-          const p = apply(inv, x + 0.25 + sx * 0.5, y + 0.25 + sy * 0.5);
-          if (p.x >= 0 && p.y >= 0 && p.x < slip.width && p.y < slip.height) {
-            acc += bilinear(slip, p.x - 0.5, p.y - 0.5);
+          const X = x + 0.25 + sx * 0.5;
+          const Y = y + 0.25 + sy * 0.5;
+          const w = h6 * X + h7 * Y + h8;
+          const px = (h0 * X + h1 * Y + h2) / w;
+          const py = (h3 * X + h4 * Y + h5) / w;
+          if (px >= 0 && py >= 0 && px < sw && py < sh) {
+            acc += bilinear(slip, px - 0.5, py - 0.5);
             n++;
           }
         }
@@ -317,6 +353,7 @@ export function cameraScene(slip: FloatImage, o: CameraOptions): Gray {
   const sy = Math.sin(sa);
   const c0 = corners.reduce((s, p) => ({ x: s.x + p.x / 4, y: s.y + p.y / 4 }), { x: 0, y: 0 });
   const span = Math.hypot(W, H);
+  if (o.gradient || o.shadow)
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const i = y * W + x;
@@ -339,10 +376,7 @@ export function cameraScene(slip: FloatImage, o: CameraOptions): Gray {
   for (let i = 0; i < W * H; i++) {
     let v = (out.data[i] as number) * exp;
     v = 0.5 * exp + (v - 0.5 * exp) * con;
-    // gaussian noise (Box-Muller)
-    const u1 = r() || 1e-9;
-    const u2 = r();
-    v += noise * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    v += noise * (GAUSS[(r() * GAUSS.length) | 0] as number);
     data[i] = Math.max(0, Math.min(255, Math.round(v * 255)));
   }
   return { width: W, height: H, data };

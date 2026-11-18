@@ -133,7 +133,7 @@ function Bench() {
                   autoCapitalize="characters"
                   autoComplete="off"
                   error={err ? err.replace(`${edge}: `, '') : null}
-                  hint={strip ? `${strip.units} units, dots ${strip.unitMm} mm${warn ? '. long: hold it close' : ''}` : 'blank edge'}
+                  hint={strip ? `${strip.units} units, dots ${strip.unitMm.toFixed(1)} mm${warn ? '. long: hold it close' : ''}` : 'blank edge'}
                   data-testid={`edge-${edge}`}
                 />
                 {strip && <MorseInk morse={strip.morse} size="sm" />}
@@ -211,6 +211,7 @@ function Bench() {
           <SlipScanner
             title="slip bench"
             after={after}
+            stableFrames={Number(params.get('stable')) || 3}
             onClose={() => setScanning(false)}
             onFrame={(frame, stats) => setLive({ frame, stats })}
             onScan={(scan, source) => {

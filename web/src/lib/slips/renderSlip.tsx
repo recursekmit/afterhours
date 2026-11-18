@@ -28,8 +28,8 @@ export function SlipArt({ layout: L, cutLine = false }: { layout: SlipLayout; cu
   const { outer: o, inner: n } = L.frame;
   const { logo: lg, number: nb, doodle: dd, area } = L.decor;
   const cx = dd.x + dd.w / 2;
-  const cy = dd.y + dd.h / 2;
-  const R = dd.w * 0.34;
+  const cy = dd.y + dd.h * 0.4;
+  const R = dd.w * 0.25;
   const hand = "'Shantell Sans', 'Comic Neue', cursive";
   const display = "'Bowlby One', 'Arial Black', Impact, sans-serif";
   return (
@@ -74,7 +74,7 @@ export function SlipArt({ layout: L, cutLine = false }: { layout: SlipLayout; cu
         <path d={`M${cx + R} ${cy + 0.3} C ${cx + R} ${cy + R * 1.15}, ${cx - R * 1.1} ${cy + R * 1.1}, ${cx - R} ${cy} S ${cx - R * 0.2} ${cy - R * 1.1}, ${cx + R * 0.15} ${cy - R}`} />
         <path d={`M${cx - R * 0.35} ${cy - R * 1.45} L ${cx + R * 0.2} ${cy - R} L ${cx - R * 0.3} ${cy - R * 0.55}`} />
       </g>
-      <text x={cx} y={cy + R * 0.25} textAnchor="middle" fontFamily={hand} fontWeight={700} fontSize={Math.min(2.4, dd.w * 0.17)} fill={INK}>
+      <text x={cx} y={dd.y + dd.h * 0.94} textAnchor="middle" fontFamily={hand} fontWeight={700} fontSize={Math.min(2.4, dd.w * 0.17)} fill={INK}>
         turn me
       </text>
     </g>

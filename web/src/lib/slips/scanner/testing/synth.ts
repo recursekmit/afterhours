@@ -8,9 +8,22 @@
                                   conditions (blur, motion blur, noise, dim light, low contrast,
                                   lighting gradient, a hand shadow), quantised to 8 bits
 */
-import type { SlipLayout } from '../../../../../../shared/src/morse-slip';
 import { type Homography, type Pt, homography, invert } from '../geometry';
 import type { Gray } from '../image';
+
+type R = { x: number; y: number; w: number; h: number };
+/**
+ * The parts of a SlipLayout (shared/src/morse-slip.ts) the rasteriser draws. Structural on purpose:
+ * the e2e program imports this file and must not pull the shared package into its type check.
+ */
+export interface SlipLayout {
+  widthMm: number;
+  heightMm: number;
+  frame: { outer: R; inner: R };
+  finders: { cx: number; cy: number; r: number; ring: number; dotR: number }[];
+  strips: { symbols: ({ kind: 'dot'; cx: number; cy: number; r: number } | { kind: 'dash'; x: number; y: number; w: number; h: number })[] }[];
+  decor: { area: R; logo: R; number: R; doodle: R };
+}
 
 export interface FloatImage {
   width: number;

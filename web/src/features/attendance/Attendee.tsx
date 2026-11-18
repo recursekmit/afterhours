@@ -21,6 +21,7 @@ import { CodeBoxes } from '../common/CodeBoxes';
 import { Scanner, canScanInApp } from '../common/Scanner';
 import { PageHead, ui } from '../common/ui';
 import s from './attendance.module.css';
+import { CountUp } from './CountUp';
 
 export const attendanceKey = ['attendance', 'me'] as const;
 
@@ -57,10 +58,19 @@ function Success({ r, onAgain }: { r: CheckinResponse; onAgain: () => void }) {
     <Card tone="lime" tilt={-1.2} tape className={s.success}>
       <Sticker def={STICKER} size={120} tilt={-8} slap />
       <p className={s.youre}>
-        you're <span className={s.pos}>#<NumberTicker value={r.position} /></span> here
+        you're{' '}
+        <motion.span className={s.pos} initial={{ scale: 0.3, rotate: -30, opacity: 0 }} animate={{ scale: 1, rotate: -4, opacity: 1 }} transition={{ type: 'spring', stiffness: 420, damping: 12, delay: 0.25 }}>
+          #<CountUp value={r.position} delayMs={350} />
+        </motion.span>{' '}
+        here
       </p>
       <h2 className={s.what}>{r.title}</h2>
-      <p className={ui.hand}>{r.newlyCheckedIn ? `+${r.points} points. ${r.count} people in so far.` : 'you were already in. no double points, nice try.'}</p>
+      {r.newlyCheckedIn && (
+        <motion.span className={s.plusTen} initial={{ scale: 0, rotate: 20 }} animate={{ scale: 1, rotate: -5 }} transition={{ type: 'spring', stiffness: 600, damping: 11, delay: 0.7 }}>
+          +<CountUp value={r.points} delayMs={800} />
+        </motion.span>
+      )}
+      <p className={ui.hand}>{r.newlyCheckedIn ? `${r.count} people in so far.` : 'you were already in. no double points, nice try.'}</p>
       <div className={ui.row}>
         <LinkButton to="/" tone="ink" icon="home">
           back home
@@ -97,6 +107,7 @@ export function CheckinPage() {
   const toast = useToast();
   const [code, setCode] = useState('');
   const [shake, setShake] = useState(0);
+  const [nope, setNope] = useState(false);
   const [result, setResult] = useState<CheckinResponse | null>(null);
   const [coolUntil, setCoolUntil] = useState<number | null>(null);
   const [scan, setScan] = useState(false);
@@ -114,6 +125,8 @@ export function CheckinPage() {
     onError: (e) => {
       setCode('');
       setShake((n) => n + 1);
+      setNope(true);
+      window.setTimeout(() => setNope(false), 900);
       sfx.fail();
       haptics.fail();
       if (isApiError(e, 'rate_limited')) setCoolUntil(serverNow() + (e.retryAfter ?? 15) * 1000);
@@ -145,7 +158,14 @@ export function CheckinPage() {
           </motion.div>
         ) : (
           <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={ui.stack}>
-            <Card tone="paper" tilt={-0.6} tape tapeColor="pink" className={s.entry}>
+            <Card tone={nope ? 'pink' : 'paper'} tilt={-0.6} tape tapeColor="pink" className={s.entry}>
+              <AnimatePresence>
+                {nope && (
+                  <motion.span className={s.nope} initial={{ scale: 2.4, rotate: 16, opacity: 0 }} animate={{ scale: 1, rotate: -9, opacity: 1 }} exit={{ opacity: 0, y: -10 }} transition={{ type: 'spring', stiffness: 600, damping: 14 }}>
+                    nope
+                  </motion.span>
+                )}
+              </AnimatePresence>
               {open.length === 0 ? (
                 <p className={s.closed}>no check-in is open right now. the screen will say when.</p>
               ) : (

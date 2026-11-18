@@ -46,6 +46,8 @@ test.describe.serial('polish', () => {
   });
 
   test('schedule: delay shows a +10 marker, started shows done stamps', async ({ browser }) => {
+    // the suite shares one server: start from an empty schedule whatever ran before (play.spec starts activities early)
+    await api('POST', '/api/schedule/reset', { confirm: 'reset schedule' });
     const t0 = Date.now();
     await api('POST', '/api/schedule', { title: 'opening jam', startAt: t0 - 600_000, endAt: t0 + 1_800_000, location: 'hall', kind: 'talk' });
     await api('POST', '/api/schedule', { title: 'chai break', startAt: t0 + 2_000_000, endAt: t0 + 2_600_000, location: 'atrium', kind: 'break' });

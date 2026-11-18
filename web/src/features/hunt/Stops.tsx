@@ -85,6 +85,8 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
         sfx.success();
         haptics.celebrate();
         celebrate({ y: 0.4 });
+        // this stop is about to be replaced by the next one: say what happened in a toast that outlives it
+        toast(r.message, { kind: 'good', title: r.outcome === 'next' ? 'onwards' : 'a different path', icon: 'arrow', ms: 5000 });
       } else if (r.outcome === 'bonus') {
         if (r.points > 0) celebrate({ y: 0.4 });
         sfx.pop();
@@ -95,8 +97,7 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
         haptics.fail();
         if (!reduce && scope.current) void animate(scope.current, { rotate: [0, -6, 6, -3, 0] }, { duration: 0.5 });
       }
-      // let the result breathe before the next stop replaces this one
-      window.setTimeout(() => setHunt(r.me), r.outcome === 'next' || r.outcome === 'branch' ? 1800 : 0);
+      setHunt(r.me);
     },
     onError: (e) => toast(e.message, { kind: 'bad' }),
   });

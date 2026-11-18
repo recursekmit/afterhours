@@ -104,7 +104,7 @@ test.describe.serial('after hours foundation', () => {
     await expect(page.getByRole('heading', { name: 'who are you?' })).toBeVisible();
 
     // the live stream delivers the "showed up" sticker as a celebration
-    await expect(page.getByRole('alertdialog')).toContainText('showed up');
+    await expect(page.getByRole('alertdialog')).toContainText('showed up', { timeout: 10_000 });
     await page.waitForTimeout(900);
     await page.screenshot({ path: `${SHOTS}/attendee-sticker-celebration.png` });
     await page.getByRole('button', { name: 'stick it in' }).click();

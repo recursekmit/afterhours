@@ -100,6 +100,39 @@ test.describe.serial('features', () => {
     await page.context().close();
   });
 
+  test('trails: a morse slip trail, typed reading sends you on, a decoy does not', async ({ browser }) => {
+    const tr = (await api<{ trail: { id: number } }>('POST', '/api/hunt/admin/trails', { title: 'e2e slips', kind: 'morse', orderMode: 'graph' })).trail.id;
+    const sets = await api<{ sets: { id: number }[] }>('POST', `/api/hunt/admin/slip-sets?trail=${tr}`, { title: 'kit', mode: 'shared' });
+    const end = (await api<{ stops: { id: number }[] }>('POST', `/api/hunt/admin/stops?trail=${tr}`, { title: 'the end', clue: 'type recurse', answers: ['recurse'], finale: true })).stops.at(-1)!.id;
+    const slips = await api<{ sets: { slips: { id: number }[] }[] }>('POST', `/api/hunt/admin/slip-sets/${sets.sets[0]!.id}/slips`, {
+      slipNo: 1,
+      label: 'start',
+      readings: [
+        { orientation: 'bottom', word: 'LAB', outcome: 'next', targetStopId: end },
+        { orientation: 'top', word: 'NOPE', outcome: 'decoy' },
+      ],
+    });
+    const slipId = slips.sets[0]!.slips[0]!.id;
+    const admin1 = await api<{ stops: { id: number }[] }>('POST', `/api/hunt/admin/stops?trail=${tr}`, { title: 'slip 1', clue: 'scan slip 1', slipId });
+    const ids = admin1.stops.map((x) => x.id);
+    await api('PUT', `/api/hunt/admin/order?trail=${tr}`, { ids: [ids.at(-1)!, ...ids.slice(0, -1)] });
+    await api('PUT', `/api/hunt/admin/state?trail=${tr}`, { status: 'open' });
+    const page = await attendee(browser);
+    await page.goto('/hunt');
+    await page.getByRole('link', { name: /e2e slips/ }).click();
+    await page.getByRole('button', { name: 'start this trail' }).click();
+    const box = page.getByLabel('or type what the bottom strip says');
+    await box.waitFor({ timeout: 8000 });
+    await box.fill('nope');
+    await page.getByRole('button', { name: 'read it' }).click();
+    await expect(page.getByText('decoy!')).toBeVisible();
+    await box.fill('lab');
+    await page.getByRole('button', { name: 'read it' }).click();
+    await expect(page.getByText('onwards')).toBeVisible();
+    await expect(page.getByText('type recurse')).toBeVisible({ timeout: 6000 });
+    await page.context().close();
+  });
+
   test('leaderboard: you are #N, freeze shows ???', async ({ browser }) => {
     const page = await attendee(browser);
     await page.goto('/leaderboard');

@@ -10,6 +10,7 @@
   is back, so a slow phone simply processes fewer frames instead of lagging.
 */
 import { rgbaToGray } from './image';
+import { PIPELINE_CONFIG } from './config';
 import { type FrameResult, processFrame } from './pipeline';
 import type { WorkerIn, WorkerOut } from './protocol';
 
@@ -53,7 +54,8 @@ export class SlipEngine {
       const ready = await new Promise<{ offscreen: boolean } | null>((resolve) => {
         const t = window.setTimeout(() => resolve(null), 4000);
         w.onmessage = (e: MessageEvent<WorkerOut>) => {
-          if (e.data.type === 'ready') {
+          if (e.data.type === 'hello') w.postMessage({ type: 'config', spec: PIPELINE_CONFIG.spec, table: { ...PIPELINE_CONFIG.table } } satisfies WorkerIn);
+          else if (e.data.type === 'ready') {
             window.clearTimeout(t);
             resolve({ offscreen: e.data.offscreen });
           }
@@ -157,7 +159,7 @@ export class SlipEngine {
   }
 
   private fromWorker(m: WorkerOut) {
-    if (m.type === 'ready') return;
+    if (m.type === 'ready' || m.type === 'hello') return;
     if (m.rgba) this.spare = m.rgba;
     this.busy = false;
     if (m.type === 'result') this.done(m.result);

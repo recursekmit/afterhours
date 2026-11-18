@@ -5,7 +5,7 @@
   waits for each result before sending the next, so the queue never grows.
 */
 import { rgbaToGray } from './image';
-import { processFrame } from './pipeline';
+import { configurePipeline, processFrame } from './pipeline';
 import type { WorkerIn, WorkerOut } from './protocol';
 
 const scope = self as unknown as {
@@ -19,7 +19,11 @@ const offscreen = typeof OffscreenCanvas !== 'undefined';
 
 scope.onmessage = (e) => {
   const m = e.data;
-  if (m.type !== 'frame') return;
+  if (m.type === 'config') {
+    configurePipeline(m.spec, m.table);
+    scope.postMessage({ type: 'ready', offscreen });
+    return;
+  }
   try {
     let rgba: Uint8ClampedArray;
     if (m.bitmap) {
@@ -42,4 +46,4 @@ scope.onmessage = (e) => {
   }
 };
 
-scope.postMessage({ type: 'ready', offscreen });
+scope.postMessage({ type: 'hello' });

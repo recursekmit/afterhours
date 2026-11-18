@@ -18,7 +18,9 @@
       which is immune to blur growing or shrinking the ink)
    9. decode, score confidence, pick the bottom strip as primary
 */
-import { SLIP_SPEC, type SlipScan, type StripReading, decodeMorse } from '../../../../../shared/src/morse-slip';
+// Type-only import: the worker bundle must not pull in the shared package (and zod with it).
+// The slip proportions and the Morse table arrive through configurePipeline() (see ./config.ts).
+import type { SLIP_SPEC, SlipScan, StripReading } from '../../../../../shared/src/morse-slip';
 import { type Homography, type Pt, apply, convexHull, dist, homography, isConvex, polygonArea, quadFromHull, refineQuad } from './geometry';
 import { type Gray, adaptiveThreshold, components, downscale2, sample } from './image';
 
@@ -75,15 +77,37 @@ export interface ScanOptions {
 
 export const DEFAULT_AMBIGUITY_DEG = 30;
 
-const S = SLIP_SPEC;
-/** finder centre distance from the frame's outer edge, in finder diameters */
-const FINDER_OFFSET = (S.frameMm + S.innerGapMm + S.bandMm / 2) / S.bandMm;
-/** finder-to-band gap, in band units */
-const FINDER_GAP = S.finderGapMm / S.bandMm;
+export type SlipSpec = typeof SLIP_SPEC;
+
+/** finder centre distance from the frame's outer edge, in finder diameters (from SLIP_SPEC) */
+let FINDER_OFFSET = 0;
+/** finder-to-band gap, in band units (from SLIP_SPEC) */
+let FINDER_GAP = 0;
+let REVERSE: Record<string, string> | null = null;
+
+/**
+ * Hand the pipeline the shared slip proportions and Morse table. Called once per
+ * thread: ./config.ts on the page and in tests, the worker on its init message.
+ */
+export function configurePipeline(spec: SlipSpec, table: Readonly<Record<string, string>>): void {
+  FINDER_OFFSET = (spec.frameMm + spec.innerGapMm + spec.bandMm / 2) / spec.bandMm;
+  FINDER_GAP = spec.finderGapMm / spec.bandMm;
+  REVERSE = Object.fromEntries(Object.entries(table).map(([k, v]) => [v, k]));
+}
+
+/** Canonical Morse ("-.-. .- / -") -> text, null if any letter is unknown (same rule as decodeMorse). */
+function decode(morse: string): string | null {
+  if (!REVERSE || !morse) return null;
+  const R = REVERSE;
+  const words = morse.split(' / ').map((w) => w.split(' ').map((l) => R[l] ?? '?').join(''));
+  const text = words.join(' ');
+  return text.includes('?') ? null : text;
+}
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
 export function processFrame(gray: Gray, at = 0, opts: ScanOptions = {}): FrameResult {
+  if (!REVERSE) throw new Error('slip pipeline not configured: import ./config (page/tests) or send the worker its config');
   const t0 = now();
   const res = run(gray, at, opts);
   res.ms = now() - t0;
@@ -504,7 +528,7 @@ export function readStrip(img: Gray, s: number, endPad = 0): StripRead | null {
     const off = Math.abs((span0 + span1) / 2 - w / 2) / bestU;
     fit *= Math.max(0, Math.min(1, 1 - (off - 0.6) / 0.8));
   }
-  return { morse, text: decodeMorse(morse), fit, n: blobs.length };
+  return { morse, text: decode(morse), fit, n: blobs.length };
 }
 
 function classify(blobs: Blob[], u: number, T: number): { kinds: (1 | 3)[]; gaps: (1 | 3 | 7)[]; dev: number[]; gdev: number[] } {

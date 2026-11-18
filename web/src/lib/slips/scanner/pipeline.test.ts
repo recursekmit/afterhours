@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layoutSlip, reverseReading } from '../../../../../shared/src/morse-slip';
+import './config';
 import { processFrame } from './pipeline';
 import { cameraScene, rasterSlip } from './testing/synth';
 

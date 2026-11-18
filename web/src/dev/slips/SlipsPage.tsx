@@ -4,6 +4,7 @@
   - "print test sheet": an A4 of this slip plus a standard test set
   - "open the scanner": live camera, raw FrameResult + every stable SlipScan
   Query params (for e2e and for sharing a setup): ?b=code&r=hi&t=lab&l=sun&n=7&size=card&scan=1&sheet=1
+  &after=result (scanner shows the result card), &print=1 (just the slip at real size, for print-to-PNG)
 */
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -87,6 +88,15 @@ function Bench() {
   };
 
   const last = scans[0];
+  const after = (params.get('after') as 'result' | 'continue' | null) ?? 'continue';
+  if (params.get('print') === '1') {
+    // bare real-size slip, for print-to-PNG fixtures and the e2e fake camera
+    return (
+      <div className={s.printOnly} data-testid="slip-print">
+        <SlipSvg layout={layout} />
+      </div>
+    );
+  }
   return (
     <div className={s.page}>
       <header className={s.head}>
@@ -200,7 +210,7 @@ function Bench() {
         <>
           <SlipScanner
             title="slip bench"
-            after="continue"
+            after={after}
             onClose={() => setScanning(false)}
             onFrame={(frame, stats) => setLive({ frame, stats })}
             onScan={(scan, source) => {

@@ -8,6 +8,7 @@
 */
 import { afterAll, describe, expect, it } from 'vitest';
 import { type SlipDesign, type SlipEdge, edgeForQuarterTurns, layoutSlip } from '../../../../../shared/src/morse-slip';
+import './config';
 import { processFrame } from './pipeline';
 import { SlipStabiliser } from './stabilise';
 import { type CameraOptions, type FloatImage, cameraScene, rasterSlip, rng } from './testing/synth';

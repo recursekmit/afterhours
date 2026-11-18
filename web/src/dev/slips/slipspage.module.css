@@ -41,3 +41,4 @@
   overflow-wrap: anywhere;
 }
 .debugLast { font-weight: 800; }
+.printOnly { display: inline-block; padding: 6mm; background: var(--paper-3); }

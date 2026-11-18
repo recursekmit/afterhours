@@ -20,6 +20,8 @@ export function useHunt(trailId: number = TREASURE_TRAIL_ID) {
   const q = useQuery({ queryKey: huntKey(trailId), queryFn: () => api.get(`/api/hunt?trail=${trailId}`, HuntMeSchema), refetchInterval: 45_000 });
   useLiveEvent('hunt.state', (d) => d.trailId === trailId && void qc.invalidateQueries({ queryKey: huntKey(trailId) }));
   useLiveEvent('hunt.crowd', (crowd) => crowd.trailId === trailId && qc.setQueryData<HuntMe>(huntKey(trailId), (old) => (old ? { ...old, crowd } : old)));
+  // A stamp made outside this screen (camera-app scan on another tab, the sticker landing) pays points: catch up.
+  useLiveEvent('points.awarded', (d) => d.source === 'hunt' && void qc.invalidateQueries({ queryKey: ['hunt', 'me'] }));
   return q;
 }
 

@@ -70,7 +70,7 @@
 
 /* lag spike */
 .reactCenter { position: relative; flex: 1; display: grid; place-items: center; align-content: center; gap: var(--s-3); min-height: 0; text-align: center; }
-.reactWord { position: relative; z-index: 1; font-family: var(--font-display); font-size: clamp(40px, 15vw, 88px); line-height: 1; text-shadow: 4px 5px 0 var(--paper-3); }
+.reactWord { background: none; border: 0; padding: 0; color: inherit; cursor: pointer; touch-action: none; position: relative; z-index: 1; font-family: var(--font-display); font-size: clamp(40px, 15vw, 88px); line-height: 1; text-shadow: 4px 5px 0 var(--paper-3); }
 .field-wait .reactWord, .field-idle .reactWord { text-shadow: 4px 5px 0 var(--sun); }
 .msBig { font-size: clamp(72px, 28vw, 150px); }
 .msBig small { font-size: 0.32em; }

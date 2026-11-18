@@ -163,13 +163,12 @@ export function LagSpike({ run, onDone, onQuit }: { run: Spec<'reaction'>; onDon
             <polygon points="0,-48 9,-28 30,-38 26,-14 48,-9 30,6 42,28 18,24 14,46 0,30 -14,46 -18,24 -42,28 -30,6 -48,-9 -26,-14 -30,-38 -9,-28" fill="var(--sun)" stroke="var(--ink)" strokeWidth="2.4" strokeLinejoin="round" />
           </motion.svg>
         )}
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
+        <>
+          <motion.button type="button" onClick={(e) => e.detail === 0 && tap()}
             key={phase + (phase === 'shown' ? `-${round}` : '')}
             className={s.reactWord}
             initial={reduce ? { opacity: 0 } : { scale: phase === 'green' ? 0.4 : 0.8, opacity: 0, rotate: phase === 'green' ? -8 : 0 }}
             animate={{ scale: 1, opacity: 1, rotate: phase === 'green' ? 3 : 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
             transition={{ type: 'spring', stiffness: 700, damping: 18 }}
           >
             {phase === 'wait' && 'tap to start'}
@@ -177,8 +176,8 @@ export function LagSpike({ run, onDone, onQuit }: { run: Spec<'reaction'>; onDon
             {phase === 'green' && 'NOW!'}
             {phase === 'early' && 'too early!'}
             {phase === 'shown' && last !== null && (last >= REACTION_MAX_MS ? 'false start' : <span className={s.msBig}>{last}<small> ms</small></span>)}
-          </motion.div>
-        </AnimatePresence>
+          </motion.button>
+        </>
         {isBest && <span className={s.bestSoFar}>fastest yet</span>}
         {phase === 'wait' && <p className={s.fieldHint}>five rounds. tap the second it goes green. early taps cost you.</p>}
       </div>

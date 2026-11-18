@@ -54,11 +54,12 @@ export default function LeaderboardScene() {
   }, [reveal?.startedAt, firstShown, reduce]);
 
   if (!b) return null;
-  const nextAt = reveal?.schedule?.[reveal.revealed] ?? null;
+  const shown = reveal ? b.rows.filter((r) => !r.hidden && r.rank <= reveal.topN).length : 0;
+  const nextAt = reveal?.schedule?.[shown] ?? null;
   const revealing = Boolean(reveal?.startedAt && !reveal.done);
-  const drumRoll = Boolean(revealing && reveal && reveal.revealed === reveal.topN - 1 && nextAt && nextAt > now);
+  const drumRoll = Boolean(revealing && reveal && shown === reveal.topN - 1 && nextAt && nextAt > now);
   const champion = Boolean(reveal?.startedAt && first);
-  const left = reveal ? reveal.topN - reveal.revealed : 0;
+  const left = reveal ? reveal.topN - shown : 0;
 
   return (
     <div className={s.scene}>
@@ -127,7 +128,7 @@ export default function LeaderboardScene() {
             >
               {r.rank === 1 && reveal?.startedAt && <Doodle name="crown" size={64} fill="var(--sun)" className={s.crown} />}
               <span>#{r.rank}</span>
-              <Avatar config={r.avatar} size={58} />
+              <Avatar config={r.avatar} size={44} />
               <span className={s.sceneNick}>{r.nickname}</span>
               <span className={s.sceneTotal}>
                 {(moves.get(r.attendeeId) ?? 0) !== 0 && (

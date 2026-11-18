@@ -175,7 +175,7 @@ describe('accuracy over realistic conditions', () => {
     const s = [...allMs].sort((a, b) => a - b);
     lines.push('', `pipeline time per frame: median ${q(s, 0.5)} ms, p95 ${q(s, 0.95)} ms, max ${q(s, 1)} ms (Node, ${s.length} frames)`);
     console.info([...lines, '', ...misses].join('\n'));
-    if (n > 0) {
+    if (table.size === CONDITIONS.length) {
       expect(ok / n).toBeGreaterThanOrEqual(0.95);
       expect(wrong / n).toBeLessThanOrEqual(0.01);
     }

@@ -324,7 +324,8 @@ function readSlip(levels: Gray[], quadIn: Pt[], at: number, ambiguity: number, m
 
   const geo = (nFound === 4 ? 1 : 0.85) * (1 - Math.max(0, Math.abs(tiltDeg) - 18) / 60);
   const lo = 0.5 + FINDER_GAP;
-  const ext = FINDER_GAP * 0.6;
+  // sample a little past each band end; blobs centred out there are finder bleed, not symbols
+  const ext = FINDER_GAP * 0.85;
   const specs: { side: ViewSide; from: Pt; to: Pt }[] = [
     { side: 'bottom', from: { x: lo - ext, y: Sy }, to: { x: Sx - lo + ext, y: Sy } },
     { side: 'right', from: { x: Sx, y: Sy - lo + ext }, to: { x: Sx, y: lo - ext } },
@@ -334,7 +335,7 @@ function readSlip(levels: Gray[], quadIn: Pt[], at: number, ambiguity: number, m
   ];
   const bands: BandResult[] = specs.map(({ side, from, to }) => {
     const strip = sampleBand(levels, blvl, G, from, to, s);
-    const r = readStrip(strip, s);
+    const r = readStrip(strip, s, ext * s);
     const len = Math.hypot(to.x - from.x, to.y - from.y);
     const ux = (to.x - from.x) / len;
     const uy = (to.y - from.y) / len;
@@ -440,7 +441,7 @@ export interface StripRead {
 }
 
 /** Read one straightened band. null = blank. */
-export function readStrip(img: Gray, s: number): StripRead | null {
+export function readStrip(img: Gray, s: number, endPad = 0): StripRead | null {
   const { width: w, height: h, data } = img;
   const sorted = Uint8Array.from(data).sort();
   const p5 = sorted[Math.floor(sorted.length * 0.03)] as number;
@@ -457,12 +458,15 @@ export function readStrip(img: Gray, s: number): StripRead | null {
     const y0 = cc.minY[id] as number;
     const y1 = cc.maxY[id] as number;
     if ((cc.area[id] as number) < minArea) continue;
-    if (x0 === 0 || x1 === w - 1 || y0 === 0 || y1 === h - 1) continue;
+    if (y0 === 0 || y1 === h - 1) continue;
+    const cx = (x0 + x1 + 1) / 2;
+    if (cx < endPad || cx > w - endPad) continue;
+    if ((x0 === 0 || x1 === w - 1) && endPad === 0) continue;
     const T = y1 - y0 + 1;
     const cyy = (y0 + y1 + 1) / 2;
     if (T > 0.75 * s || T < 0.08 * s) continue;
     if (cyy < 0.25 * s || cyy > 0.75 * s) continue;
-    blobs.push({ c: (x0 + x1 + 1) / 2, L: x1 - x0 + 1, T });
+    blobs.push({ c: cx, L: x1 - x0 + 1, T });
   }
   if (blobs.length === 0) return null;
   const T = median(blobs.map((b) => b.T));
@@ -481,13 +485,25 @@ export function readStrip(img: Gray, s: number): StripRead | null {
       bestU = u;
     }
   }
-  const { kinds, gaps } = classify(blobs, bestU, T);
+  const { kinds, gaps, dev, gdev } = classify(blobs, bestU, T);
   let morse = '';
   kinds.forEach((k, i) => {
     if (i > 0) morse += gaps[i - 1] === 1 ? '' : gaps[i - 1] === 3 ? ' ' : ' / ';
     morse += k === 1 ? '.' : '-';
   });
-  const fit = Math.max(0, Math.min(1, 1 - (bestScore - 0.1) / 0.4));
+  let fit = Math.max(0, Math.min(1, 1 - (bestScore - 0.1) / 0.4));
+  // one badly shaped symbol or gap (two dots smeared together, a dash split) sinks the reading
+  const worst = Math.max(...dev, ...gdev.map((g) => g * 0.8));
+  fit *= Math.max(0, Math.min(1, 1 - (worst - 0.3) / 0.35));
+  // strips are printed centred in their band: a reading that is off centre lost a symbol at one end
+  if (endPad > 0) {
+    const first = blobs[0] as Blob;
+    const last = blobs[blobs.length - 1] as Blob;
+    const span0 = first.c - (first.L - (T - bestU)) / 2;
+    const span1 = last.c + (last.L - (T - bestU)) / 2;
+    const off = Math.abs((span0 + span1) / 2 - w / 2) / bestU;
+    fit *= Math.max(0, Math.min(1, 1 - (off - 0.6) / 0.8));
+  }
   return { morse, text: decodeMorse(morse), fit, n: blobs.length };
 }
 

@@ -6,20 +6,28 @@
 */
 import type { Activity } from '@afterhours/shared/features/schedule';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useServerNow } from '../../core/clock';
 import { fmtClock, fmtDay, fmtDuration } from '../../core/time';
 import { confetti, haptics, sfx } from '../../fun';
-import { Card, Countdown, Doodle, LinkButton, ProgressRing } from '../../kit';
+import { Card, Countdown, Doodle, ProgressRing } from '../../kit';
 import { Stamp } from '../common/ui';
+import { JumpIn } from './JumpIn';
 import s from './schedule.module.css';
 import { LINK_LABEL, nowAndNext, useLastChange, useSchedule } from './useSchedule';
 
 function NowCard({ a, now }: { a: Activity; now: number }) {
   const span = Math.max(1, a.endAt - a.startAt);
   const over = now > a.endAt;
-  const progress = over ? 1 : (now - a.startAt) / span;
+  const target = over ? 1 : Math.max(0, (now - a.startAt) / span);
+  // The ring sweeps from empty to where we are when the card lands.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setArmed(true), 220);
+    return () => window.clearTimeout(id);
+  }, []);
+  const progress = armed ? target : 0;
   const left = a.endAt - now;
   return (
     <Card tone={a.highlight ? 'pink' : 'sun'} tilt={-1.4} tape tapeColor="sky" className={`${s.nowCard} ${a.highlight ? s.highlight : ''}`}>
@@ -44,9 +52,9 @@ function NowCard({ a, now }: { a: Activity; now: number }) {
       <div className={s.nowFoot}>
         {over ? <Stamp tone="late" rot={-4}>running over</Stamp> : <Stamp tone="live" rot={-4}>live</Stamp>}
         {a.link && (
-          <LinkButton to={a.link} tone="ink" size="sm" icon="arrow">
+          <JumpIn to={a.link} tone="ink">
             {LINK_LABEL[a.link] ?? 'jump in'}
-          </LinkButton>
+          </JumpIn>
         )}
       </div>
     </Card>
@@ -97,11 +105,19 @@ export function NowNextCard() {
   const reduce = useReducedMotion();
   const { now: cur, next } = nowAndNext(q.data);
   const seen = useRef<number>(0);
+  const [doneTitle, setDoneTitle] = useState<string | null>(null);
+  const activities = q.data?.activities;
 
   useEffect(() => {
     if (!change || change.seq === seen.current) return;
     seen.current = change.seq;
     const c = change.change;
+    const ended = c.kind === 'ended' ? [c.activityId] : c.kind === 'started' ? c.endedIds : [];
+    const endedTitle = ended.length ? activities?.find((x) => x.id === ended[0])?.title : undefined;
+    if (endedTitle) {
+      setDoneTitle(endedTitle);
+      sfx.pop();
+    }
     const startedSomething = c.kind === 'started' || (c.kind === 'advanced' && c.nowId !== null && c.nowId !== c.previousNowId);
     if (startedSomething) {
       sfx.success();
@@ -111,12 +127,33 @@ export function NowNextCard() {
       sfx.whoosh();
       haptics.tick();
     }
-  }, [change, reduce]);
+  }, [change, reduce, activities]);
+
+  useEffect(() => {
+    if (!doneTitle) return;
+    const id = window.setTimeout(() => setDoneTitle(null), 2600);
+    return () => window.clearTimeout(id);
+  }, [doneTitle]);
 
   if (!q.data) return null;
   const allDone = !cur && !next;
   return (
     <section className={s.nowNext} aria-label="now and next">
+      <AnimatePresence>
+        {doneTitle && (
+          <motion.div
+            key={doneTitle}
+            className={s.doneBanner}
+            initial={reduce ? { opacity: 0 } : { scale: 2.6, rotate: 14, opacity: 0 }}
+            animate={{ scale: 1, rotate: -3, opacity: 1 }}
+            exit={{ opacity: 0, y: -16, transition: { duration: 0.25 } }}
+            transition={{ type: 'spring', stiffness: 560, damping: 17 }}
+          >
+            <span className={s.doneWord}>done</span>
+            <span className={s.doneTitle}>{doneTitle}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <AnimatePresence mode="popLayout" initial={false}>
         {cur && (
           <motion.div

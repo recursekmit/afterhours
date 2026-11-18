@@ -33,9 +33,8 @@
 .optionOff { background: var(--paper-3); }
 .optEmoji { font-size: var(--step-2); }
 
-.tot { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); min-height: 220px; }
+.tot { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); min-height: 220px; overflow-x: clip; padding: 8px 0 14px; }
 .half { display: grid; place-items: center; align-content: center; gap: var(--s-2); padding: var(--s-4) var(--s-3); border: var(--outline); border-radius: var(--cut-1); box-shadow: var(--shadow-lg); font: inherit; color: var(--ink); cursor: pointer; touch-action: manipulation; }
-.half:first-child { transform: rotate(-2deg); }
 .halfEmoji { font-size: var(--step-5); }
 .halfLabel { font-family: var(--font-display); font-size: var(--step-1); text-align: center; overflow-wrap: anywhere; }
 .or { position: absolute; left: 50%; top: 14px; translate: -50% -50%; font-family: var(--font-display); background: var(--ink); color: var(--paper-3); border-radius: var(--cut-round); padding: 8px 12px; transform: rotate(-8deg); pointer-events: none; }
@@ -48,7 +47,41 @@
 .wordInput { min-height: var(--tap); padding: 0 var(--s-3); font: inherit; font-size: var(--step-1); font-weight: 700; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); min-width: 0; }
 .charMeter { font-family: var(--font-display); min-width: 40px; text-align: center; background: var(--lime); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 4px; }
 .charFull { background: var(--pink); }
-.bubble { justify-self: start; font-family: var(--font-hand); font-weight: 800; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-round); padding: var(--s-3) var(--s-4); box-shadow: var(--shadow-sm); }
+.bubble { position: relative; justify-self: start; margin: 0 0 6px 18px; font-family: var(--font-hand); font-weight: 800; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-round); padding: var(--s-3) var(--s-5); box-shadow: var(--shadow-sm); }
+.bubbleTail { position: absolute; left: 18px; top: -23px; }
+.letter { display: inline-grid; place-items: center; min-width: 30px; height: 30px; font-family: var(--font-display); background: var(--ink); color: var(--paper-3); border-radius: var(--cut-round); padding: 0 6px; flex: none; }
+.optLabel { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tickBadge { display: grid; place-items: center; width: 34px; height: 34px; background: var(--ink); color: var(--paper-3); border-radius: var(--cut-round); flex: none; }
+
+/* marker slider */
+.marker { position: relative; padding: 76px 34px 14px; touch-action: none; cursor: grab; user-select: none; }
+.marker:active { cursor: grabbing; }
+.marker:focus-visible { outline: var(--line) dashed var(--ink); outline-offset: 4px; border-radius: var(--cut-3); }
+.markerTrack { position: relative; height: 22px; background: var(--paper-3); border: var(--outline); border-radius: 999px; }
+.markerFill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--tangerine); border-radius: 999px; border-right: var(--line) solid var(--ink); }
+.markerTick { position: absolute; top: 50%; width: 8px; height: 8px; translate: -50% -50%; background: var(--ink); border-radius: var(--cut-round); opacity: 0.35; }
+.markerTickOn { background: var(--paper-3); opacity: 0.9; }
+.markerThumb { position: absolute; top: 50%; width: 0; height: 0; z-index: 2; }
+.markerFace { position: absolute; left: -34px; top: -78px; display: grid; place-items: center; width: 68px; height: 62px; font-size: 40px; line-height: 1; background: var(--sun); border: var(--outline); border-radius: var(--cut-1); box-shadow: var(--shadow-sm); }
+.markerStem { position: absolute; left: -3px; top: -18px; width: 6px; height: 30px; background: var(--ink); border-radius: 3px; }
+
+.leadIn { display: grid; justify-items: center; gap: var(--s-2); padding: var(--s-3) 0; }
+.leadHand { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-1); }
+.drainTrack { height: 26px; background: var(--paper-3); border: var(--outline); border-radius: 999px; overflow: hidden; }
+.drainFill { height: 100%; background: var(--lime); border-right: var(--line) solid var(--ink); }
+.drainHot { background: var(--pink); animation: throb 0.5s ease-in-out infinite alternate; }
+@keyframes throb { to { filter: brightness(1.15); } }
+.timerHot .timerNum { color: var(--ink); animation: tickpop 1s ease-out infinite; }
+@keyframes tickpop { 0% { transform: scale(1.5) rotate(-6deg); } 40% { transform: scale(1); } }
+.barCount { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); color: var(--ink-soft); }
+.revRight, .revWrong, .revPlain { padding: var(--s-2) var(--s-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); }
+.revRight { background: var(--lime); }
+.revWrong { background: var(--pink); }
+.revPlain { background: var(--paper-3); }
+.histoMine { background: var(--pink); }
+.lockStamp { font-family: var(--font-display); font-size: var(--step-4); line-height: 1; color: var(--ink); background: var(--lime); border: var(--line-fat) solid var(--ink); border-radius: var(--cut-3); padding: 6px 18px; box-shadow: var(--shadow); }
+.lockedPick { display: inline-flex; align-items: center; gap: var(--s-2); font-family: var(--font-display); font-size: var(--step-0); }
+@media (prefers-reduced-motion: reduce) { .drainHot, .timerHot .timerNum { animation: none; } }
 
 .three { font-family: var(--font-display); font-size: 140px; line-height: 1; text-align: center; color: var(--tangerine); text-shadow: 6px 6px 0 var(--ink); }
 .timer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); align-items: center; }
@@ -140,6 +173,21 @@
 .board { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: calc(var(--u) * 1) calc(var(--u) * 3); }
 .boardRow { display: grid; grid-template-columns: calc(var(--u) * 4) auto minmax(0, 1fr) auto; gap: calc(var(--u) * 1.2); align-items: center; font-family: var(--font-display); font-size: calc(var(--u) * 2.2); }
 .avgBig { font-family: var(--font-display); font-size: calc(var(--u) * 14); color: var(--sun); text-shadow: 8px 8px 0 var(--ink); line-height: 1; }
+.sceneClockRow { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: calc(var(--u) * 3); align-items: center; }
+.sceneClockRow .sceneCount { font-size: calc(var(--u) * 14); min-width: calc(var(--u) * 14); }
+.sceneHot { color: var(--pink); }
+.sceneDrain { height: calc(var(--u) * 4); background: var(--dusk-2); border: 4px solid var(--paper); border-radius: 999px; overflow: hidden; }
+.sceneDrainFill { height: 100%; border-right: 4px solid var(--ink); }
+.quizGrid { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u) * 1.6); }
+.quizCard { display: flex; align-items: center; gap: calc(var(--u) * 1.6); padding: calc(var(--u) * 1.8) calc(var(--u) * 2.2); border: 5px solid var(--ink); border-radius: var(--cut-2); box-shadow: 6px 8px 0 var(--ink); color: var(--ink); }
+.qc0 { background: var(--tangerine); } .qc1 { background: var(--sky); } .qc2 { background: var(--pink); } .qc3 { background: var(--lime); }
+.quizLetter { font-family: var(--font-display); font-size: calc(var(--u) * 3.6); background: var(--ink); color: var(--paper); width: calc(var(--u) * 5.6); height: calc(var(--u) * 5.6); display: grid; place-items: center; border-radius: var(--cut-round); flex: none; }
+.quizText { font-family: var(--font-display); font-size: calc(var(--u) * 2.8); line-height: 1.05; overflow-wrap: anywhere; }
+.sceneWrong { opacity: 0.55; }
+.leadFlag { position: absolute; right: 10px; top: 50%; translate: 0 -50%; font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 1.8); color: var(--ink); }
+.sceneTrack { position: relative; }
+.drumroll { display: grid; justify-items: center; gap: calc(var(--u) * 2); padding: calc(var(--u) * 3) 0; }
+.drumWord { font-family: var(--font-display); font-size: calc(var(--u) * 12); line-height: 1; color: var(--sun); text-shadow: 8px 8px 0 var(--ink); }
 .compact { gap: calc(var(--u) * 0.7); }
 .compact .sceneLabel { font-size: calc(var(--u) * 1.8); line-height: 1.05; }
 .compact .sceneTrack { height: calc(var(--u) * 3); }

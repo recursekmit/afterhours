@@ -25,24 +25,42 @@ export default function CheckinScene() {
         <AnimatePresence mode="popLayout">
           <motion.div key={c.code} className={s.bigCode} initial={reduce ? { opacity: 0 } : { rotateX: -90, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 18 }}>
             {c.code.split('').map((ch, i) => (
-              <span key={i} className={s.bigChar}>
+              <motion.span
+                key={i}
+                className={s.bigChar}
+                initial={reduce ? { opacity: 0 } : { rotateX: -100, y: -40, opacity: 0 }}
+                animate={{ rotateX: 0, y: 0, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 380, damping: 14, delay: reduce ? 0 : i * 0.09 }}
+              >
                 {ch}
-              </span>
+              </motion.span>
             ))}
           </motion.div>
         </AnimatePresence>
         <div className={s.ringRow}>
-          <ProgressRing value={left / windowMs} size={150} thickness={18} tone="lime" label="code changes in">
-            <span className={s.ringNum}>{Math.ceil(left / 1000)}</span>
-          </ProgressRing>
+          <div className={left < 6000 ? s.ringHot : undefined}>
+            <ProgressRing value={left / windowMs} size={170} thickness={20} tone={left < 6000 ? 'pink' : 'lime'} label="code changes in">
+              <span className={s.ringNum}>{Math.ceil(left / 1000)}</span>
+            </ProgressRing>
+          </div>
           type it in the app, or scan the square
         </div>
         <div className={s.chips}>
-          {names.map((n, i) => (
-            <motion.span key={`${n}-${i}`} className={s.chip} initial={reduce ? { opacity: 0 } : { scale: 0, rotate: -20 }} animate={{ scale: 1, rotate: (i % 3) - 1 }}>
-              welcome {n}
-            </motion.span>
-          ))}
+          <AnimatePresence initial={false}>
+            {names.slice(-8).map((n, i) => (
+              <motion.span
+                key={`${n}-${names.length - 8 + i}`}
+                layout={!reduce}
+                className={s.chip}
+                initial={reduce ? { opacity: 0 } : { scale: 0, rotate: -24, y: 30 }}
+                animate={{ scale: 1, rotate: ((i * 5) % 7) - 3, y: 0 }}
+                exit={{ opacity: 0, scale: 0.6 }}
+                transition={{ type: 'spring', stiffness: 560, damping: 13 }}
+              >
+                welcome {n}
+              </motion.span>
+            ))}
+          </AnimatePresence>
         </div>
       </div>
       <div className={s.sceneRight}>

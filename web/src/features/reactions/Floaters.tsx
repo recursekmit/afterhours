@@ -16,7 +16,13 @@ interface Float {
   dur: number;
   size: number;
   sway: number;
+  sway2: number;
+  rot: number;
+  spin: boolean;
 }
+
+/** Projector rain keeps to the side margins so the scene in the middle stays readable. */
+const sideX = () => (Math.random() < 0.5 ? 1 + Math.random() * 12 : 87 + Math.random() * 12);
 
 export function Floaters({ variant }: { variant: 'phone' | 'screen' }) {
   const [floats, setFloats] = useState<Float[]>([]);
@@ -32,10 +38,13 @@ export function Floaters({ variant }: { variant: 'phone' | 'screen' }) {
         made.push({
           id: ++seq.current,
           kind,
-          x: local ? 8 + Math.random() * 84 : Math.random() * 100,
+          x: variant === 'screen' ? sideX() : local ? 8 + Math.random() * 84 : Math.random() * 100,
           dur: (variant === 'screen' ? 5 : 3.4) + Math.random() * 1.8,
           size: variant === 'screen' ? 56 + Math.random() * 44 : 30 + Math.random() * 20,
-          sway: (Math.random() - 0.5) * 90,
+          sway: (Math.random() - 0.5) * (variant === 'screen' ? 150 : 110),
+          sway2: (Math.random() - 0.5) * 130,
+          rot: 8 + Math.random() * 22,
+          spin: kind === 'party' || kind === 'lol',
         });
       }
       setFloats((l) => [...l, ...made].slice(-cap));
@@ -61,6 +70,9 @@ export function Floaters({ variant }: { variant: 'phone' | 'screen' }) {
             fontSize: f.size,
             animationDuration: `${reduce ? f.dur * 0.6 : f.dur}s`,
             ['--sway' as string]: `${reduce ? 0 : f.sway}px`,
+            ['--sway2' as string]: `${reduce ? 0 : f.sway2}px`,
+            ['--rot' as string]: `${reduce ? 0 : f.rot}deg`,
+            animationName: f.spin && !reduce ? 'rise-spin' : undefined,
           }}
         >
           {EMOJI[f.kind]}

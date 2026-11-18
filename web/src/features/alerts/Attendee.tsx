@@ -7,12 +7,14 @@
 */
 import { type Banner, RecentBannersResponseSchema, TestPushResponseSchema } from '@afterhours/shared/features/alerts';
 import { useMutation } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { api } from '../../core/api';
 import { serverNow } from '../../core/clock';
 import { useLiveEvent } from '../../core/live';
 import { InstallHelp, isIOS, isStandalone } from '../../core/pwa/install';
-import { celebrate } from '../../fun';
+import { celebrate, haptics, sfx } from '../../fun';
 import { Button, Card, Doodle, useToast } from '../../kit';
 import { ui } from '../common/ui';
 import s from './alerts.module.css';
@@ -37,10 +39,71 @@ function writeNum(key: string, n: number): void {
   }
 }
 
+const BANNER_MS = 7000;
+const TAPE_TONE: Record<Banner['kind'], string> = { soon: s.tapeSun ?? '', live: s.tapeLime ?? '', announcement: s.tapePink ?? '' };
+
+/** One strip of torn tape that flies in, can be swiped away, and drains while it waits. */
+function TapeBanner({ b, onGone }: { b: Banner; onGone: () => void }) {
+  const reduce = useReducedMotion();
+  const navigate = useNavigate();
+  const [hold, setHold] = useState(false);
+  useEffect(() => {
+    if (hold) return;
+    const t = window.setTimeout(onGone, BANNER_MS);
+    return () => window.clearTimeout(t);
+  }, [hold, onGone]);
+  const open = b.url !== '/' ? b.url : null;
+  return (
+    <motion.div
+      className={`${s.banner} ${TAPE_TONE[b.kind]}`}
+      role="status"
+      initial={reduce ? { opacity: 0 } : { y: -150, x: -70, rotate: -14, opacity: 0 }}
+      animate={{ y: 0, x: 0, rotate: -1.6, opacity: 1 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 260, rotate: 8, transition: { duration: 0.22 } }}
+      transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+      drag={reduce ? 'x' : true}
+      dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+      dragElastic={0.9}
+      onDragStart={() => setHold(true)}
+      onDragEnd={(_, i) => {
+        if (Math.abs(i.offset.x) > 70 || i.offset.y < -40 || Math.abs(i.velocity.x) > 500) onGone();
+        else setHold(false);
+      }}
+      whileDrag={{ scale: 1.03, rotate: 2 }}
+    >
+      <span className={s.scotch} aria-hidden="true" />
+      <span className={s.bannerIcon} aria-hidden="true">
+        <Doodle name={b.kind === 'announcement' ? 'megaphone' : 'bell'} size={30} fill="var(--paper-3)" strokeWidth={2.4} />
+      </span>
+      <button
+        type="button"
+        className={s.bannerText}
+        onClick={() => {
+          if (open) navigate(open);
+          onGone();
+        }}
+      >
+        <span className={s.bannerTitle}>{b.title}</span>
+        <span className={s.bannerBody}>{b.body}</span>
+        {open && <span className={s.bannerGo}>tap to open</span>}
+      </button>
+      <button type="button" className={s.bannerX} aria-label="dismiss" onClick={onGone}>
+        <Doodle name="close" size={22} stroke="currentColor" />
+      </button>
+      <span className={s.drain} style={{ animationDuration: `${BANNER_MS}ms`, animationPlayState: hold ? 'paused' : 'running' }} aria-hidden="true" />
+    </motion.div>
+  );
+}
+
 export function BannerOverlay() {
-  const toast = useToast();
-  const show = (b: Banner) =>
-    toast(b.body, { title: b.title, url: b.url !== '/' ? b.url : undefined, kind: b.kind === 'announcement' ? 'info' : 'good', icon: b.kind === 'announcement' ? 'megaphone' : 'bell', ms: 7000 });
+  const [current, setCurrent] = useState<Banner | null>(null);
+  const clear = useCallback(() => setCurrent(null), []);
+  const show = (b: Banner) => {
+    setCurrent(b);
+    sfx.note(880, 80, 'square');
+    window.setTimeout(() => sfx.note(1320, 140, 'triangle'), 90);
+    haptics.celebrate();
+  };
 
   useLiveEvent('alerts.banner', (b) => {
     const seen = readNum(SEEN_KEY) ?? 0;
@@ -67,9 +130,46 @@ export function BannerOverlay() {
     return () => {
       off = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return null;
+  return (
+    <div className={s.bannerLane}>
+      <AnimatePresence>{current && <TapeBanner key={current.id} b={current} onGone={clear} />}</AnimatePresence>
+    </div>
+  );
+}
+
+type TestState = 'idle' | 'sending' | 'waiting' | 'arrived' | 'missed';
+
+/** After a test push, watch for the notification to show up (the service worker puts it in getNotifications). */
+function useArrival() {
+  const [state, setState] = useState<TestState>('idle');
+  const timer = useRef(0);
+  const watch = useCallback(() => {
+    setState('waiting');
+    const t0 = Date.now();
+    window.clearInterval(timer.current);
+    timer.current = window.setInterval(async () => {
+      let found = false;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const list = (await reg?.getNotifications({ tag: 'ah-test' })) ?? [];
+        found = list.length > 0;
+        list.forEach((n) => n.close());
+      } catch {
+        /* no registration: treat as missed below */
+      }
+      if (found) {
+        window.clearInterval(timer.current);
+        setState('arrived');
+        celebrate({ y: 0.55 });
+      } else if (Date.now() - t0 > 12_000) {
+        window.clearInterval(timer.current);
+        setState('missed');
+      }
+    }, 450);
+  }, []);
+  useEffect(() => () => window.clearInterval(timer.current), []);
+  return { state, setState, watch };
 }
 
 export function PushCard() {
@@ -87,10 +187,22 @@ export function PushCard() {
   useEffect(() => {
     void isSubscribed().then((on) => on && setState('on'));
   }, []);
+  const reduce = useReducedMotion();
+  const arrival = useArrival();
   const test = useMutation({
     mutationFn: () => api.post('/api/alerts/test', {}, TestPushResponseSchema),
-    onSuccess: (r) => toast(r.sent > 0 ? 'check your notifications.' : r.pushEnabled ? 'no device registered yet. try turning alerts on again.' : 'push is off on the server today. in-app banners still work.', { kind: r.sent > 0 ? 'good' : 'info', title: r.sent > 0 ? 'test sent' : 'hmm' }),
-    onError: (e) => toast(e.message, { kind: 'bad' }),
+    onMutate: () => arrival.setState('sending'),
+    onSuccess: (r) => {
+      if (r.sent > 0) arrival.watch();
+      else {
+        arrival.setState('idle');
+        toast(r.pushEnabled ? 'no device registered yet. try turning alerts on again.' : 'push is off on the server today. in-app banners still work.', { kind: 'info', title: 'hmm' });
+      }
+    },
+    onError: (e) => {
+      arrival.setState('idle');
+      toast(e.message, { kind: 'bad' });
+    },
   });
   const turnOn = useMutation({
     mutationFn: enablePush,
@@ -114,13 +226,23 @@ export function PushCard() {
   return (
     <Card tone="grape" tilt={1} tape="left" tapeColor="pink" className={s.pushCard}>
       <div className={s.pushRow}>
-        <span className={s.bell}>
+        <motion.span
+          className={`${s.bell} ${arrival.state === 'waiting' || state === 'ask' ? s.ringing : ''}`}
+          animate={arrival.state === 'arrived' && !reduce ? { scale: [1, 1.5, 1], rotate: [-10, 25, -10] } : undefined}
+          transition={{ duration: 0.6 }}
+        >
           <Doodle name="bell" size={40} fill="var(--sun)" strokeWidth={2.4} />
-        </span>
+        </motion.span>
         <div className={ui.stack}>
-          <h3 className={s.pushTitle}>{state === 'on' ? 'alerts are on' : 'ping me before the big stuff'}</h3>
+          <h3 className={s.pushTitle}>{arrival.state === 'arrived' ? 'it landed!' : state === 'on' ? 'alerts are on' : 'ping me before the big stuff'}</h3>
           <p className={s.pushText}>
-            {state === 'on'
+            {arrival.state === 'waiting'
+              ? 'sent. watch your notification shade...'
+              : arrival.state === 'arrived'
+                ? 'that buzz is what you get 15 min before a highlight.'
+                : arrival.state === 'missed'
+                  ? 'did not see it arrive. check your notification settings, then try again.'
+                  : state === 'on'
               ? 'we will buzz you 15 min before the highlights. want a test?'
               : iosNeedsInstall
                 ? 'on iphone, alerts only work once the app is on your home screen.'
@@ -130,8 +252,8 @@ export function PushCard() {
       </div>
       <div className={ui.row}>
         {state === 'on' ? (
-          <Button tone="lime" size="sm" icon="bell" onClick={() => test.mutate()} loading={test.isPending}>
-            send a test
+          <Button tone="lime" size="sm" icon="bell" onClick={() => test.mutate()} loading={test.isPending || arrival.state === 'waiting'}>
+            {arrival.state === 'arrived' || arrival.state === 'missed' ? 'again' : 'send a test'}
           </Button>
         ) : iosNeedsInstall ? (
           <Button tone="lime" size="sm" icon="phone" onClick={() => setHelp(true)}>

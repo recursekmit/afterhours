@@ -204,6 +204,18 @@ function EncodeRound({ round, onResult }: { round: Round; onResult: (r: RoundRes
       <div className={s.ribbon} aria-live="polite">
         {live ? live.decoded || '...' : 'tap the key below'}
       </div>
+      {live && live.presses.length > 0 && (
+        <div className={s.pips} aria-hidden="true">
+          {live.presses.map((p, i) => (
+            <motion.span
+              key={i}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              className={`${p.got === 'dah' ? s.dah : s.dit} ${Math.abs(Math.log(p.ratio)) < 0.25 ? s.pipGood : Math.abs(Math.log(p.ratio)) < 0.5 ? s.pipOk : s.pipOff}`}
+            />
+          ))}
+        </div>
+      )}
       <TelegraphKey key={keyId} onPress={(_, all) => setPresses(all)} />
       <div className={ui.row}>
         <Button tone="lime" icon="check" disabled={presses.length === 0} loading={submit.isPending} onClick={() => submit.mutate()}>

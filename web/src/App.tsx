@@ -10,6 +10,7 @@ import { AttendeeApp } from './surfaces/attendee/AttendeeApp';
 const AdminApp = lazy(() => import('./surfaces/admin/AdminApp'));
 const ScreenApp = lazy(() => import('./surfaces/screen/ScreenApp'));
 const KitPage = lazy(() => import('./dev/KitPage'));
+const SlipsPage = lazy(() => import('./dev/slips/SlipsPage'));
 
 export function App() {
   return (
@@ -18,6 +19,7 @@ export function App() {
         <Route path="/admin/*" element={<AdminApp />} />
         <Route path="/screen/*" element={<ScreenApp />} />
         <Route path="/dev/kit" element={<KitPage />} />
+        <Route path="/dev/slips" element={<SlipsPage />} />
         <Route path="/*" element={<AttendeeApp />} />
       </Routes>
     </Suspense>

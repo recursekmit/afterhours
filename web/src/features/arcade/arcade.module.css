@@ -28,10 +28,11 @@
 
 /* attract-mode mini screens */
 .mini { position: relative; display: grid; place-items: center; width: 96px; height: 96px; overflow: hidden; background: var(--ink); border: var(--line) solid var(--ink); border-radius: var(--cut-3); }
-.miniReact { animation: flipcol 3s steps(1) infinite; }
-@keyframes flipcol { 0% { background: var(--pink); } 56% { background: var(--lime); } 90% { background: var(--pink); } }
+.miniReact { background: var(--lime); animation: flipcol 3s steps(1) infinite; }
+/* the loop starts on its 'green, slap it!' frame so a still frame (screenshot, slow device, reduced motion) shows something */
+@keyframes flipcol { 0% { background: var(--lime); } 34% { background: var(--pink); } 90% { background: var(--lime); } }
 .miniWord { width: 52px; height: 52px; background: var(--sun); border: var(--line-thin) solid var(--ink); clip-path: polygon(50% 0, 62% 30%, 96% 22%, 74% 50%, 96% 78%, 62% 70%, 50% 100%, 38% 70%, 4% 78%, 26% 50%, 4% 22%, 38% 30%); animation: burstin 3s ease-out infinite; }
-@keyframes burstin { 0%, 55% { transform: scale(0) rotate(-30deg); } 62% { transform: scale(1.15) rotate(6deg); } 70%, 88% { transform: scale(1) rotate(0); } 100% { transform: scale(0); } }
+@keyframes burstin { 0%, 22% { transform: scale(1) rotate(0); } 34%, 89% { transform: scale(0) rotate(-30deg); } 94% { transform: scale(1.15) rotate(6deg); } 100% { transform: scale(1) rotate(0); } }
 .miniHex { color: var(--lime); font-family: var(--font-display); font-size: 22px; }
 .hexA, .hexB { position: absolute; }
 .hexA { animation: hexa 2.6s ease-in-out infinite; }
@@ -43,7 +44,10 @@
 @keyframes padblink { 0% { background: var(--sun); opacity: 1; transform: scale(1.1); } 11% { background: var(--paper-3); opacity: 0.5; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {
   .cabinet, .chaser, .coin { animation: none; }
-  .miniReact, .miniWord, .hexA, .hexB, .miniPads span { animation-duration: 9s; }
+  /* reduced motion: the first attract frame, held still */
+  .miniReact, .miniWord, .hexA, .hexB, .miniPads span { animation: none; }
+  .hexB { opacity: 0; }
+  .miniPads span:nth-child(1), .miniPads span:nth-child(5), .miniPads span:nth-child(9) { background: var(--sun); opacity: 1; }
 }
 
 /* ---- playing: a fixed full-screen field. No scroll, no zoom, no text selection ---- */

@@ -63,8 +63,8 @@
 @keyframes suspense { to { border-color: var(--sun); transform: scale(1.03) rotate(0.6deg); } }
 .drumBlock { display: grid; gap: calc(var(--u) * 1.2); }
 .drumCount { font-family: var(--font-display); font-size: calc(var(--u) * 14); line-height: 1; color: var(--paper); text-shadow: 6px 6px 0 var(--ink); }
-.champ { position: relative; display: grid; justify-items: center; gap: calc(var(--u) * 0.6); padding: calc(var(--u) * 7) calc(var(--u) * 3) calc(var(--u) * 3); background: var(--sun); color: var(--ink); border: 6px solid var(--ink); border-radius: var(--cut-1); box-shadow: 12px 14px 0 var(--ink); text-align: center; width: 100%; }
-.champCrown { position: absolute; top: calc(var(--u) * -8); left: 50%; margin-left: calc(var(--u) * -5); }
+.champ { margin-top: calc(var(--u) * 4); position: relative; display: grid; justify-items: center; gap: calc(var(--u) * 0.6); padding: calc(var(--u) * 7) calc(var(--u) * 3) calc(var(--u) * 3); background: var(--sun); color: var(--ink); border: 6px solid var(--ink); border-radius: var(--cut-1); box-shadow: 12px 14px 0 var(--ink); text-align: center; width: 100%; }
+.champCrown { position: absolute; top: calc(var(--u) * -6.4); left: 50%; margin-left: calc(var(--u) * -5); }
 .champAvatar { background: var(--paper-3); border: 5px solid var(--ink); border-radius: var(--cut-round); padding: calc(var(--u) * 0.8); box-shadow: var(--shadow-lg); }
 .champLabel { font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 2.6); }
 .champName { font-size: calc(var(--u) * 6); line-height: 1; overflow-wrap: anywhere; }

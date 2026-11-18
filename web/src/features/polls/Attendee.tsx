@@ -57,10 +57,10 @@ export function PollOverlay() {
           <motion.div className={s.takeover} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label="live poll">
             <motion.div
               className={s.takeoverCard}
-              initial={reduce ? { opacity: 0 } : { y: 400, rotate: 8, scale: 0.8 }}
+              initial={reduce ? { opacity: 0 } : { y: 700, rotate: 14, scale: 0.7 }}
               animate={{ y: 0, rotate: -1, scale: 1, opacity: 1 }}
-              exit={reduce ? { opacity: 0 } : { y: 500, rotate: -6 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              exit={reduce ? { opacity: 0 } : { y: 600, rotate: -8 }}
+              transition={{ type: 'spring', stiffness: 240, damping: 14, mass: 0.9 }}
             >
               <IconButton icon="close" label="hide poll" size="sm" className={s.takeoverClose} onClick={() => setOpen(false)} />
               <PollBody view={view} />

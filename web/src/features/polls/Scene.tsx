@@ -1,7 +1,8 @@
 /* Projector: the poll takeover. Racing bars, the word cloud, the quiz countdown and its reveal with the series board. */
-import { motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useServerNow } from '../../core/clock';
 import { Avatar, NumberTicker } from '../../kit';
+import { Up } from './PollBody';
 import s from './polls.module.css';
 import { useScreenPoll } from './status';
 
@@ -22,14 +23,37 @@ export default function PollScene() {
     const starts = poll.startsAt ?? 0;
     const pre = now < starts;
     const left = pre ? starts - now : Math.max(0, (poll.deadlineAt ?? now) - now);
+    const n = Math.ceil(left / 1000);
+    const frac = pre ? 1 : Math.min(1, left / Math.max(1, poll.durationMs));
     body = (
       <div className={s.sceneBars}>
-        <div className={s.sceneCount}>{pre ? `${Math.ceil(left / 1000)}...` : Math.ceil(left / 1000)}</div>
-        <div className={s.sceneBars}>
-          {opts.map((o, i) => (
-            <div key={i} className={s.sceneLabel}>
-              {String.fromCharCode(65 + i)}. {o.emoji} {o.label}
+        <div className={s.sceneClockRow}>
+          <AnimatePresence mode="popLayout">
+            <motion.div
+              key={`${pre}-${n}`}
+              className={`${s.sceneCount} ${!pre && n <= 5 ? s.sceneHot : ''}`}
+              initial={reduce ? { opacity: 0 } : { scale: 2.2, opacity: 0, rotate: -10 }}
+              animate={{ scale: 1, opacity: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 520, damping: 18 }}
+            >
+              {pre ? `${n}` : n}
+            </motion.div>
+          </AnimatePresence>
+          {!pre && (
+            <div className={s.sceneDrain}>
+              <div className={s.sceneDrainFill} style={{ width: `${frac * 100}%`, background: n <= 5 ? 'var(--pink)' : 'var(--lime)' }} />
             </div>
+          )}
+        </div>
+        <div className={s.quizGrid}>
+          {opts.map((o, i) => (
+            <motion.div key={i} className={`${s.quizCard} ${s[`qc${i % 4}`]}`} initial={reduce ? false : { y: 40, opacity: 0, rotate: i % 2 ? 3 : -3 }} animate={{ y: 0, opacity: 1, rotate: i % 2 ? 0.8 : -0.8 }} transition={{ delay: i * 0.1, type: 'spring', stiffness: 300, damping: 18 }}>
+              <span className={s.quizLetter}>{String.fromCharCode(65 + i)}</span>
+              <span className={s.quizText}>
+                {o.emoji} {o.label}
+              </span>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -38,10 +62,17 @@ export default function PollScene() {
     const max = Math.max(1, ...results.counts);
     const sum = Math.max(1, results.counts.reduce((a, b) => a + b, 0));
     const correct = 'correct' in results ? results.correct : null;
+    const lead = Math.max(...results.counts);
     body = (
       <div className={`${s.sceneBars} ${opts.length > 4 ? s.compact : ''}`}>
         {opts.map((o, i) => (
-          <div key={i} className={`${s.sceneBar} ${correct === i ? s.sceneCorrect : ''}`}>
+          <motion.div
+            key={i}
+            className={`${s.sceneBar} ${correct === i ? s.sceneCorrect : ''} ${correct !== null && correct !== i ? s.sceneWrong : ''}`}
+            initial={correct !== null && !reduce ? { rotateX: 90, opacity: 0 } : false}
+            animate={{ rotateX: 0, opacity: 1, scale: correct === i && !reduce ? [1, 1.05, 1] : 1 }}
+            transition={{ delay: correct !== null ? 0.5 + i * 0.35 : 0, duration: 0.5 }}
+          >
             <span className={s.sceneLabel}>
               {o.emoji} {o.label}
             </span>
@@ -49,13 +80,16 @@ export default function PollScene() {
               <motion.div
                 className={s.sceneFill}
                 style={{ background: correct === null ? FILLS[i % FILLS.length] : correct === i ? 'var(--lime)' : 'var(--paper-2)' }}
-                initial={false}
+                initial={{ width: '0%' }}
                 animate={{ width: `${((results.counts[i] ?? 0) / max) * 100}%` }}
-                transition={reduce ? { duration: 0.1 } : { type: 'spring', stiffness: 90, damping: 15 }}
+                transition={reduce ? { duration: 0.1 } : { type: 'spring', stiffness: 70, damping: 13 }}
               />
+              {correct === null && lead > 0 && results.counts[i] === lead && <span className={s.leadFlag}>leading</span>}
             </div>
-            <span className={s.sceneNum}>{Math.round(((results.counts[i] ?? 0) / sum) * 100)}%</span>
-          </div>
+            <span className={s.sceneNum}>
+              <Up value={Math.round(((results.counts[i] ?? 0) / sum) * 100)} format={(v) => `${v}%`} />
+            </span>
+          </motion.div>
         ))}
       </div>
     );
@@ -80,7 +114,16 @@ export default function PollScene() {
   } else if (results?.kind === 'rating') {
     body = <div className={s.avgBig}>{results.average === null ? '-' : results.average.toFixed(1)}</div>;
   } else if (results?.kind === 'quiz') {
-    body = <div className={s.sceneCount}>{results.total} answered</div>;
+    body = (
+      <div className={s.drumroll}>
+        <motion.div className={s.drumWord} animate={reduce ? undefined : { rotate: [-2, 2, -2], x: [-6, 6, -6], scale: [1, 1.04, 1] }} transition={{ duration: 0.18, repeat: Infinity }}>
+          drumroll...
+        </motion.div>
+        <div className={s.sceneMeta}>
+          <Up value={results.total} /> locked in
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -202,7 +202,7 @@ function Clue({ me, onResult }: { me: HuntMe; onResult: (r: HuntAttemptResult) =
       <div className={s.clueCard}>
         <div className={ui.between}>
           <span className={s.clueNum}>
-            clue {cur.index}/{cur.total} {cur.isFinal && <Stamp tone="late">finale</Stamp>}
+            {me.orderMode === 'graph' ? `stop ${cur.index + 1}` : `clue ${cur.index}/${cur.total}`} {cur.isFinal && <Stamp tone="late">finale</Stamp>}
           </span>
           <span className={s.worth}>
             worth <NumberTicker value={cur.worth} />

@@ -118,3 +118,23 @@
 .slipResult { display: grid; gap: 4px; }
 .slipOutcome { font-family: var(--font-display); font-weight: 400; font-size: var(--step-1); }
 .slipClue { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-1); }
+
+/* console: trails, graph, slips, morse cards */
+.trailTabs { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.trailTab { display: grid; gap: 2px; text-align: left; min-height: 56px; padding: var(--s-2) var(--s-3); font: inherit; background: var(--paper-3); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); cursor: pointer; }
+.trailTabOn { background: var(--sun); box-shadow: var(--shadow-sm); }
+.graph { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.graphNode { padding: var(--s-2) var(--s-3); background: var(--paper-3); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); }
+.graphTitle { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.graphEdges { margin: 6px 0 0; padding-left: 1.2em; display: grid; gap: 2px; font-weight: 600; }
+.edgeCount { font-family: var(--font-display); font-size: var(--step--1); background: var(--lime); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 0 6px; margin-left: 6px; }
+.slipSet { display: grid; gap: var(--s-2); padding: var(--s-3); border: var(--line-thin) dashed var(--ink); border-radius: var(--cut-2); }
+.slipCardAdmin { display: grid; gap: 4px; padding: var(--s-2) var(--s-3); background: var(--paper-3); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); }
+.readingRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s-2); align-items: end; padding: var(--s-2); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); background: var(--paper-3); }
+.readingMorse { font-family: var(--font-display); font-size: var(--step--1); overflow-wrap: anywhere; }
+.cardSheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(85mm, 1fr)); gap: 4mm; }
+.morseCard { display: grid; gap: 3mm; padding: 5mm; min-height: 55mm; align-content: space-between; background: var(--paper-3); border: 0.6mm dashed var(--ink); border-radius: 3mm; break-inside: avoid; }
+.morseCode { display: flex; flex-wrap: wrap; gap: 5mm 15mm; align-items: center; justify-content: center; padding: 3mm 0; }
+.morseLetter { height: 5mm; width: auto; fill: var(--ink); }
+.morseFoot { display: flex; gap: 3mm; align-items: center; justify-content: space-between; }
+.morseSmall { font-size: 2.6mm; color: var(--ink-soft); text-align: right; }

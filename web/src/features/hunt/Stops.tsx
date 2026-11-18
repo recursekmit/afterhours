@@ -50,10 +50,10 @@ export function MorseHelper({ cur }: { cur: HuntCurrentStop }) {
           <span className={s.handSmall}>no object for this one: listen, watch the lamp, or feel the buzz.</span>
         </div>
       )}
-      {!cur.signal && <div className={`${s.lamp} ${s.lampSmall} ${light ? s.lampOn : ''}`} aria-hidden="true" />}
       <button type="button" className={s.chartToggle} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <Doodle name="morse" size={20} /> {open ? 'hide the morse chart' : 'show the morse chart'}
       </button>
+      {open && !cur.signal && <div className={`${s.lamp} ${s.lampSmall} ${light ? s.lampOn : ''}`} aria-hidden="true" />}
       {open && (
         <div className={s.chart}>
           {MORSE_CHART.map(({ char, code }) => (

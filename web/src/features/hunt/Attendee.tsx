@@ -25,8 +25,35 @@ import s from './hunt.module.css';
 import { MorseHelper, SlipStop } from './Stops';
 import { useHunt, useHuntBoard, useSetHunt, useTrails } from './useHunt';
 
+/** A rough ink splat behind a freshly slammed stamp. */
+function Splat({ seed }: { seed: number }) {
+  const pts = Array.from({ length: 14 }, (_, i) => {
+    const a = (i / 14) * Math.PI * 2;
+    const r = 30 + ((seed * 7 + i * 13) % 11) + (i % 2 ? 6 : 0);
+    return `${(40 + Math.cos(a) * r).toFixed(1)},${(40 + Math.sin(a) * r).toFixed(1)}`;
+  }).join(' ');
+  return (
+    <svg className={s.splat} viewBox="0 0 80 80" aria-hidden="true">
+      <polygon points={pts} />
+      <circle cx={12 + (seed % 9)} cy={66} r={4} />
+      <circle cx={70} cy={14 + (seed % 7)} r={3} />
+    </svg>
+  );
+}
+
 function Passport({ me }: { me: HuntMe }) {
   const slots = Array.from({ length: me.total }, (_, i) => me.solved[i] ?? null);
+  // Stamps already there when the page opened sit still; a new one slams down with a splat.
+  const seen = useRef<Set<number> | null>(null);
+  seen.current ??= new Set(me.solved.map((x) => x.stopId));
+  const fresh = me.solved.filter((x) => !seen.current!.has(x.stopId)).map((x) => x.stopId);
+  useEffect(() => {
+    if (fresh.length === 0) return;
+    sfx.pop();
+    haptics.success();
+    const t = window.setTimeout(() => fresh.forEach((id) => seen.current!.add(id)), 1200);
+    return () => window.clearTimeout(t);
+  }, [fresh.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Card tone="paper" tilt={0.6} className={s.passport}>
       <div className={ui.between}>
@@ -37,8 +64,13 @@ function Passport({ me }: { me: HuntMe }) {
       </div>
       <div className={s.slots}>
         {slots.map((st, i) => (
-          <div key={i} className={s.slot}>
-            {st ? <Sticker def={{ shape: 'circle', color: st.color, glyph: st.glyph }} size={62} tilt={((i * 29) % 21) - 10} slap /> : <span className={s.slotNum}>{i + 1}</span>}
+          <div key={i} className={`${s.slot} ${st ? s.slotFilled : ''}`}>
+            {st && fresh.includes(st.stopId) && <Splat seed={st.stopId} />}
+            {st ? (
+              <Sticker def={{ shape: 'circle', color: st.color, glyph: st.glyph }} size={62} tilt={((i * 29) % 21) - 10} slap={fresh.includes(st.stopId)} />
+            ) : (
+              <span className={s.slotNum}>{i + 1}</span>
+            )}
           </div>
         ))}
       </div>
@@ -90,7 +122,7 @@ function Finish({ me }: { me: HuntMe }) {
   }, []);
   return (
     <Card tone="sun" tilt={-1} tape className={s.finish}>
-      <p className={ui.kicker}>you finished the hunt</p>
+      <p className={ui.kicker}>you finished {me.trailId === TREASURE_TRAIL_ID ? 'the hunt' : me.title}</p>
       <div className={s.rank}>#{f.rank}</div>
       <p className={s.time}>{fmtElapsed(f.elapsedMs)}</p>
       <ul className={s.bonus}>
@@ -105,6 +137,13 @@ function Finish({ me }: { me: HuntMe }) {
         </li>
       </ul>
       {f.usedNoHints && <Stamp tone="ink">no hints, legend</Stamp>}
+      <div className={s.peels}>
+        {me.solved.slice(-6).map((st, i) => (
+          <motion.span key={st.stopId} initial={{ y: -40, rotate: -30, scale: 1.6, opacity: 0 }} animate={{ y: 0, rotate: ((i * 23) % 17) - 8, scale: 1, opacity: 1 }} transition={{ delay: 0.5 + i * 0.18, type: 'spring', stiffness: 480, damping: 16 }}>
+            <Sticker def={{ shape: 'circle', color: st.color, glyph: st.glyph }} size={46} />
+          </motion.span>
+        ))}
+      </div>
       <p className={ui.hand}>{f.finishers} finished so far.</p>
     </Card>
   );
@@ -225,9 +264,7 @@ function Clue({ me, onResult }: { me: HuntMe; onResult: (r: HuntAttemptResult) =
         </motion.p>
       ))}
       {cur.hintsLeft > 0 && cur.nextHintCost !== null && (
-        <button type="button" className={s.scratch} onClick={() => hint.mutate(cur.hints.length + 1)} disabled={hint.isPending}>
-          scratch for hint {cur.hints.length + 1} <span className={s.cost}>-{cur.nextHintCost} pts</span>
-        </button>
+        <ScratchHint n={cur.hints.length + 1} cost={cur.nextHintCost} busy={hint.isPending} onReveal={() => hint.mutate(cur.hints.length + 1)} />
       )}
 
       {cur.challenge === 'slip' ? (
@@ -278,6 +315,52 @@ function Clue({ me, onResult }: { me: HuntMe; onResult: (r: HuntAttemptResult) =
         </>
       )}
     </div>
+  );
+}
+
+/** A scratch card: rub it (or tap) and the foil wipes off; the server reveals the hint and charges the cost. */
+function ScratchHint({ n, cost, busy, onReveal }: { n: number; cost: number; busy: boolean; onReveal: () => void }) {
+  const reduce = useReducedMotion();
+  const [rub, setRub] = useState(0);
+  const lastX = useRef<number | null>(null);
+  const done = useRef(false);
+  const fire = () => {
+    if (done.current || busy) return;
+    done.current = true;
+    sfx.whoosh();
+    haptics.tick();
+    onReveal();
+  };
+  useEffect(() => {
+    done.current = false;
+    setRub(0);
+  }, [n]);
+  return (
+    <button
+      type="button"
+      className={s.scratch}
+      disabled={busy}
+      onClick={fire}
+      onPointerDown={(e) => (lastX.current = e.clientX)}
+      onPointerMove={(e) => {
+        if (lastX.current === null || e.buttons === 0) return;
+        const d = Math.abs(e.clientX - lastX.current);
+        lastX.current = e.clientX;
+        setRub((r) => {
+          const next = Math.min(1, r + d / 400);
+          if (next >= 1) fire();
+          else if (Math.floor(next * 10) > Math.floor(r * 10)) sfx.tick();
+          return next;
+        });
+      }}
+      onPointerUp={() => (lastX.current = null)}
+      aria-label={`reveal hint ${n}, costs ${cost} points`}
+    >
+      <motion.span className={s.foil} animate={{ clipPath: `inset(0 0 0 ${reduce ? 0 : rub * 100}%)` }} transition={{ duration: 0.05 }} aria-hidden="true" />
+      <span className={s.scratchText}>
+        rub for hint {n} <span className={s.cost}>-{cost} pts</span>
+      </span>
+    </button>
   );
 }
 

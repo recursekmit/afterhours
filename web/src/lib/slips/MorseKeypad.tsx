@@ -89,9 +89,7 @@ export function MorseKeypad({ onSubmit, onCancel }: { onSubmit: (r: StripReading
         <Button tone="grape" size="sm" onClick={() => push(' / ')} disabled={!seq}>
           next word
         </Button>
-        <Button tone="paper" size="sm" ghost onClick={() => setSeq('')} disabled={!seq}>
-          clear
-        </Button>
+        <IconButton icon="close" label="clear" size="sm" onClick={() => setSeq('')} disabled={!seq} />
       </div>
       <Button tone="lime" block icon="check" disabled={!fromKeys} onClick={() => fromKeys && onSubmit(fromKeys)} data-testid="keypad-submit">
         {fromKeys?.text ? `that's ${fromKeys.text.toLowerCase()}` : fromKeys ? 'send these dots' : 'send it'}

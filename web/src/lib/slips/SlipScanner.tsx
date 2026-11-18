@@ -246,15 +246,14 @@ export function SlipScanner({ onScan, onClose, after = 'result', title = 'scan a
         </div>
       )}
 
-      {(phase === 'denied' || phase === 'unsupported') && !result && (
-        <div className={s.noCam}>
-          <Doodle name="eye" size={34} fill="var(--pink)" />
-          <p>{phase === 'denied' ? <><b>camera said no.</b> no stress: read the bottom strip yourself and tap it in below. (to use the camera, allow it in your browser's site settings.)</> : <><b>no camera here.</b> tap the bottom strip's dots and dashes in, or type the word.</>}</p>
-        </div>
-      )}
-
       {typing && !result && (
         <div className={s.typingPanel}>
+          {(phase === 'denied' || phase === 'unsupported') && (
+            <div className={s.noCam}>
+              <Doodle name="eye" size={34} fill="var(--pink)" />
+              <p>{phase === 'denied' ? <><b>camera said no.</b> no stress: read the bottom strip yourself and tap it in. (to use the camera, allow it in your browser's site settings.)</> : <><b>no camera here.</b> tap the bottom strip's dots and dashes in, or type the word.</>}</p>
+            </div>
+          )}
           <MorseKeypad onSubmit={typed} onCancel={camLive ? () => setTyping(false) : undefined} />
         </div>
       )}

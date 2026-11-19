@@ -3,22 +3,24 @@
   - MorseHelper: a tappable Morse chart (tap a letter to hear/see/feel it) and, when the
     organisers turned on the online fallback, a "play it" button that plays the hidden word as
     beeps + flash + buzz (timings only; the word itself never reaches the phone).
-  - SlipStop: scan a kit slip (camera reader, see slipScanner.tsx) or type what the bottom strip
-    says. Outcomes: next/branch stamp and move on, clue shows text, bonus pays once, decoy and
+  - SlipStop: scan a kit slip (the shared camera reader from lib/slips, lazy-loaded; it falls back
+    to a Morse keypad without a camera) or type the decoded word. Outcomes: next/branch stamp and move on, clue shows text, bonus pays once, decoy and
     unknown say "try turning it".
 */
 import { type HuntCurrentStop, type HuntMe, type HuntSlipResult, HuntSlipResultSchema } from '@afterhours/shared/features/hunt';
 import { MORSE_CHART, patternToUnits } from '@afterhours/shared/features/morse';
 import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { api } from '../../core/api';
 import { celebrate, haptics, sfx } from '../../fun';
 import { Button, Card, Doodle, TextField, useToast } from '../../kit';
 import { playSignal } from '../morse/signal';
 import s from './hunt.module.css';
-import { CameraSlipScanner, readingOf } from './slipScanner';
 import { useSetHunt } from './useHunt';
+
+// The camera reader loads only when someone reaches a slip stop.
+const SlipReader = lazy(() => import('./slipScanner'));
 
 export function MorseHelper({ cur }: { cur: HuntCurrentStop }) {
   const [light, setLight] = useState(false);
@@ -108,12 +110,9 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
           <span className={s.slipNo}>slip {cur.slip.slipNo}</span> {cur.slip.label}
         </p>
       )}
-      <CameraSlipScanner
-        onScan={(scan) => {
-          const read = readingOf(scan);
-          if (read) send.mutate(read);
-        }}
-      />
+      <Suspense fallback={<div className={s.slipCam}>warming up the slip reader...</div>}>
+        <SlipReader onRead={(read) => send.mutate(read)} />
+      </Suspense>
       <form
         className={s.typeRow}
         onSubmit={(e) => {
@@ -121,7 +120,7 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
           if (word.trim()) send.mutate({ text: word });
         }}
       >
-        <TextField label="or type what the bottom strip says" value={word} onChange={(e) => setWord(e.target.value.toUpperCase())} autoCapitalize="characters" placeholder="WORD" />
+        <TextField label="or type the word on the bottom edge" value={word} onChange={(e) => setWord(e.target.value.toUpperCase())} autoCapitalize="characters" placeholder="WORD" />
         <Button type="submit" tone="lime" disabled={!word.trim()} loading={send.isPending}>
           read it
         </Button>

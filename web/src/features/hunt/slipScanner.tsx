@@ -1,41 +1,21 @@
 /*
-  Slip reading, as the trails screens see it. The camera scanner (another engineer, see docs/SLIPS.md)
-  returns a SlipScan; until that module lands this file holds the same shapes and a stub panel, so
-  the trail screens are wired end to end with the typed-word fallback (always available anyway).
-  When the scanner lands: replace `CameraSlipScanner` with its component and keep `readingOf`.
+  Slip reading on a trail's slip stop, lazy-loaded (the camera reader is ~30 kB that most phones only
+  need at a slip stop). It wraps the shared scanner from web/src/lib/slips (docs/SLIPS.md) and hands
+  the trail screen exactly what the server wants: readingKey(scan) = { text?, morse }.
+    const SlipReader = lazy(() => import('./slipScanner'));
+    <SlipReader onRead={(read, source) => ...} />
 */
-import { Doodle } from '../../kit';
-import s from './hunt.module.css';
+import { type ScanSource, SlipScanLauncher, readingKey } from '../../lib/slips';
 
-export interface StripReading {
-  /** letters separated by ' ', words by ' / ', e.g. "-.-. --- -.. ." */
-  morse: string;
-  /** decoded with the shared table; null if any letter is invalid */
-  text: string | null;
-  confidence: number;
-  position: 'bottom' | 'top' | 'other';
-}
-export interface SlipScan {
-  primary: StripReading | null;
-  others: StripReading[];
-  at: number;
-}
-
-/** What the phone sends: primary.text, or primary.morse when text is null (docs/SLIPS.md). */
-export function readingOf(scan: SlipScan): { text?: string; morse?: string } | null {
-  const p = scan.primary;
-  if (!p) return null;
-  return p.text ? { text: p.text, morse: p.morse } : { morse: p.morse };
-}
-
-/** Placeholder until the camera slip scanner lands: explains the move and points at the typed fallback. */
-export function CameraSlipScanner(_props: { onScan: (scan: SlipScan) => void }) {
+export default function SlipReader({ onRead }: { onRead: (read: { text?: string; morse: string }, source: ScanSource) => void }) {
   return (
-    <div className={s.slipCam}>
-      <Doodle name="eye" size={34} fill="var(--sky)" />
-      <p>
-        <b>hold the slip flat, the edge you want at the bottom.</b> the camera reader is on its way; for now decode the bottom strip with the chart and type it.
-      </p>
-    </div>
+    <SlipScanLauncher
+      label="scan the slip"
+      hint="hold the slip flat with the edge you want at the bottom. turn it to read another edge."
+      onScan={(scan, source) => {
+        const read = readingKey(scan);
+        if (read) onRead(read, source);
+      }}
+    />
   );
 }

@@ -121,7 +121,7 @@ test.describe.serial('features', () => {
     await page.goto('/hunt');
     await page.getByRole('link', { name: /e2e slips/ }).click();
     await page.getByRole('button', { name: 'start this trail' }).click();
-    const box = page.getByLabel('or type what the bottom strip says');
+    const box = page.getByLabel('or type the word on the bottom edge');
     await box.waitFor({ timeout: 8000 });
     await box.fill('nope');
     await page.getByRole('button', { name: 'read it' }).click();

@@ -3,7 +3,7 @@
 // the projector, sticker rarity for the sticker book, and the organiser's "recap open" switch.
 import { z } from 'zod';
 import { AvatarConfigSchema } from '../avatar';
-import { GlyphSchema, PaletteColorSchema } from '../palette';
+import type { GlyphSchema, PaletteColorSchema } from '../palette';
 import { StickerDefSchema, type StickerDef } from '../stickers';
 
 // ---------------------------------------------------------------------------

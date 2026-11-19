@@ -8,7 +8,7 @@
   4. Screenshots: the slip stop, the scanner open and reading, the result, and the console's
      slip sheet print preview.
 */
-import { type APIRequestContext, chromium, expect, test } from '@playwright/test';
+import { type APIRequestContext, type BrowserContext, chromium, expect, type Page, test } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
@@ -26,7 +26,7 @@ let print: FloatImage | null = null;
 let admin: APIRequestContext;
 let trailId = 0;
 let setId = 0;
-let state: Awaited<ReturnType<import('@playwright/test').BrowserContext['storageState']>>;
+let state: Awaited<ReturnType<BrowserContext['storageState']>>;
 
 function writeY4m(path: string, frames: { width: number; height: number; data: Uint8Array }[]) {
   const { width, height } = frames[0]!;
@@ -47,7 +47,7 @@ async function api<T = unknown>(method: 'GET' | 'POST' | 'PUT', path: string, da
   return (await r.json()) as T;
 }
 
-async function withCamera(roll: number, fn: (page: import('@playwright/test').Page) => Promise<void>) {
+async function withCamera(roll: number, fn: (page: Page) => Promise<void>) {
   const y4m = join(TMP, `slip-${roll}.y4m`);
   writeY4m(
     y4m,

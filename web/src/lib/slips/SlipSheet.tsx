@@ -9,7 +9,7 @@
 */
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { type SlipDesign, type SlipLayout, layoutSlip } from '../../../../shared/src/morse-slip';
+import { type SlipDesign, type SlipLayout, layoutSlip } from '@afterhours/shared/morse-slip';
 import logo from '../../assets/brand/recurse-logo-black.png';
 import { Button } from '../../kit';
 import { SlipArt } from './renderSlip';

@@ -4,7 +4,7 @@
   (confidence 1, position 'bottom'), so callers never care where a reading came from.
 */
 import { useState } from 'react';
-import { type StripReading, decodeMorse, encodeWord, normaliseMorse } from '../../../../shared/src/morse-slip';
+import { type StripReading, decodeMorse, encodeWord, normaliseMorse } from '@afterhours/shared/morse-slip';
 import { decodePattern } from '@afterhours/shared/features/morse';
 import { haptics, sfx } from '../../fun';
 import { Button, IconButton, TextField } from '../../kit';

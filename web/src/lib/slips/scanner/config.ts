@@ -4,7 +4,7 @@
   message, so the worker bundle stays free of the shared package and zod.
 */
 import { MORSE_TABLE } from '@afterhours/shared/features/morse';
-import { SLIP_SPEC } from '../../../../../shared/src/morse-slip';
+import { SLIP_SPEC } from '@afterhours/shared/morse-slip';
 import { configurePipeline } from './pipeline';
 
 export const PIPELINE_CONFIG = { spec: SLIP_SPEC, table: MORSE_TABLE } as const;

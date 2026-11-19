@@ -20,7 +20,7 @@
 */
 // Type-only import: the worker bundle must not pull in the shared package (and zod with it).
 // The slip proportions and the Morse table arrive through configurePipeline() (see ./config.ts).
-import type { SLIP_SPEC, SlipScan, StripReading } from '../../../../../shared/src/morse-slip';
+import type { SLIP_SPEC, SlipScan, StripReading } from '@afterhours/shared/morse-slip';
 import { type Homography, type Pt, apply, convexHull, dist, homography, isConvex, polygonArea, quadFromHull, refineQuad } from './geometry';
 import { type Gray, adaptiveThreshold, components, downscale2, sample } from './image';
 

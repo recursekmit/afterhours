@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./morse-slip": "./src/morse-slip.ts",
     "./features/*": "./src/features/*.ts"
   },
   "scripts": {

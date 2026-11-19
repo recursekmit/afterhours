@@ -31,9 +31,9 @@
   Scanner internals (pure TS, also used by the Node tests)
     processFrame(gray, at?, opts?) -> FrameResult, SlipStabiliser, SlipEngine, rgbaToGray
 */
-import type { SlipScan } from '../../../../shared/src/morse-slip';
+import type { SlipScan } from '@afterhours/shared/morse-slip';
 
-export * from '../../../../shared/src/morse-slip';
+export * from '@afterhours/shared/morse-slip';
 export { SlipScanner, SlipScanLauncher, ResultCard, MorseInk, type SlipScannerProps, type ScanSource } from './SlipScanner';
 export { MorseKeypad, readingFromMorse, readingFromWord } from './MorseKeypad';
 export { SlipSvg, SlipArt, type SlipSvgProps } from './renderSlip';

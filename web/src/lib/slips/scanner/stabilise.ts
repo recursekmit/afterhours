@@ -4,7 +4,7 @@
   mean over those frames. The same reading is not reported twice in a row
   until the slip has left the view (or a different reading was reported).
 */
-import type { SlipScan } from '../../../../../shared/src/morse-slip';
+import type { SlipScan } from '@afterhours/shared/morse-slip';
 import type { FrameResult } from './pipeline';
 
 export interface StabiliserOptions {

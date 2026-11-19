@@ -16,7 +16,7 @@
 */
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { SlipScan, StripReading } from '../../../../shared/src/morse-slip';
+import type { SlipScan, StripReading } from '@afterhours/shared/morse-slip';
 import { haptics, sfx } from '../../fun';
 import { Button, Doodle, IconButton } from '../../kit';
 import { MorseKeypad } from './MorseKeypad';

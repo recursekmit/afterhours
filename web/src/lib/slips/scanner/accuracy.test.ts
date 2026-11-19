@@ -7,7 +7,7 @@
   1 % confidently wrong, and NO wrong primary in the 45 degree ambiguity zone.
 */
 import { afterAll, describe, expect, it } from 'vitest';
-import { type SlipDesign, type SlipEdge, edgeForQuarterTurns, layoutSlip } from '../../../../../shared/src/morse-slip';
+import { type SlipDesign, type SlipEdge, edgeForQuarterTurns, layoutSlip } from '@afterhours/shared/morse-slip';
 import './config';
 import { processFrame } from './pipeline';
 import { SlipStabiliser } from './stabilise';

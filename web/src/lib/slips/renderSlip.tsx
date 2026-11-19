@@ -11,7 +11,7 @@
   the slip number, "after hours" and a little "turn me" doodle.
 */
 import type { CSSProperties } from 'react';
-import { type SlipLayout, type SymbolShape } from '../../../../shared/src/morse-slip';
+import { type SlipLayout, type SymbolShape } from '@afterhours/shared/morse-slip';
 import logo from '../../assets/brand/recurse-logo-black.png';
 
 const INK = '#000';

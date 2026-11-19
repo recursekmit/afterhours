@@ -69,6 +69,7 @@ import {
   scoreHexbin,
   scoreReaction,
 } from './games';
+import { fillHouses, registerRounds, roundsTick } from './rounds';
 
 /** Extra time after a run's nominal end for the network. */
 export const GRACE_MS = 4000;
@@ -286,6 +287,7 @@ export function tick(ctx: FeatureContext): void {
     s.dirty.clear();
     s.lastTopAt = now;
   }
+  roundsTick(ctx);
 }
 
 // feature -----------------------------------------------------------------------------
@@ -300,9 +302,13 @@ export const arcade = defineFeature({
     { id: 'arcade-echo', title: 'big brain', hint: 'clear 9 levels of echo', shape: 'blob', color: 'grape', glyph: 'spark', feature: 'arcade', order: 33 },
     { id: 'arcade-all-three', title: 'triple play', hint: 'score in all three games', shape: 'star', color: 'tangerine', glyph: 'star', feature: 'arcade', order: 34 },
     { id: 'arcade-record', title: 'high scorer', hint: 'take #1 on any arcade list', shape: 'shield', color: 'pink', glyph: 'crown', feature: 'arcade', order: 35 },
+    { id: 'arcade-rounds-first', title: 'cracked it', hint: 'clear a level in the arcade rounds', shape: 'ticket', color: 'lime', glyph: 'key', feature: 'arcade', order: 36 },
+    { id: 'arcade-rounds-hard', title: 'night shift', hint: 'clear a round 4 level', shape: 'burst', color: 'grape', glyph: 'ghost', feature: 'arcade', order: 37 },
   ],
 
   routes(app, ctx) {
+    registerRounds(app, ctx, () => readSettings(ctx.db).enabled);
+
     // GET /api/arcade/games: settings, my best + rank per game, today's cap
     app.get('/games', async (req): Promise<GamesResponse> => {
       const me = requireAttendee(req);
@@ -463,6 +469,9 @@ export const arcade = defineFeature({
   tick: { everyMs: 1000, run: tick },
 
   seed(ctx) {
+    // Demo houses: everyone signed in so far gets one, so the rounds hub and console have something to show.
+    // Rounds are not released by the seed: the console does that, same as on the day.
+    fillHouses(ctx);
     // Believable scores for the crowd, so the lists and the leaderboard look lived in.
     const crowd = all<{ id: number }>(ctx.db, 'SELECT id FROM attendees WHERE profile_complete = 1 ORDER BY id');
     const now = ctx.now();

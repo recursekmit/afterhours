@@ -7,6 +7,7 @@ import { api } from '../../core/api';
 import { useLiveEvent } from '../../core/live';
 import { Button, TextField, useToast } from '../../kit';
 import { Section, Stamp, Stat, ui } from '../common/ui';
+import { RoundsConsole } from './rounds/Console';
 
 const CONFIRM = 'RESET ARCADE';
 
@@ -21,10 +22,11 @@ export default function ArcadeConsole() {
   const st = stats.data;
   return (
     <div className={ui.stack}>
+      <RoundsConsole />
       <Section title="arcade" tape action={st && <Stamp tone={st.settings.enabled ? 'live' : 'done'}>{st.settings.enabled ? 'open' : 'closed'}</Stamp>}>
         <div className={ui.statGrid}>
-          <Stat label="daily cap per person" value={st?.dailyCap ?? '...'} />
-          <Stat label="points paid so far" value={st?.pointsPaid ?? '...'} />
+          <Stat label="quick-game cap per person" value={st?.dailyCap ?? '...'} />
+          <Stat label="quick-game points paid" value={st?.pointsPaid ?? '...'} />
         </div>
         <Button tone={st?.settings.enabled ? 'pink' : 'lime'} icon={st?.settings.enabled ? 'lock' : 'play'} onClick={() => set.mutate({ enabled: !st?.settings.enabled })}>
           {st?.settings.enabled ? 'close the arcade' : 'open the arcade'}
@@ -64,7 +66,7 @@ export default function ArcadeConsole() {
         </table>
       </Section>
       <Section title="danger zone" tilt={0.2}>
-        <p className={ui.hand}>wipes every arcade run and best, and takes back arcade points.</p>
+        <p className={ui.hand}>wipes every quick-game run and best, and takes back quick-game points. the puzzle hour has its own reset above.</p>
         <div className={ui.row}>
           <TextField label={`type ${CONFIRM}`} value={confirm} onChange={(e) => setConfirm(e.target.value)} />
           <Button tone="pink" disabled={confirm !== CONFIRM} onClick={() => reset.mutate(undefined, { onSuccess: () => setConfirm('') })}>

@@ -1,4 +1,5 @@
 /* Arcade: hub cabinets, games, results, console, projector. */
+.quickTitle { font-size: var(--step-3); line-height: 1; transform: rotate(-1.5deg); transform-origin: left; text-shadow: 3px 3px 0 var(--pink); margin-top: var(--s-4); }
 .cap { display: grid; gap: var(--s-2); color: var(--paper); }
 .capText { font-family: var(--font-hand); font-weight: 800; color: var(--paper-2); }
 .capNum { font-family: var(--font-display); font-size: var(--step-2); color: var(--lime); }
@@ -69,6 +70,9 @@
 .boardHead { font-family: var(--font-display); font-size: calc(var(--u) * 2.8); background: var(--ink); color: var(--sun); padding: calc(var(--u) * 0.6) calc(var(--u) * 1); border-radius: var(--cut-3); }
 .boardRow { display: grid; grid-template-columns: calc(var(--u) * 3.6) auto minmax(0, 1fr) auto; gap: calc(var(--u) * 0.8); align-items: center; font-family: var(--font-display); font-size: calc(var(--u) * 1.8); }
 .boardNick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.houses { display: grid; grid-template-columns: auto repeat(4, minmax(0, 1fr)); gap: calc(var(--u) * 1.6); align-items: center; }
+.housesHead { font-family: var(--font-display); font-size: calc(var(--u) * 2.2); color: var(--sun); }
+.houseChip { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; gap: calc(var(--u) * 0.8); align-items: center; padding: calc(var(--u) * 0.8) calc(var(--u) * 1.2); font-family: var(--font-display); font-size: calc(var(--u) * 2.2); color: var(--ink); border: 4px solid var(--ink); border-radius: var(--cut-2); box-shadow: 6px 7px 0 var(--ink); }
 .record { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; align-content: center; gap: calc(var(--u) * 2); background: var(--dusk); }
 .recordBig { font-family: var(--font-display); font-size: calc(var(--u) * 12); color: var(--sun); text-shadow: 8px 8px 0 var(--ink); line-height: 1; }
 .recordText { font-family: var(--font-display); font-size: calc(var(--u) * 4); color: var(--paper); }

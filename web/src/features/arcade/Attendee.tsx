@@ -16,6 +16,8 @@ import { Button, Card, Doodle, EmptyState, ErrorState, LinkButton, LoadingState,
 import { PageHead, Stamp, ui } from '../common/ui';
 import s from './arcade.module.css';
 import { BaseRush, Echo, GameTitle, LagSpike, StartButton } from './Games';
+import { RoundsSection, RoundToasts } from './rounds/Hub';
+import { useRoundsHub } from './rounds/useRounds';
 
 export const gamesKey = ['arcade', 'games'] as const;
 const TONE: Record<GameId, 'pink' | 'sky' | 'grape'> = { reaction: 'pink', hexbin: 'sky', memory: 'grape' };
@@ -35,10 +37,12 @@ export function ArcadeHub() {
   const { settings, games, daily } = q.data;
   return (
     <div className={ui.page}>
-      <PageHead title="arcade" note="three games, under a minute each. scores feed the board, capped so it stays a side dish." color="var(--pink)" />
+      <PageHead title="arcade" note="puzzle hour levels drop in rounds. the quick games are always on, capped so they stay a side dish." color="var(--pink)" />
+      <RoundsSection />
+      <h2 className={s.quickTitle}>quick games</h2>
       <Card tone="ink" tilt={-1} className={s.cap}>
         <div className={ui.between}>
-          <span className={s.capText}>arcade points today</span>
+          <span className={s.capText}>quick game points today</span>
           <span className={s.capNum}>
             {daily.earned}/{daily.cap}
           </span>
@@ -149,13 +153,15 @@ export function ArcadeGame() {
 
 export function ArcadeHomeCard() {
   const q = useGames();
+  const rounds = useRoundsHub();
   const d = q.data;
   if (!d?.settings.enabled) return null;
+  const r = rounds.data;
   return (
     <Card tone="grape" tilt={-1} tape="right" tapeColor="lime" className={s.homeCard}>
-      <span className={s.homeKicker}>arcade is open</span>
-      <h3 className={s.homeTitle}>lag spike, base rush, echo</h3>
-      <span className={s.homeKicker}>{d.daily.remaining} arcade pts left today</span>
+      <span className={s.homeKicker}>{r && r.round > 0 ? `puzzle hour: round ${r.round} is live` : 'arcade is open'}</span>
+      <h3 className={s.homeTitle}>{r && r.round > 0 ? 'packet panic, patch the bot, rebuild the image' : 'lag spike, base rush, echo'}</h3>
+      <span className={s.homeKicker}>{r && r.round > 0 ? `${r.pointsLeft} puzzle pts on the table` : `${d.daily.remaining} arcade pts left today`}</span>
       <LinkButton to="/arcade" tone="lime" size="sm" icon="gamepad">
         play
       </LinkButton>
@@ -167,4 +173,13 @@ export function RecordToast() {
   const toast = useToast();
   useLiveEvent('arcade.record', (r) => toast(`${r.nickname} took #1 on ${ARCADE_GAMES[r.game].title}: ${r.label}`, { kind: 'info', title: 'NEW #1', icon: 'crown', url: '/arcade', ms: 5000 }));
   return null;
+}
+
+export function ArcadeOverlay() {
+  return (
+    <>
+      <RecordToast />
+      <RoundToasts />
+    </>
+  );
 }

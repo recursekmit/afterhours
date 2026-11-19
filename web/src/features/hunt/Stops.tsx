@@ -132,8 +132,8 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
               <b className={s.slipOutcome}>
                 {last.outcome === 'next' ? 'onwards' : last.outcome === 'branch' ? 'a different path' : last.outcome === 'clue' ? 'a clue' : last.outcome === 'bonus' ? (last.points ? `+${last.points} bonus` : 'already found') : last.outcome === 'decoy' ? 'decoy!' : 'nothing there'}
               </b>
-              <span>{last.message}</span>
-              {last.clue && <p className={s.slipClue}>{last.clue}</p>}
+              {/* a clue speaks for itself; other outcomes say what happened */}
+              {last.clue ? <p className={s.slipClue}>{last.clue}</p> : <span className={s.slipMsg}>{last.message}</span>}
             </Card>
           </motion.div>
         )}

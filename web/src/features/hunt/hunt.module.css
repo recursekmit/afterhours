@@ -150,3 +150,4 @@
 .peels { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 52px; }
 @media (prefers-reduced-motion: reduce) { .splat { animation: none; } }
 .tooLong { display: inline-block; font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); background: var(--pink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 1px 8px; }
+.slipMsg { font-family: var(--font-hand); font-weight: 700; }

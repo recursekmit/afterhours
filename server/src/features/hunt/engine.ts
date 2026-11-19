@@ -944,7 +944,7 @@ interface ReadingRow {
 }
 
 /** The single friendly reply for anything that is not a reading of this slip. Leaks nothing. */
-export const SLIP_UNKNOWN = 'Nothing there. Try turning the slip and scanning another edge.';
+export const SLIP_UNKNOWN = 'nothing there. try turning the slip and scanning another edge.';
 
 /** Per-kit sets: the words this kit's readings carry, drawn once from the pool and stored. */
 export function ensureKitWords(ctx: FeatureContext, kitId: string, setId: number): Map<number, { word: string; morse: string }> {
@@ -1029,12 +1029,12 @@ export function submitSlip(ctx: FeatureContext, attendeeId: number, stopId: numb
   run(ctx.db, 'UPDATE hunt_players SET last_at = ? WHERE trail_id = ? AND attendee_id = ?', ctx.now(), trailId, attendeeId);
   rt.dirty.add(trailId);
 
-  if (r.outcome === 'clue') return { ...base, outcome: 'clue', clue: r.clue, message: r.message || 'A clue, written along that edge.', me: me() };
-  if (r.outcome === 'decoy') return { ...base, outcome: 'decoy', message: r.message || 'Nope, that edge is a decoy. Try another angle.', me: me() };
+  if (r.outcome === 'clue') return { ...base, outcome: 'clue', clue: r.clue, message: r.message || 'a clue, written along that edge.', me: me() };
+  if (r.outcome === 'decoy') return { ...base, outcome: 'decoy', message: r.message || 'nope, that edge is a decoy. try another angle.', me: me() };
   if (r.outcome === 'bonus') {
     const a = ctx.points.award({ attendeeId, source: HUNT_SOURCE, ref: `slip:${r.id}`, points: r.bonus_points, label: `slip bonus: ${current.title}` });
     const paid = a.awarded ? r.bonus_points : 0;
-    return { ...base, outcome: 'bonus', points: paid, message: r.message || (paid ? `Hidden bonus: +${paid}.` : 'You already found this bonus.'), me: me() };
+    return { ...base, outcome: 'bonus', points: paid, message: r.message || (paid ? `hidden bonus: +${paid}.` : 'you already found this bonus.'), me: me() };
   }
   if (r.outcome === 'branch' && r.target_trail_id !== null) {
     const target = r.target_trail_id;
@@ -1050,7 +1050,7 @@ export function submitSlip(ctx: FeatureContext, attendeeId: number, stopId: numb
       ...base,
       outcome: 'branch',
       unlockedTrailId: unlocked,
-      message: r.message || (unlocked ? 'That edge opened a whole new trail.' : 'That edge points to a trail that is not open yet.'),
+      message: r.message || (unlocked ? 'that edge opened a whole new trail.' : 'that edge points to a trail that is not open yet.'),
       me: me(),
     };
   }
@@ -1062,7 +1062,7 @@ export function submitSlip(ctx: FeatureContext, attendeeId: number, stopId: numb
     outcome: r.outcome,
     stamped: res.result === 'solved' ? res.stop : null,
     finish: res.result === 'solved' ? res.finish : null,
-    message: r.message || (r.outcome === 'branch' ? 'A side path. Off you go.' : 'That edge says go. Next stop unlocked.'),
+    message: r.message || (r.outcome === 'branch' ? 'a side path. off you go.' : 'that edge says go. next stop unlocked.'),
     me: res.me,
   };
 }

@@ -9,6 +9,7 @@ import { leaderboard } from './leaderboard';
 import { morse } from './morse';
 import { polls } from './polls';
 import { reactions } from './reactions';
+import { recap } from './recap';
 import { schedule } from './schedule';
 
 export const features: ServerFeature[] = [
@@ -20,5 +21,6 @@ export const features: ServerFeature[] = [
   morse,
   polls,
   reactions,
+  recap,
   schedule,
 ];

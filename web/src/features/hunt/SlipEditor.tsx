@@ -20,6 +20,7 @@ import {
 } from '@afterhours/shared/features/hunt';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { type SlipDesign, SlipSheet, designFromPrintItem, edgeCapacity, encodeWord } from '../../lib/slips';
 import { api } from '../../core/api';
 import { Button, IconButton, Sheet, TextField, useToast } from '../../kit';
 import { Section, Stamp, ui } from '../common/ui';
@@ -48,6 +49,31 @@ const rowOf = (r: SlipReadingAdmin): Row => ({
   message: r.message,
 });
 const blankRow = (orientation: SlipOrientation): Row => ({ orientation, word: '', morse: '', outcome: 'next', targetStopId: null, targetTrailId: null, clue: '', bonusPoints: 5, message: '' });
+
+/**
+ * A word too long for its edge cannot be printed at the minimum dot size: say so, with the edge's
+ * capacity in Morse units (dot 1, dash 3, gaps 1/3/7), the same rule the slip renderer applies.
+ */
+export function edgeFit(orientation: SlipOrientation, word: string | null): { units: number; capacity: number } | null {
+  if (!word || orientation === 'extra') return null;
+  try {
+    const units = encodeWord(word).units;
+    const capacity = edgeCapacity(orientation);
+    return units > capacity ? { units, capacity } : null;
+  } catch {
+    return null;
+  }
+}
+
+function TooLong({ orientation, word }: { orientation: SlipOrientation; word: string | null }) {
+  const fit = edgeFit(orientation, word);
+  if (!fit) return null;
+  return (
+    <span className={s.tooLong} role="note">
+      too long for the {orientation} edge: {fit.units} units, fits {fit.capacity}. use a shorter word.
+    </span>
+  );
+}
 
 function download(name: string, text: string, type: string) {
   const url = URL.createObjectURL(new Blob([text], { type }));
@@ -148,6 +174,7 @@ function SlipForm({ setId, mode, slip, stops, trails, onDone }: { setId: number;
           {r.outcome === 'bonus' && <TextField label="bonus points" type="number" min={0} max={50} value={r.bonusPoints} onChange={(e) => set(i, { bonusPoints: Number(e.target.value) })} />}
           <TextField label="message (optional)" value={r.message} maxLength={200} onChange={(e) => set(i, { message: e.target.value })} />
           <span className={s.readingMorse}>{r.word ? slipWordKey(r.word) : r.morse}</span>
+          <TooLong orientation={r.orientation} word={r.word.trim() || null} />
           <IconButton size="sm" icon="close" label="remove reading" onClick={() => setRows((l) => l.filter((_, j) => j !== i))} />
         </div>
       ))}
@@ -176,6 +203,15 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
   const [mode, setMode] = useState<SlipSetMode>('shared');
   const [pool, setPool] = useState('');
   const [edit, setEdit] = useState<{ setId: number; mode: SlipSetMode; slip: Parameters<typeof SlipForm>[0]['slip'] } | null>(null);
+  const [printing, setPrinting] = useState<{ title: string; slips: SlipDesign[] } | null>(null);
+  const printSet = async (setId: number) => {
+    try {
+      const sheet = await api.get(`/api/hunt/admin/slip-print?set=${setId}`, SlipPrintSheetSchema);
+      setPrinting({ title: sheet.mode === 'per_kit' ? `${sheet.title} (one per kit)` : sheet.title, slips: sheet.slips.map((i) => designFromPrintItem(i)) });
+    } catch (e) {
+      toast((e as Error).message, { kind: 'bad' });
+    }
+  };
   const create = useMutation({
     mutationFn: () => api.post(`/api/hunt/admin/slip-sets?trail=${trail}`, { title, mode, pool: pool.split(/[\s,]+/).filter(Boolean) }, SlipSetListSchema),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['hunt', 'slips', trail] }),
@@ -199,6 +235,9 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
               {st.mode === 'per_kit' && <span className={ui.hand}> pool: {st.pool.length} words</span>}
             </span>
             <span className={ui.row}>
+              <Button size="sm" tone="sun" icon="print" onClick={() => void printSet(st.id)} data-testid={`print-slips-${st.id}`}>
+                print slips
+              </Button>
               <Button size="sm" tone="paper" icon="download" onClick={() => void exportSet(st.id, 'csv')}>
                 printer csv
               </Button>
@@ -225,7 +264,9 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
                   {sl.readings.map((r) => (
                     <tr key={r.id}>
                       <td>{r.orientation}</td>
-                      <td className={ui.num}>{r.word ?? (r.morse ? r.morse : 'per kit')}</td>
+                      <td className={ui.num}>
+                        {r.word ?? (r.morse ? r.morse : 'per kit')} <TooLong orientation={r.orientation} word={r.word} />
+                      </td>
                       <td>
                         <Stamp tone={r.outcome === 'decoy' ? 'done' : r.outcome === 'bonus' ? 'info' : 'sky'}>{r.outcome}</Stamp> {r.targetStopId ? stops.find((x) => x.id === r.targetStopId)?.title : r.targetTrailId ? `trail #${r.targetTrailId}` : r.clue}
                       </td>
@@ -257,6 +298,7 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
           </Button>
         </div>
       </div>
+      {printing && <SlipSheet slips={printing.slips} title={printing.title} onClose={() => setPrinting(null)} />}
       <Sheet open={edit !== null} onClose={() => setEdit(null)} title={edit?.slip ? `slip ${edit.slip.slipNo}` : 'new slip'}>
         {edit && <SlipForm setId={edit.setId} mode={edit.mode} slip={edit.slip} stops={stops} trails={trails} onDone={() => setEdit(null)} />}
       </Sheet>

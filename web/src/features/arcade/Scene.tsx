@@ -1,4 +1,4 @@
-/* Projector: three scoreboards, plus a record-breaker takeover on arcade.record. */
+/* Projector: three scoreboards, the puzzle-hour house strip, plus a record-breaker takeover on arcade.record. */
 import { ARCADE_GAMES, type ArcadeRecord, TopResponseSchema } from '@afterhours/shared/features/arcade';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { useLiveEvent } from '../../core/live';
 import { confetti } from '../../fun';
-import { Avatar } from '../../kit';
+import { Avatar, Doodle } from '../../kit';
+import { useHouses } from './rounds/useRounds';
 import s from './arcade.module.css';
 
 const BG = { reaction: 'var(--pink)', hexbin: 'var(--sky)', memory: 'var(--lime)' } as const;
@@ -14,6 +15,7 @@ const BG = { reaction: 'var(--pink)', hexbin: 'var(--sky)', memory: 'var(--lime)
 export default function ArcadeScene() {
   const q = useQuery({ queryKey: ['arcade', 'top', 5], queryFn: () => api.get('/api/arcade/top?limit=5', TopResponseSchema), refetchInterval: 15_000 });
   useLiveEvent('arcade.top', () => void q.refetch());
+  const houses = useHouses();
   const reduce = useReducedMotion();
   const [rec, setRec] = useState<ArcadeRecord | null>(null);
   useLiveEvent('arcade.record', (r) => {
@@ -44,6 +46,21 @@ export default function ArcadeScene() {
           </div>
         ))}
       </div>
+      {houses.data && houses.data.round > 0 && (
+        <div className={s.houses}>
+          <span className={s.housesHead}>houses, round {houses.data.round}</span>
+          {[...houses.data.houses]
+            .sort((a, b) => a.rank - b.rank || a.id - b.id)
+            .map((h) => (
+              <motion.div key={h.id} layout className={s.houseChip} style={{ background: `var(--${h.tone})` }}>
+                <span>#{h.rank}</span>
+                <Doodle name={h.glyph} size={36} />
+                <span className={s.boardNick}>{h.name}</span>
+                <span>{h.points}</span>
+              </motion.div>
+            ))}
+        </div>
+      )}
       <AnimatePresence>
         {rec && (
           <motion.div className={s.record} initial={{ opacity: 0, scale: 1.2 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>

@@ -1,11 +1,16 @@
 // Demo content. Trail 1: a campus treasure hunt with a believable crowd mid-hunt. Trail 2: a Morse trail
 // (objects around the venue carrying Morse). Trail 3: a Morse slip trail (kit slips whose four orientations
 // branch). Trail 4: a slip hunt where your kit slip's orientation picks your first location.
+// Trails 3 and 4 print UNIQUE slips (80 copies): every copy has its own words, claimed on first scan.
 // Stickers go where `location` says; adjust the places to the real venue before printing.
 import type { HuntStopInput } from '@afterhours/shared/features/hunt';
 import { type FeatureContext, all, one, run } from '../../core';
 import { slipMorseKey } from '@afterhours/shared/features/hunt';
 import { bump, getTrail, loadStops, newCode, newSeed, newToken, orderFor, solveStop } from './engine';
+import { syncCopies } from './unique';
+
+/** Unique copies printed for each seeded slip set: one per kit, plus spares. */
+export const SEED_SLIP_COPIES = 80;
 
 export const DEMO_STOPS: HuntStopInput[] = [
   {
@@ -226,44 +231,47 @@ function seedMorseTrail(ctx: FeatureContext): void {
 }
 
 /**
- * Trail 3: a Morse slip trail (graph). Three slips come in every kit. Each slip's edges send you to
- * different stops; one edge on slip 1 is a decoy (the upside-down top strip), one on slip 2 is a bonus.
+ * Trail 3: a Morse slip trail (graph). Three slips come in every kit, as unique copies: each copy's
+ * edges carry their own words, but every copy's edges DO the same thing. Slip 1's edges send you to
+ * different stops, its top edge is a decoy and so is that strip read upside down; slip 2 has a bonus.
  */
 function seedSlipTrail(ctx: FeatureContext): void {
   const t = addTrail(ctx, 'morse', 'the slip trail', 'graph');
-  const set = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool) VALUES (?, 'kit slips', 'shared', '[]')", t).lastId;
+  const set = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool, copies) VALUES (?, 'kit slips', 'unique', '[]', ?)", t, SEED_SLIP_COPIES).lastId;
   // stops first (slip ids patched in after the slips exist)
   const start = addStop(ctx, t, { title: 'slip 1: the start', clue: 'Take slip 1 from your kit. Scan it. Then turn it: each edge says something different.', challenge: 'slip', glyph: 'flag', color: 'lime' });
   const lab = addStop(ctx, t, { title: 'slip 2: the lab path', clue: 'You took the lab path. Grab slip 2 and find the edge that sends you on.', challenge: 'slip', glyph: 'key', color: 'sky', location: 'Computer lab' });
   const stage = addStop(ctx, t, { title: 'slip 2: the stage path', clue: 'You took the stage path. Scan slip 2. One edge is worth more than it looks.', challenge: 'slip', glyph: 'star', color: 'pink', location: 'Main stage' });
-  const meet = addStop(ctx, t, { title: 'slip 3: where paths meet', clue: 'Both paths meet here. Slip 3, any edge that reads as a word you know.', challenge: 'slip', glyph: 'wave', color: 'sun' });
+  const meet = addStop(ctx, t, { title: 'slip 3: where paths meet', clue: 'Both paths meet here. Scan slip 3 and find the edge that ends it.', challenge: 'slip', glyph: 'wave', color: 'sun' });
   const finale = addStop(ctx, t, { title: 'the last word', clue: 'Type the word that ties it all together: the name of our club.', answers: ['recurse'], finale: true, glyph: 'crown', color: 'grape', points: 20 });
+  // No words: each of the 80 printed copies gets its own (unique.ts). Messages never name a word.
   const s1 = addSlip(ctx, set, 1, 'start', [
-    { orientation: 'bottom', word: 'LAB', outcome: 'next', target: lab, message: 'The bottom edge says LAB. Head to the computer lab path.' },
-    { orientation: 'left', word: 'STAGE', outcome: 'branch', target: stage, message: 'The left edge says STAGE. A different path: off to the stage.' },
-    { orientation: 'right', word: 'HINT', outcome: 'clue', clue: 'Every slip has a word you would expect at a tech club. Look for it.' },
-    { orientation: 'top', word: 'NOPE', outcome: 'decoy', message: 'NOPE is literally a decoy. Turn it again.' },
-    // the top strip read upside down (its sequence reversed) is a planted decoy too
-    { orientation: 'extra', morse: '. .--. --- .-', outcome: 'decoy', message: 'Upside down! Clever, but that is not a way forward.' },
+    { orientation: 'bottom', outcome: 'next', target: lab, message: 'The bottom edge sends you down the lab path. Head to the computer lab.' },
+    { orientation: 'left', outcome: 'branch', target: stage, message: 'The left edge is a different path: off to the main stage.' },
+    { orientation: 'right', outcome: 'clue', clue: 'Every edge of every slip says something different, and your slips are yours alone. Turn them all.' },
+    { orientation: 'top', outcome: 'decoy', message: 'That edge is a decoy. Turn it again.' },
+    // this copy's top strip read upside down (its sequence reversed) is a planted decoy too
+    { orientation: 'extra', outcome: 'decoy', message: 'Upside down! Clever, but that is not a way forward.' },
   ]);
   const s2 = addSlip(ctx, set, 2, 'paths', [
-    { orientation: 'bottom', word: 'MEET', outcome: 'next', target: meet, message: 'MEET: go to where the paths meet.' },
-    { orientation: 'right', word: 'GIFT', outcome: 'bonus', bonus: 10, message: 'A hidden GIFT: +10 points.' },
-    { orientation: 'left', word: 'BACK', outcome: 'decoy', message: 'BACK? No going back. Try another edge.' },
+    { orientation: 'bottom', outcome: 'next', target: meet, message: 'Go to where the paths meet.' },
+    { orientation: 'right', outcome: 'bonus', bonus: 10, message: 'A hidden gift: +10 points.' },
+    { orientation: 'left', outcome: 'decoy', message: 'No going back. Try another edge.' },
   ]);
   const s3 = addSlip(ctx, set, 3, 'meet', [
-    { orientation: 'bottom', word: 'END', outcome: 'next', target: finale, message: 'END: the finale is open.' },
-    { orientation: 'top', word: 'LOOP', outcome: 'clue', clue: 'A loop goes round and round. The finale word does too, in a way.' },
+    { orientation: 'bottom', outcome: 'next', target: finale, message: 'The finale is open.' },
+    { orientation: 'top', outcome: 'clue', clue: 'Round and round: the finale word is the name of a club that calls itself.' },
   ]);
   run(ctx.db, 'UPDATE hunt_stops SET slip_id = ? WHERE id = ?', s1, start);
   run(ctx.db, 'UPDATE hunt_stops SET slip_id = ? WHERE id IN (?, ?)', s2, lab, stage);
   run(ctx.db, 'UPDATE hunt_stops SET slip_id = ? WHERE id = ?', s3, meet);
+  syncCopies(ctx, set);
 }
 
-/** Trail 4: a treasure hunt variant. Your kit slip's orientation decides which venue location you go to first. */
+/** Trail 4: a treasure hunt variant. Your kit slip's orientation decides which venue location you go to first (unique copies). */
 function seedSlipHunt(ctx: FeatureContext): void {
   const t = addTrail(ctx, 'other', 'the slip hunt', 'graph');
-  const set = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool) VALUES (?, 'kit slip: first location', 'shared', '[]')", t).lastId;
+  const set = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool, copies) VALUES (?, 'kit slip: first location', 'unique', '[]', ?)", t, SEED_SLIP_COPIES).lastId;
   const start = addStop(ctx, t, { title: 'your kit slip', clue: 'Hold your kit slip any way up and scan it. The edge at the bottom decides where you start.', challenge: 'slip', glyph: 'map', color: 'sun' });
   const lib = addStop(ctx, t, { title: 'the library', clue: 'Find the sticker by the library entrance and scan it.', challenge: 'scan', location: 'Library entrance', glyph: 'note', color: 'sky' });
   const canteen = addStop(ctx, t, { title: 'the canteen', clue: 'Find the sticker at the chai counter and scan it.', challenge: 'scan', location: 'Canteen chai counter', glyph: 'bolt', color: 'tangerine' });
@@ -271,9 +279,10 @@ function seedSlipHunt(ctx: FeatureContext): void {
   const finale = addStop(ctx, t, { title: 'hello, world', clue: 'Everyone ends here. Two words every programmer typed first.', answers: ['hello world'], finale: true, glyph: 'flag', color: 'pink', points: 15, location: 'Main stage' });
   for (const id of [lib, canteen, lab]) setNext(ctx, id, finale);
   const slip = addSlip(ctx, set, 1, 'first location', [
-    { orientation: 'bottom', word: 'BOOK', outcome: 'next', target: lib, message: 'BOOK: start at the library.' },
-    { orientation: 'right', word: 'CHAI', outcome: 'next', target: canteen, message: 'CHAI: start at the canteen.' },
-    { orientation: 'left', word: 'CODE', outcome: 'next', target: lab, message: 'CODE: start at the lab.' },
+    { orientation: 'bottom', outcome: 'next', target: lib, message: 'Start at the library.' },
+    { orientation: 'right', outcome: 'next', target: canteen, message: 'Start at the canteen.' },
+    { orientation: 'left', outcome: 'next', target: lab, message: 'Start at the lab.' },
   ]);
   run(ctx.db, 'UPDATE hunt_stops SET slip_id = ? WHERE id = ?', slip, start);
+  syncCopies(ctx, set);
 }

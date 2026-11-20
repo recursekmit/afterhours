@@ -1,7 +1,7 @@
 /* Hunt: passport, torn clue card, scratch hints, finish, console, projector. */
 /* the passport is an inked map: stops along a dotted path, footprints between, a wax seal at each stop found */
 .passport { display: grid; gap: var(--s-3); overflow: hidden; }
-.passport > .compass { position: absolute; right: 14px; bottom: 12px; width: 74px; height: 74px; z-index: 0 !important; fill: none; stroke: var(--ink); stroke-width: 0.8; opacity: 0.16; pointer-events: none; }
+.passport > .compass { position: absolute; left: 50%; top: 10px; margin-left: -24px; width: 48px; height: 48px; z-index: 0 !important; fill: none; stroke: var(--ink); stroke-width: 0.8; opacity: 0.16; pointer-events: none; }
 .count { font-family: var(--font-display); font-size: var(--step-2); }
 .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-5) var(--s-3); justify-items: center; }
 .slot { width: 62px; height: 62px; display: grid; place-items: center; border: var(--line) dashed color-mix(in srgb, var(--ink) 45%, transparent); border-radius: var(--cut-round); }

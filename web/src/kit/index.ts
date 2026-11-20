@@ -5,6 +5,7 @@ export { Card, Tape, Torn, type CardProps } from './Card';
 export { CornerFlourish, CornerStars, Divider, Plaque, Rule, Star4 } from './Ornament';
 export { Doodle, DoodleDefs, Scribble, type IconName } from './Doodle';
 export { TextField, TextArea } from './Field';
+export { Hourglass } from './Hourglass';
 export { Mascot, type MascotMood } from './Mascot';
 export { NumberTicker, Countdown, Meter, formatCountdown } from './Numbers';
 export { PageTransition } from './PageTransition';

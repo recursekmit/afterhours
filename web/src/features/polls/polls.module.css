@@ -84,12 +84,12 @@
 @media (prefers-reduced-motion: reduce) { .drainHot, .timerHot .timerNum { animation: none; } }
 
 .three { font-family: var(--font-display); font-size: 140px; line-height: 1; text-align: center; color: var(--tangerine); text-shadow: var(--engrave); }
-.timer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); align-items: center; }
+.timer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-3); align-items: center; }
 .timerNum { font-family: var(--font-display); font-size: var(--step-3); min-width: 48px; text-align: right; }
 
 .bars { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
 .bar { display: grid; gap: 4px; }
-.barMine .barLabel { text-decoration: underline wavy var(--pink); text-underline-offset: 5px; }
+.barMine .barLabel { text-decoration: underline var(--frame, var(--gold)); text-underline-offset: 5px; }
 .barLabel { font-weight: 800; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .barNum { font-family: var(--font-display); }
 .avg { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
@@ -100,7 +100,7 @@
 .histoLabel { text-align: center; font-family: var(--font-display); font-size: var(--step--1); }
 .cloud { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: center; padding: var(--s-3) 0; }
 .cloudWord { font-family: var(--font-display); line-height: 1; display: inline-block; }
-.cloudMine { color: var(--grape); text-decoration: underline wavy var(--pink); }
+.cloudMine { color: var(--grape); text-decoration: underline var(--frame, var(--gold)); }
 .locked { display: grid; gap: var(--s-3); justify-items: center; text-align: center; padding: var(--s-3) 0; }
 .quizResult { display: grid; justify-items: center; gap: 4px; padding: var(--s-3); border: var(--outline); border-radius: var(--cut-2); box-shadow: var(--shadow); }
 .quizRight { background: var(--lime); }

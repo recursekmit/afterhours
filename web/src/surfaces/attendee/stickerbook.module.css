@@ -10,7 +10,7 @@
 .tab { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; font-family: var(--font-display); font-size: var(--step--1); color: var(--ink); background: var(--paper-3); border: var(--line) solid var(--frame); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform var(--dur-fast) var(--ease-pop); }
 .tab:nth-child(odd) {  }
 .tab:nth-child(even) {  }
-.tabOn { transform: translateY(-3px) !important; box-shadow: var(--shadow); background: var(--gold) !important; color: var(--on-gold); }
+.tabOn { --ink: var(--on-gold); transform: translateY(-3px) !important; box-shadow: var(--shadow); background: var(--gold) !important; color: var(--on-gold); }
 .tabCount { font-family: var(--font-hand); font-weight: 800; padding: 0 6px; background: transparent; border: var(--line-thin) solid currentColor; border-radius: var(--cut-3); display: inline-grid; place-items: center; min-width: 26px; }
 
 .spine { perspective: 1200px; }
@@ -22,7 +22,7 @@
   background-color: var(--paper-3);
   /* the gutter: the page curves into the spine on the left */
   background-image: linear-gradient(90deg, rgb(70 40 10 / 0.38), rgb(70 40 10 / 0.1) 22px, transparent 46px), var(--foxing), var(--fibre);
-  background-size: 100% 100%, 100% 100%, 240px 240px;
+  background-size: 100% 100%, 100% 100%, 600px 600px;
   /* tooled leather cover around the leaf */
   border: 9px solid var(--leather);
   border-radius: 4px 10px 10px 4px;
@@ -45,7 +45,7 @@
 .slot { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; width: 100%; min-height: 44px; padding: 4px; background: none; border: 0; cursor: pointer; touch-action: manipulation; color: var(--ink); }
 .dieCut { display: grid; padding: 5px; transform-style: preserve-3d; }
 /* not found yet: an ink impression of the pin on the page */
-.silhouette { display: grid; filter: brightness(0.2) sepia(1) contrast(1.2); opacity: 0.4; }
+.silhouette { display: grid; filter: brightness(0.35) sepia(1) opacity(0.38); }
 .slotTitle { font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); line-height: 1.1; text-align: center; background: var(--sun); border: var(--line-thin) solid var(--ink); padding: 1px 8px; border-radius: var(--cut-3);  }
 .slotHint { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); line-height: 1.15; color: var(--ink-soft); text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .badge { position: absolute; top: 0; right: 0; font-family: var(--font-hand); font-weight: 800; font-size: 0.72rem; color: var(--ink); background: var(--pink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 0 6px;  }

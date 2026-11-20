@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, isApiError } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { confetti, haptics, sfx } from '../../fun';
-import { Button, Doodle, Meter, NumberTicker, type Tone, useToast } from '../../kit';
+import { Button, Doodle, Hourglass, Meter, NumberTicker, type Tone, useToast } from '../../kit';
 import { Stamp, ui } from '../common/ui';
 import { MarkerSlider } from './MarkerSlider';
 import s from './polls.module.css';
@@ -295,7 +295,7 @@ function QuizVote({ poll }: { poll: PublicPollOf<'quiz'> }) {
   );
 }
 
-/** The timer drains in a straight line, locked to the server's deadlineAt (through the clock offset). */
+/** The enchanted exam's sand glass: an hourglass and a draining line, locked to the server's deadlineAt (through the clock offset). */
 function QuizTimer({ poll, now }: { poll: PublicPollOf<'quiz'>; now: number }) {
   const end = poll.deadlineAt ?? now;
   const left = Math.max(0, end - now);
@@ -312,6 +312,7 @@ function QuizTimer({ poll, now }: { poll: PublicPollOf<'quiz'>; now: number }) {
   }, [sec]);
   return (
     <div className={`${s.timer} ${hot ? s.timerHot : ''}`}>
+      <Hourglass frac={frac} size={46} />
       <div className={s.drainTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)} aria-label="time left">
         <div className={`${s.drainFill} ${hot ? s.drainHot : ''}`} style={{ width: `${frac * 100}%` }} />
       </div>

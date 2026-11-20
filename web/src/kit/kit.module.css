@@ -11,7 +11,8 @@
 .tone-sky { --bg: var(--sky); --fg: var(--on-sky); }
 .tone-sun { --bg: var(--sun); --fg: var(--on-sun); }
 .tone-paper { --bg: var(--paper-3); --fg: var(--ink); }
-.tone-ink { --bg: var(--ink); --fg: var(--on-ink); }
+/* ink: a night-black plaque with cream letters (buttons in this tone are struck in gold, below) */
+.tone-ink { --bg: var(--night); --fg: var(--cream); }
 
 /* --------------------------------------------------------------- button */
 /* A ticket stub: gold rule, an inner hairline (the double rule), notched corners. Primary tones fill with gold. */

@@ -13,10 +13,15 @@
 .tie { display: inline-grid; place-items: center; width: 22px; height: 22px; font-family: var(--font-display); background: var(--pink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-round); }
 .total { font-family: var(--font-display); }
 .frozen { display: flex; gap: 6px; align-items: center; font-family: var(--font-hand); font-weight: 800; background: var(--sky); border: var(--outline); border-radius: var(--cut-3); padding: var(--s-2) var(--s-3);  }
-.meCard { display: grid; gap: var(--s-3); color: var(--cream); }
+/* your rank: an illuminated scroll, rolled on gilt rods top and bottom, the numeral in vermilion and gold */
+.meCard { display: grid; gap: var(--s-3); color: var(--ink); margin: 10px 6px; border-left-width: 0; border-right-width: 0; border-radius: 0; }
+.meCard::before,
+.meCard::after { content: ''; position: absolute; left: -12px; right: -12px; height: 14px; border: 0; border-radius: 7px; background: linear-gradient(180deg, var(--brass-light), var(--brass-edge) 45%, var(--brass-dark)); box-shadow: 0 3px 6px rgb(0 0 0 / 0.45); pointer-events: none; z-index: 3; inset: auto -12px auto -12px; }
+.meCard::before { top: -9px; }
+.meCard::after { bottom: -9px; }
 .meRow { display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); }
-.meLabel { font-family: var(--font-hand); font-weight: 800; color: var(--cream); }
-.meRank { font-family: var(--font-display); font-size: var(--step-6); line-height: 1; color: var(--lime); text-shadow: var(--engrave); }
+.meLabel { font-family: var(--font-hand); font-weight: 800; color: var(--ink-soft); }
+.meRank { font-family: var(--font-display); font-weight: 900; font-size: var(--step-6); line-height: 1; color: var(--enamel-tangerine); -webkit-text-stroke: 1px var(--frame); paint-order: stroke fill; text-shadow: 0 2px 0 rgb(180 139 60 / 0.45); }
 .mePts { display: grid; justify-items: end; font-family: var(--font-display); font-size: var(--step-3); }
 .arrow { font-family: var(--font-display); font-size: var(--step-2); padding: 4px 10px; border: var(--line) solid var(--paper); border-radius: var(--cut-3); }
 .up { background: var(--lime); color: var(--ink); }

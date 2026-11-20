@@ -25,6 +25,7 @@
   --gold-bright: #f5dfac;    /* highlights, focus, the lit lantern */
   --cream: #f3e8cc;          /* engraved cream line work, the ticket margins */
   --on-gold: #141b30;        /* text on a gold fill */
+  --night: #0a0d18;          /* the darkest plaque (tone ink) */
   --frame: #e3c48a;          /* card frame rule (deeper gold on parchment) */
   /* parchment: fibres + foxed edges (cards use it with data-ground="parchment") */
   --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .1 0 0 0 .7 -.3'/%3E%3C/filter%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.08 .7' numOctaves='2' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .35 -.14'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23a)'/%3E%3Crect width='600' height='600' filter='url(%23b)'/%3E%3C/svg%3E");
@@ -49,6 +50,17 @@
   /* fixed parchment + iron-gall (for parchment panels on any ground, e.g. the projector) */
   --parchment: #f1e5c6;
   --iron-gall: #2a1c10;
+  /* brass, wood and lacquer (the telegraph key, scroll rods) */
+  --brass-light: #f2d48c;
+  --brass: #c99a45;
+  --brass-mid: #8a6420;
+  --brass-dark: #6e4a14;
+  --brass-edge: #b8862f;
+  --wood: #5a2a1c;
+  --wood-dark: #3a1810;
+  --wood-deep: #24100a;
+  --lacquer: #4a4038;
+  --lacquer-dark: #14100c;
   /* tooled leather (the tome cover) */
   --leather: #4a1a1c;
   /* wax seals (trail stamps, letters) */

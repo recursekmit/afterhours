@@ -1,0 +1,76 @@
+/* ID card scanner: a landscape window (an ID card is landscape) with a clear frame. Tokens only. */
+.wrap { display: grid; gap: var(--s-3); justify-items: stretch; width: 100%; }
+.viewport {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  justify-self: center;
+  aspect-ratio: 3 / 4;
+  background: var(--ink);
+  border: var(--outline);
+  border-radius: var(--cut-1);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.frame {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 20%;
+  aspect-ratio: 1;
+  border-radius: var(--cut-3);
+  box-shadow: 0 0 0 999px color-mix(in srgb, var(--ink) 45%, transparent);
+}
+.cornerA, .cornerB, .cornerC, .cornerD { position: absolute; width: 34px; height: 34px; border: var(--line-fat) solid var(--sun); }
+.cornerA { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
+.cornerB { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
+.cornerC { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
+.cornerD { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
+.sweep { position: absolute; left: 6%; right: 6%; height: var(--line-fat); background: var(--lime); border-radius: 4px; animation: sweep 1.8s var(--ease-out) infinite alternate; }
+@keyframes sweep { from { top: 8%; } to { top: 90%; } }
+@media (prefers-reduced-motion: reduce) { .sweep { animation: none; top: 50%; } }
+.hint {
+  position: absolute;
+  left: var(--s-3);
+  right: var(--s-3);
+  bottom: var(--s-4);
+  text-align: center;
+  font-family: var(--font-hand);
+  font-weight: 800;
+  font-size: var(--step-0);
+  color: var(--ink);
+  background: var(--paper-3);
+  border: var(--outline);
+  border-radius: var(--cut-3);
+  padding: 6px 10px;
+  box-shadow: var(--shadow-sm);
+}
+.torch {
+  position: absolute;
+  top: var(--s-3);
+  right: var(--s-3);
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  background: var(--paper-3);
+  border: var(--outline);
+  border-radius: var(--cut-round);
+  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+}
+.torchOn { background: var(--sun); }
+.fallback {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: center;
+  background: var(--paper-3);
+  border: var(--outline);
+  border-radius: var(--cut-2);
+  padding: var(--s-3) var(--s-4);
+  font-family: var(--font-hand);
+  font-weight: 600;
+}
+.actions { display: flex; flex-wrap: wrap; gap: var(--s-2); justify-content: center; }

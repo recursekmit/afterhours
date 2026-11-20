@@ -13,6 +13,7 @@ import { Button, Card, Doodle, Mascot, TextField } from '../../kit';
 import { ByRecurse } from '../../kit/Brand';
 import { Wordmark } from '../shared/Wordmark';
 import s from './attendee.module.css';
+import { IdSignIn } from './IdSignIn';
 
 export function SignIn() {
   const [params] = useSearchParams();
@@ -20,6 +21,8 @@ export function SignIn() {
   const [kitId, setKitId] = useState(() => normaliseKitId(rawKit) ?? rawKit);
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ kitId?: string; password?: string; form?: string }>({});
+  // While the ID flow is past its first screen, the kit card steps aside (it comes back on "back").
+  const [idBusy, setIdBusy] = useState(false);
   const [scope, animate] = useAnimate<HTMLFormElement>();
   const signIn = useSignIn();
   const reduce = useReducedMotion();
@@ -98,11 +101,13 @@ export function SignIn() {
         </div>
       </header>
 
-      <form ref={scope} className={s.kitWrap} onSubmit={submit} noValidate>
+      <IdSignIn onStepChange={setIdBusy} />
+
+      <form ref={scope} className={s.kitWrap} onSubmit={submit} noValidate hidden={idBusy && !rawKit}>
         <Card tone="paper" tape tapeColor="pink" lift className={s.kitCard}>
           <div className={s.kitHeader}>
             <Doodle name="ticket" size={30} fill="var(--tangerine)" />
-            <h2 className={s.kitTitle}>your entry kit</h2>
+            <h2 className={s.kitTitle}>have an entry kit instead?</h2>
           </div>
           <div className={s.kitFields}>
             <TextField

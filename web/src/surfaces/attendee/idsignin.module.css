@@ -1,0 +1,85 @@
+/* Student-ID sign-in. Kit tokens only (the app is re-themed elsewhere). */
+.start { position: relative; z-index: 1; display: grid; gap: var(--s-3); }
+.bigScan {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-4);
+  width: 100%;
+  min-height: 132px;
+  padding: var(--s-5) var(--s-4);
+  text-align: left;
+  color: var(--on-sun);
+  background: var(--sun);
+  border: var(--outline);
+  border-radius: var(--cut-1);
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-1deg);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-pop), box-shadow var(--dur-fast) var(--ease-out);
+}
+.bigScan:hover { transform: rotate(-1deg) translateY(-2px); }
+.bigScan:active { transform: rotate(-1deg) translate(3px, 4px); box-shadow: var(--shadow-pressed); }
+.bigScan:focus-visible { outline: var(--line-fat) solid var(--grape); outline-offset: 4px; }
+.bigScanIcon {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  background: var(--paper-3);
+  border: var(--outline);
+  border-radius: var(--cut-round);
+  box-shadow: var(--shadow-sm);
+  transform: rotate(4deg);
+}
+.bigScanText { display: grid; gap: var(--s-1); }
+.bigScanTitle { font-family: var(--font-display); font-size: var(--step-3); line-height: 1; }
+.bigScanSub { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-0); }
+.linkish {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: var(--s-2) 6px;
+  font-family: var(--font-hand);
+  font-weight: 800;
+  font-size: var(--step-0);
+  color: var(--paper-3);
+  text-shadow: 1px 1px 0 var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  min-height: var(--tap);
+}
+.card { position: relative; z-index: 1; display: grid; gap: var(--s-4); }
+.head { display: flex; align-items: center; gap: var(--s-3); }
+.title { font-size: var(--step-2); transform: rotate(-1deg); }
+.body { font-family: var(--font-hand); font-weight: 700; }
+.hello { display: flex; align-items: center; gap: var(--s-3); }
+.helloTitle { font-size: var(--step-3); line-height: 1.05; }
+.roll { font-family: var(--font-display); font-size: var(--step-1); letter-spacing: 0.06em; margin-top: var(--s-1); }
+.row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.error {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  background: var(--pink);
+  border: var(--outline);
+  border-radius: var(--cut-2);
+  padding: 8px 12px;
+  box-shadow: var(--shadow-sm);
+}
+.deskTag {
+  justify-self: start;
+  font-family: var(--font-hand);
+  font-weight: 700;
+  background: var(--paper-3);
+  border: var(--outline);
+  border-radius: var(--cut-3);
+  padding: 4px 12px;
+  box-shadow: var(--shadow-sm);
+  transform: rotate(1deg);
+}
+.deskTag b { font-family: var(--font-display); letter-spacing: 0.06em; }
+.checking { display: flex; align-items: center; gap: var(--s-3); font-family: var(--font-hand); font-weight: 800; font-size: var(--step-1); }
+.spin { width: 22px; height: 22px; border: var(--line) solid var(--ink); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }

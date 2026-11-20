@@ -15,6 +15,8 @@ import {
   PresenceSchema,
   type ProfileInput,
   type SignInRequest,
+  type IdSignInRequest,
+  type RollSignInRequest,
   StaffMeSchema,
   StickerBookResponseSchema,
 } from '@afterhours/shared';
@@ -30,6 +32,7 @@ export const qk = {
   config: ['config'] as const,
   staff: (role: 'admin' | 'screen') => ['staff', role] as const,
   kits: ['admin', 'kits'] as const,
+  participants: ['admin', 'participants'] as const,
   screenState: ['screen', 'state'] as const,
 };
 
@@ -54,6 +57,20 @@ export function useSignIn() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: SignInRequest) => api.post('/api/auth/signin', body, MeResponseSchema),
+    onSuccess: (me) => {
+      qc.setQueryData(qk.me, me);
+      void qc.invalidateQueries({ queryKey: qk.points });
+      void qc.invalidateQueries({ queryKey: qk.stickers });
+    },
+  });
+}
+
+/** Student-ID sign-in: after a scan (+ the full roll or phone digits when asked), or typed roll + phone digits. */
+export function useIdSignIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: 'scan'; req: IdSignInRequest } | { kind: 'typed'; req: RollSignInRequest }) =>
+      body.kind === 'scan' ? api.post('/api/auth/id/signin', body.req, MeResponseSchema) : api.post('/api/auth/roll/signin', body.req, MeResponseSchema),
     onSuccess: (me) => {
       qc.setQueryData(qk.me, me);
       void qc.invalidateQueries({ queryKey: qk.points });

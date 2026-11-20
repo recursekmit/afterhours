@@ -18,7 +18,8 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,woff2,png,svg,webmanifest}'],
         // iOS reads launch images itself at install time; no need to make every phone download them.
-        globIgnores: ['**/icons/splash-*.png'],
+        // The jsQR fallback is fetched only by browsers without BarcodeDetector (iPhone Safari, desk laptops), when they scan.
+        globIgnores: ['**/icons/splash-*.png', '**/assets/jsQR-*.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       devOptions: { enabled: false },

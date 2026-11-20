@@ -58,6 +58,11 @@ export const TrailSettingsSchema = z.object({
   orderMode: TrailOrderModeSchema,
   hintsOn: z.boolean(),
   cooldownOn: z.boolean(),
+  /**
+   * Linear trails only: each player gets this many of the stops before the finale (picked and ordered
+   * per attendee from the trail's seed), then the finale everyone shares. 0 = everyone gets every stop.
+   */
+  subsetK: z.number().int().min(0).default(0),
   openedAt: z.number().nullable(),
   closedAt: z.number().nullable(),
 });
@@ -137,8 +142,11 @@ export const HuntCurrentStopSchema = z.object({
   letters: z.number().int().nullable(),
   /** Morse stop with online fallback: what to play/flash. Never the readable word. */
   signal: MorseSignalSchema.nullable(),
-  /** Slip stop: which slip from your kit to scan. Never its readings. */
-  slip: z.object({ slipNo: z.number().int(), label: z.string() }).nullable(),
+  /**
+   * Slip stop: which slip from your kit to scan. Never its readings. `unique`: every printed copy has its
+   * own words and the first scan claims it; `serial` is the copy you claimed (null until you have).
+   */
+  slip: z.object({ slipNo: z.number().int(), label: z.string(), unique: z.boolean().default(false), serial: z.number().int().nullable().default(null) }).nullable(),
   stopId: z.number().int(),
   index: z.number().int(),
   total: z.number().int(),
@@ -506,6 +514,7 @@ export const TrailCreateRequestSchema = z.object({
   orderMode: TrailOrderModeSchema.default('shuffled'),
   hintsOn: z.boolean().default(true),
   cooldownOn: z.boolean().default(true),
+  subsetK: z.number().int().min(0).max(50).default(0),
 });
 export type TrailCreateRequest = z.input<typeof TrailCreateRequestSchema>;
 /** PUT /api/hunt/admin/trails/:id (open/close goes through PUT /admin/state?trail=) */
@@ -516,6 +525,8 @@ export const TrailUpdateRequestSchema = z
     orderMode: TrailOrderModeSchema,
     hintsOn: z.boolean(),
     cooldownOn: z.boolean(),
+    /** "each player gets K of the stops before the finale" (0 = off). Linear trails, before anyone starts. */
+    subsetK: z.number().int().min(0).max(50),
   })
   .partial()
   .refine((v) => Object.keys(v).length > 0, 'Nothing to change');
@@ -556,8 +567,16 @@ export type SlipOrientation = z.infer<typeof SlipOrientationSchema>;
 export const SLIP_OUTCOMES = ['next', 'branch', 'clue', 'bonus', 'decoy'] as const;
 export const SlipOutcomeSchema = z.enum(SLIP_OUTCOMES);
 export type SlipOutcome = z.infer<typeof SlipOutcomeSchema>;
-export const SlipSetModeSchema = z.enum(['shared', 'per_kit']);
+/**
+ * shared: the same slips in every kit. per_kit: each kit's words are drawn from a pool.
+ * unique: N printed copies of every slip, each with its own words on every edge; a copy belongs to whoever
+ * scans it first (outcomes stay per orientation, shared by every copy).
+ */
+export const SlipSetModeSchema = z.enum(['shared', 'per_kit', 'unique']);
 export type SlipSetMode = z.infer<typeof SlipSetModeSchema>;
+/** Unique sets: copies printed by default, and the most the console allows. */
+export const UNIQUE_SLIP_COPIES = 80;
+export const UNIQUE_SLIP_MAX_COPIES = 200;
 
 /**
  * The matching key for a Morse sequence: letters separated by one space, words by " / ".
@@ -587,9 +606,15 @@ export function slipWordKey(word: string): string {
 export const SlipReadingInputSchema = z
   .object({
     orientation: SlipOrientationSchema,
-    /** The word printed on that edge (shared sets). Per-kit sets leave it empty: words come from the pool. */
+    /**
+     * The word printed on that edge (shared sets). Per-kit sets leave it empty: words come from the pool.
+     * Unique sets leave it empty: every copy gets its own generated word (a word here prints on every copy).
+     */
     word: z.string().trim().max(24).nullable().default(null),
-    /** Explicit sequence instead of a word (decoys such as an upside-down strip). */
+    /**
+     * Explicit sequence instead of a word (decoys such as an upside-down strip). On a unique set an
+     * 'extra' with no sequence means "this copy's top strip read upside down".
+     */
     morse: z.string().trim().max(200).nullable().default(null),
     outcome: SlipOutcomeSchema,
     targetStopId: z.number().int().nullable().default(null),
@@ -607,8 +632,50 @@ export const SlipSetInputSchema = z.object({
   mode: SlipSetModeSchema.default('shared'),
   /** Per-kit sets: the words each kit's readings are drawn from (at least as many as readings). */
   pool: z.array(z.string().trim().min(1).max(24)).max(500).default([]),
+  /** Unique sets: how many printed copies of every slip. */
+  copies: z.number().int().min(1).max(UNIQUE_SLIP_MAX_COPIES).default(UNIQUE_SLIP_COPIES),
 });
 export type SlipSetInput = z.input<typeof SlipSetInputSchema>;
+
+/** POST /api/hunt/admin/slip-sets/:id/copies: grow or shrink a unique set to N copies (claimed copies are never dropped). */
+export const SlipCopiesRequestSchema = z.object({
+  copies: z.number().int().min(1).max(UNIQUE_SLIP_MAX_COPIES),
+  /** Throw away every word and draw new ones. Only while nothing is claimed (and before printing!). */
+  regenerate: z.boolean().default(false),
+});
+export type SlipCopiesRequest = z.input<typeof SlipCopiesRequestSchema>;
+
+/** PUT /api/hunt/admin/slip-sets/:id/mode: switch a shared set nobody has used yet to unique copies. */
+export const SlipSetModeRequestSchema = z.object({
+  mode: z.literal('unique'),
+  copies: z.number().int().min(1).max(UNIQUE_SLIP_MAX_COPIES).default(UNIQUE_SLIP_COPIES),
+});
+export type SlipSetModeRequest = z.input<typeof SlipSetModeRequestSchema>;
+
+/** GET /api/hunt/admin/slip-sets/:id/copies: who holds which printed copy (console only). */
+export const SlipCopiesSchema = z.object({
+  setId: z.number().int(),
+  title: z.string(),
+  copies: z.number().int(),
+  slips: z.array(z.object({ id: z.number().int(), slipNo: z.number().int(), label: z.string() })),
+  rows: z.array(
+    z.object({
+      serial: z.number().int(),
+      cells: z.array(
+        z.object({
+          slipId: z.number().int(),
+          copyId: z.number().int(),
+          claimedBy: z.object({ attendeeId: z.number().int(), nickname: z.string().nullable() }).nullable(),
+          claimedAt: z.number().nullable(),
+        }),
+      ),
+    }),
+  ),
+  claimed: z.number().int(),
+  /** People who have signed in so far: more than `copies` means some will have no slip. */
+  signedIn: z.number().int(),
+});
+export type SlipCopies = z.infer<typeof SlipCopiesSchema>;
 
 /** PUT /api/hunt/admin/slips/:id (and POST /admin/slip-sets/:id/slips): one slip and all its readings. */
 export const SlipInputSchema = z.object({
@@ -639,6 +706,9 @@ export const SlipSetAdminSchema = z.object({
   title: z.string(),
   mode: SlipSetModeSchema,
   pool: z.array(z.string()),
+  /** Unique sets: printed copies per slip, and how many copies (over all slips) are claimed. 0 otherwise. */
+  copies: z.number().int().default(0),
+  claimed: z.number().int().default(0),
   slips: z.array(z.object({ id: z.number().int(), slipNo: z.number().int(), label: z.string(), readings: z.array(SlipReadingAdminSchema) })),
 });
 export type SlipSetAdmin = z.infer<typeof SlipSetAdminSchema>;
@@ -655,10 +725,15 @@ export const HuntSlipRequestSchema = z
   .refine((b) => Boolean(b.text) || Boolean(b.morse), 'Send the text or the morse you read.');
 export type HuntSlipRequest = z.input<typeof HuntSlipRequestSchema>;
 
-/** What a reading did. 'unknown' is the same friendly answer for every wrong sequence: it never hints at the valid ones. */
+/**
+ * What a reading did. 'unknown' is the same friendly answer for every wrong sequence: it never hints at the valid ones.
+ * 'taken' (unique sets): that printed copy belongs to someone else, or you already claimed another copy of this slip.
+ */
 export const HuntSlipResultSchema = z.object({
-  outcome: z.union([SlipOutcomeSchema, z.literal('unknown')]),
+  outcome: z.union([SlipOutcomeSchema, z.literal('unknown'), z.literal('taken')]),
   message: z.string(),
+  /** Unique sets: the serial of the copy you hold (after a claim, or when a reading was refused because you hold another). */
+  serial: z.number().int().nullable().default(null),
   /** clue outcome: the clue text. */
   clue: z.string().nullable(),
   /** bonus outcome: points paid now (0 when you had already claimed it). */
@@ -682,6 +757,8 @@ export const SlipPrintSheetSchema = z.object({
       slipNo: z.number().int(),
       label: z.string(),
       kitId: z.string().nullable(),
+      /** Unique sets: the copy's serial ("no. 037"), printed in the plaque. */
+      serial: z.number().int().nullable().default(null),
       edges: z.object({
         bottom: z.object({ word: z.string(), morse: z.string() }).nullable(),
         right: z.object({ word: z.string(), morse: z.string() }).nullable(),

@@ -12,7 +12,9 @@
 //          PUT /admin/order?trail=, GET /admin/stickers?trail=, GET /admin/cards?trail=,
 //          GET /admin/progress?trail=, GET /admin/graph?trail=, POST /admin/reset?trail=,
 //          GET|POST /admin/slip-sets?trail=, POST /admin/slip-sets/:id/slips, PUT|DELETE /admin/slips/:id,
-//          GET /admin/slip-print?set=
+//          GET /admin/slip-print?set=,
+//          unique sets: GET|POST /admin/slip-sets/:id/copies, PUT /admin/slip-sets/:id/mode,
+//          POST /admin/slip-copies/:id/release, GET /admin/slip-sets/:id/answer-key.csv
 import {
   HuntAdminOrderRequestSchema,
   HuntAdminResetRequestSchema,
@@ -31,8 +33,11 @@ import {
   type HuntStickerSheet,
   HuntStopInputSchema,
   type MorseCardSheet,
+  type SlipCopies,
+  SlipCopiesRequestSchema,
   SlipInputSchema,
   type SlipPrintSheet,
+  SlipSetModeRequestSchema,
   SlipSetInputSchema,
   type SlipSetList,
   TREASURE_TRAIL_ID,
@@ -94,7 +99,9 @@ import {
   stopCount,
   submitSlip,
   trailSettings,
+  trailTotal,
 } from './engine';
+import { answerKeyCsv, checkUniqueReadings, claimedCount, convertToUnique, copiesView, copyEdges, getSet, releaseCopy, releaseTrail, syncCopies } from './unique';
 import { seedHunt } from './seed';
 
 export const huntStickers = [
@@ -169,7 +176,7 @@ function buildAdmin(ctx: FeatureContext, trailId: number): HuntAdmin {
 
 function publishState(ctx: FeatureContext, trailId: number): void {
   const t = getTrail(ctx, trailId);
-  ctx.live.publish('hunt.state', { trailId, status: t.status, title: t.title, total: stopCount(ctx, trailId) }, 'all');
+  ctx.live.publish('hunt.state', { trailId, status: t.status, title: t.title, total: trailTotal(t, stopCount(ctx, trailId)) }, 'all');
 }
 
 /** Answers must contain letters or digits to be matchable; duplicates (after normalising) are dropped. */
@@ -267,13 +274,19 @@ function trailRefs(ctx: FeatureContext, trail: Trail): string[] {
 function slipSets(ctx: FeatureContext, trailId: number): SlipSetList {
   const finds = new Map(all<{ reading_id: number; n: number }>(ctx.db, 'SELECT reading_id, COUNT(*) AS n FROM hunt_slip_finds GROUP BY reading_id').map((r) => [r.reading_id, r.n]));
   return {
-    sets: all<{ id: number; trail_id: number; title: string; mode: 'shared' | 'per_kit'; word_pool: string }>(ctx.db, 'SELECT * FROM hunt_slip_sets WHERE trail_id = ? ORDER BY id', trailId).map(
+    sets: all<{ id: number; trail_id: number; title: string; mode: 'shared' | 'per_kit' | 'unique'; word_pool: string; copies: number }>(
+      ctx.db,
+      'SELECT * FROM hunt_slip_sets WHERE trail_id = ? ORDER BY id',
+      trailId,
+    ).map(
       (st) => ({
         id: st.id,
         trailId: st.trail_id,
         title: st.title,
         mode: st.mode,
         pool: JSON.parse(st.word_pool) as string[],
+        copies: st.mode === 'unique' ? st.copies : 0,
+        claimed: st.mode === 'unique' ? claimedCount(ctx, st.id) : 0,
         slips: all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT * FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', st.id).map((sl) => ({
           id: sl.id,
           slipNo: sl.slip_no,
@@ -311,6 +324,7 @@ function slipSets(ctx: FeatureContext, trailId: number): SlipSetList {
 export function writeSlip(ctx: FeatureContext, setId: number, slipId: number | null, input: z.output<typeof SlipInputSchema>): number {
   const set = one<{ trail_id: number; mode: string }>(ctx.db, 'SELECT trail_id, mode FROM hunt_slip_sets WHERE id = ?', setId);
   if (!set) throw notFound('No such slip set.');
+  if (set.mode === 'unique') checkUniqueReadings(input.readings);
   for (const r of input.readings) {
     if (set.mode === 'shared' && r.word === null && r.morse === null) throw badRequest(`The ${r.orientation} edge needs a word (or a sequence).`);
     if ((r.outcome === 'next' || r.outcome === 'branch') && r.targetStopId !== null && !one(ctx.db, 'SELECT 1 AS x FROM hunt_stops WHERE id = ? AND trail_id = ?', r.targetStopId, set.trail_id)) {
@@ -325,17 +339,14 @@ export function writeSlip(ctx: FeatureContext, setId: number, slipId: number | n
   return tx(ctx.db, () => {
     let id = slipId;
     if (id === null) id = run(ctx.db, 'INSERT INTO hunt_slips (set_id, slip_no, label) VALUES (?, ?, ?)', setId, input.slipNo, input.label).lastId;
-    else {
-      run(ctx.db, 'UPDATE hunt_slips SET slip_no = ?, label = ? WHERE id = ?', input.slipNo, input.label, id);
-      run(ctx.db, 'DELETE FROM hunt_slip_readings WHERE slip_id = ?', id);
-    }
+    else run(ctx.db, 'UPDATE hunt_slips SET slip_no = ?, label = ? WHERE id = ?', input.slipNo, input.label, id);
+    // Readings are updated in place per orientation (not deleted and re-added), so their ids, finds,
+    // bonus refs and the words printed on per-kit and unique copies all survive an edit of the outcomes.
+    const old = all<{ id: number; orientation: string }>(ctx.db, 'SELECT id, orientation FROM hunt_slip_readings WHERE slip_id = ? ORDER BY id', id);
+    const used = new Set<number>();
     for (const r of input.readings) {
-      run(
-        ctx.db,
-        `INSERT INTO hunt_slip_readings (slip_id, orientation, word, morse, outcome, target_stop_id, target_trail_id, clue, bonus_points, message)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        id,
-        r.orientation,
+      const prev = old.find((o) => o.orientation === r.orientation && !used.has(o.id));
+      const values = [
         r.word ? morseWordOf(r.word) : null,
         r.morse ? slipMorseKey(r.morse) : null,
         r.outcome,
@@ -344,16 +355,56 @@ export function writeSlip(ctx: FeatureContext, setId: number, slipId: number | n
         r.clue,
         r.bonusPoints,
         r.message,
-      );
+      ] as const;
+      if (prev) {
+        used.add(prev.id);
+        run(ctx.db, 'UPDATE hunt_slip_readings SET word = ?, morse = ?, outcome = ?, target_stop_id = ?, target_trail_id = ?, clue = ?, bonus_points = ?, message = ? WHERE id = ?', ...values, prev.id);
+      } else {
+        run(
+          ctx.db,
+          `INSERT INTO hunt_slip_readings (slip_id, orientation, word, morse, outcome, target_stop_id, target_trail_id, clue, bonus_points, message)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          id,
+          r.orientation,
+          ...values,
+        );
+      }
     }
+    for (const o of old) if (!used.has(o.id)) run(ctx.db, 'DELETE FROM hunt_slip_readings WHERE id = ?', o.id);
+    // per-kit draws stay valid only for readings that still draw from the pool
+    run(ctx.db, 'DELETE FROM hunt_kit_slip_words WHERE reading_id IN (SELECT id FROM hunt_slip_readings WHERE slip_id = ? AND (word IS NOT NULL OR morse IS NOT NULL))', id);
+    // unique sets: copies for a new slip, words for new edges (printed copies keep theirs)
+    if (set.mode === 'unique') syncCopies(ctx, setId);
     return id;
   });
 }
 
 function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
-  const set = one<{ id: number; title: string; mode: 'shared' | 'per_kit' }>(ctx.db, 'SELECT id, title, mode FROM hunt_slip_sets WHERE id = ?', setId);
-  if (!set) throw notFound('No such slip set.');
+  const set = getSet(ctx, setId);
   const slips = all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT * FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', setId);
+  if (set.mode === 'unique') {
+    // every copy in serial order, slips 1..n of one serial together (a kit's matching trio)
+    const copies = all<{ id: number; slip_id: number; serial: number }>(
+      ctx.db,
+      'SELECT c.id, c.slip_id, c.serial FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id',
+      setId,
+    );
+    const bySlip = new Map(slips.map((sl) => [sl.id, sl]));
+    return {
+      setId: set.id,
+      title: set.title,
+      mode: set.mode,
+      slips: copies.map((c) => {
+        const sl = bySlip.get(c.slip_id) as { slip_no: number; label: string };
+        const { edges } = copyEdges(ctx, c.id, c.slip_id);
+        const edge = (e: 'bottom' | 'right' | 'top' | 'left') => {
+          const w = edges[e];
+          return w ? { word: w, morse: slipWordKey(w) } : null;
+        };
+        return { slipNo: sl.slip_no, label: sl.label, kitId: null, serial: c.serial, edges: { bottom: edge('bottom'), right: edge('right'), top: edge('top'), left: edge('left') } };
+      }),
+    };
+  }
   const kits = set.mode === 'per_kit' ? all<{ id: string }>(ctx.db, 'SELECT id FROM kits ORDER BY id').map((k) => k.id) : [null];
   const out: SlipPrintSheet['slips'] = [];
   for (const kitId of kits) {
@@ -364,7 +415,7 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
         const word = r.word ?? kw.get(r.id)?.word ?? null;
         if (word) edges[r.orientation as 'bottom' | 'right' | 'top' | 'left'] = { word, morse: slipWordKey(word) };
       }
-      out.push({ slipNo: sl.slip_no, label: sl.label, kitId, edges });
+      out.push({ slipNo: sl.slip_no, label: sl.label, kitId, serial: null, edges });
     }
   }
   return { setId: set.id, title: set.title, mode: set.mode, slips: out };
@@ -376,6 +427,7 @@ function trailGraph(ctx: FeatureContext, trailId: number): TrailGraph {
   const cache = crowdOf(ctx, trailId);
   const sets = slipSets(ctx, trailId);
   const readingsBySlip = new Map(sets.sets.flatMap((st) => st.slips.map((sl) => [sl.id, sl.readings] as const)));
+  const unique = new Set(sets.sets.filter((st) => st.mode === 'unique').flatMap((st) => st.slips.map((sl) => sl.id)));
   const edges: TrailGraph['edges'] = [];
   const linear = trail.orderMode !== 'graph';
   stops.forEach((s, i) => {
@@ -386,7 +438,7 @@ function trailGraph(ctx: FeatureContext, trailId: number): TrailGraph {
           to: r.outcome === 'next' || r.outcome === 'branch' ? (r.targetStopId ?? (linear ? (stops[i + 1]?.id ?? null) : null)) : null,
           toTrailId: r.targetTrailId,
           kind: 'reading',
-          label: `${r.orientation}: ${r.word ?? (r.morse ? 'sequence' : 'per-kit word')} (${r.outcome})`,
+          label: `${r.orientation}: ${r.word ?? (r.morse ? 'sequence' : unique.has(s.slipId) ? (r.orientation === 'extra' ? 'upside-down top' : 'word per copy') : 'per-kit word')} (${r.outcome})`,
           readingId: r.id,
           outcome: r.outcome,
           count: r.finds,
@@ -432,7 +484,7 @@ export const hunt = defineFeature({
           const solved =
             one<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM hunt_progress p JOIN hunt_stops s ON s.id = p.stop_id WHERE p.attendee_id = ? AND s.trail_id = ?', me.attendeeId, t.id)?.n ?? 0;
           const c = crowdOf(ctx, t.id).crowd;
-          return { id: t.id, kind: t.kind, title: t.title, status: t.status, total: stopCount(ctx, t.id), started: Boolean(p), solved, finishedRank: p?.finish_rank ?? null, hunting: c.hunting, finished: c.finished };
+          return { id: t.id, kind: t.kind, title: t.title, status: t.status, total: trailTotal(t, stopCount(ctx, t.id)), started: Boolean(p), solved, finishedRank: p?.finish_rank ?? null, hunting: c.hunting, finished: c.finished };
         }),
       };
     });
@@ -502,13 +554,14 @@ export const hunt = defineFeature({
       const pos = (one<{ m: number | null }>(ctx.db, 'SELECT MAX(position) AS m FROM hunt_trails')?.m ?? 0) + 1;
       const id = run(
         ctx.db,
-        'INSERT INTO hunt_trails (position, kind, title, order_mode, hints_on, cooldown_on, shuffle_seed) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO hunt_trails (position, kind, title, order_mode, hints_on, cooldown_on, subset_k, shuffle_seed) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         pos,
         b.kind,
         b.title,
         b.orderMode,
         b.hintsOn ? 1 : 0,
         b.cooldownOn ? 1 : 0,
+        b.orderMode === 'graph' ? 0 : b.subsetK,
         newSeed(),
       ).lastId;
       bump(ctx, id);
@@ -521,14 +574,20 @@ export const hunt = defineFeature({
       const b = parse(TrailUpdateRequestSchema, req.body);
       const t = getTrail(ctx, id);
       if (b.orderMode !== undefined && b.orderMode !== t.orderMode) requireUnlockedStructure(ctx, id);
+      // K of M changes who walks which stops: only before anyone starts
+      if (b.subsetK !== undefined && b.subsetK !== t.subsetK) requireUnlockedStructure(ctx, id);
+      const orderMode = b.orderMode ?? t.orderMode;
+      const subsetK = b.subsetK ?? t.subsetK;
+      if (orderMode === 'graph' && subsetK > 0 && b.subsetK !== undefined) throw badRequest('Graph trails pick their path through exits. "K of the M stops" is for shuffled and fixed trails.');
       run(
         ctx.db,
-        'UPDATE hunt_trails SET title = ?, kind = ?, order_mode = ?, hints_on = ?, cooldown_on = ? WHERE id = ?',
+        'UPDATE hunt_trails SET title = ?, kind = ?, order_mode = ?, hints_on = ?, cooldown_on = ?, subset_k = ? WHERE id = ?',
         b.title ?? t.title,
         b.kind ?? t.kind,
-        b.orderMode ?? t.orderMode,
+        orderMode,
         (b.hintsOn ?? t.hintsOn) ? 1 : 0,
         (b.cooldownOn ?? t.cooldownOn) ? 1 : 0,
+        orderMode === 'graph' ? 0 : subsetK,
         id,
       );
       bump(ctx, id);
@@ -732,6 +791,7 @@ export const hunt = defineFeature({
           trailId,
         );
         for (const ref of refs) ctx.points.revoke(HUNT_SOURCE, ref);
+        releaseTrail(ctx, trailId); // unique slip copies are free to claim again
         if (trail.kind === 'hunt') ctx.stickers.revokePrefix('hunt-');
         if (trail.kind === 'morse') ctx.stickers.revokePrefix('trail-morse-');
         run(ctx.db, "UPDATE hunt_trails SET status = 'draft', opened_at = NULL, closed_at = NULL, shuffle_seed = ? WHERE id = ?", newSeed(), trailId);
@@ -757,8 +817,59 @@ export const hunt = defineFeature({
       const b = parse(SlipSetInputSchema, req.body);
       const pool = [...new Set(b.pool.map((w) => morseWordOf(w)).filter(Boolean))];
       if (b.pool.some((w) => !isMorseWord(w))) throw badRequest('Pool words can only use letters and digits.');
-      run(ctx.db, 'INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool) VALUES (?, ?, ?, ?)', trailId, b.title, b.mode, JSON.stringify(pool));
+      run(ctx.db, 'INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool, copies) VALUES (?, ?, ?, ?, ?)', trailId, b.title, b.mode, JSON.stringify(pool), b.mode === 'unique' ? b.copies : 0);
       return slipSets(ctx, trailId);
+    });
+
+    // ---------- console: unique slip copies ----------
+
+    // GET /api/hunt/admin/slip-sets/:id/copies  -> SlipCopies (serial, who claimed each slip's copy, when)
+    app.get('/admin/slip-sets/:id/copies', async (req): Promise<SlipCopies> => {
+      requireAdmin(req);
+      const { id } = parse(IdParam, req.params);
+      if (getSet(ctx, id).mode !== 'unique') throw conflict('That set does not print unique copies.');
+      return copiesView(ctx, id);
+    });
+
+    // POST /api/hunt/admin/slip-sets/:id/copies { copies, regenerate? }  -> SlipCopies
+    app.post('/admin/slip-sets/:id/copies', async (req): Promise<SlipCopies> => {
+      requireAdmin(req);
+      const { id } = parse(IdParam, req.params);
+      const b = parse(SlipCopiesRequestSchema, req.body);
+      syncCopies(ctx, id, { copies: b.copies, regenerate: b.regenerate });
+      return copiesView(ctx, id);
+    });
+
+    // PUT /api/hunt/admin/slip-sets/:id/mode { mode: 'unique', copies }  -> SlipSetList (the live-database switch)
+    app.put('/admin/slip-sets/:id/mode', async (req): Promise<SlipSetList> => {
+      requireAdmin(req);
+      const { id } = parse(IdParam, req.params);
+      const b = parse(SlipSetModeRequestSchema, req.body);
+      const set = getSet(ctx, id);
+      convertToUnique(ctx, id, b.copies);
+      bump(ctx, set.trail_id);
+      return slipSets(ctx, set.trail_id);
+    });
+
+    // POST /api/hunt/admin/slip-copies/:id/release  -> SlipCopies (lost slip, or a mistake)
+    app.post('/admin/slip-copies/:id/release', async (req): Promise<SlipCopies> => {
+      requireAdmin(req);
+      const { id } = parse(IdParam, req.params);
+      return copiesView(ctx, releaseCopy(ctx, id));
+    });
+
+    // GET /api/hunt/admin/slip-sets/:id/answer-key.csv  -> text/csv: the organisers' private serial -> words key
+    app.get('/admin/slip-sets/:id/answer-key.csv', async (req, reply) => {
+      requireAdmin(req);
+      const { id } = parse(IdParam, req.params);
+      const set = getSet(ctx, id);
+      if (set.mode !== 'unique') throw conflict('That set does not print unique copies.');
+      const name = `answer-key-${set.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.csv`;
+      return reply
+        .header('content-type', 'text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="${name}"`)
+        .header('cache-control', 'no-store')
+        .send(answerKeyCsv(ctx, id));
     });
 
     app.post('/admin/slip-sets/:id/slips', async (req): Promise<SlipSetList> => {
@@ -859,7 +970,7 @@ function buildProgress(ctx: FeatureContext, trailId: number): HuntAdminProgress 
     trailId,
   );
   return {
-    total: stops.length,
+    total: trailTotal(trail, stops.length),
     rows: rows.map((r) => {
       const solved = solvedCount.get(r.attendee_id) ?? 0;
       const curId = r.finished_at !== null ? null : trail.orderMode === 'graph' ? r.current_stop_id : (orderFor(trail, r.attendee_id, ids)[solved] ?? null);

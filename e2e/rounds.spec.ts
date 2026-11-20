@@ -56,7 +56,8 @@ test.describe.serial('arcade rounds', () => {
     await expect(page.getByText('round 1 is live')).toBeVisible();
 
     // packet panic: blind send gets stuck with a reason, then point the arrow
-    await page.getByRole('link', { name: /packet panic/ }).click();
+    // the cabinets bob forever (CSS animation), so Playwright never sees them "stable": force the tap
+    await page.getByRole('link', { name: /packet panic/ }).click({ force: true });
     await page.getByRole('button', { name: 'send' }).click();
     await expect(page.getByText(/no arrow set for A at J1/)).toBeVisible({ timeout: 10_000 });
     await page.getByRole('button', { name: /turn the arrow at J1/ }).click();

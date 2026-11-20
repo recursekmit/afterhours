@@ -1,7 +1,7 @@
 // Unique slips (docs/SLIPS.md, "unique slips"): the word generator, claiming on first scan, outcomes on
 // every orientation of every copy, typed vs scanned readings, release, the console API, the live
 // migration (shared -> unique), the seed, and the K-of-M trail option.
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { avatarFromSeed } from '@afterhours/shared';
@@ -34,6 +34,28 @@ function seededSlots(n: number): WordSlot[] {
   const slots: WordSlot[] = [];
   for (let c = 0; c < n; c++) for (const [group, edges] of shape) for (const edge of edges) slots.push({ edge, group });
   return slots;
+}
+
+const SAMPLE_PATH = join(SRC_ROOT, '../../web/src/lib/slips/scanner/fixtures/unique-sample.json');
+
+/**
+ * What the scanner accuracy harness reads: 80 copies of the seeded sets generated with a fixed seed;
+ * slip 1 (four edges) of every 8th serial, and the slip hunt's slip of two serials.
+ */
+function accuracySample() {
+  const slots = seededSlots(80);
+  const words = generateWords(slots, { seed: 'accuracy-sample' });
+  const copies: { serial: number; slip: number; edges: Partial<Record<SlipEdge, string>> }[] = [];
+  const perCopy = slots.length / 80;
+  const pick = (serial: number, group: number) => {
+    const edges: Partial<Record<SlipEdge, string>> = {};
+    for (let i = (serial - 1) * perCopy; i < serial * perCopy; i++) if (slots[i]!.group === group) edges[slots[i]!.edge] = words[i]!;
+    copies.push({ serial, slip: group, edges });
+  };
+  for (let serial = 1; serial <= 80; serial += 8) pick(serial, 1);
+  pick(5, 4);
+  pick(45, 4);
+  return { seed: 'accuracy-sample', copies };
 }
 
 describe('unique slip words', () => {
@@ -111,6 +133,12 @@ describe('unique slip words', () => {
     expect(SLIP_BLOCKLIST.length).toBeGreaterThan(50);
     const sample = generateWords(seededSlots(80), { seed: 'clean' });
     for (const w of sample) for (const b of SLIP_BLOCKLIST) expect(w.includes(b), `${w} has ${b}`).toBe(false);
+  });
+
+  it('the scanner accuracy sample (web/src/lib/slips/scanner/fixtures/unique-sample.json) is real generator output', () => {
+    const sample = accuracySample();
+    if (process.env.WRITE_FIXTURES) writeFileSync(SAMPLE_PATH, `${JSON.stringify(sample, null, 2)}\n`);
+    expect(JSON.parse(readFileSync(SAMPLE_PATH, 'utf8'))).toEqual(sample);
   });
 
   it('is deterministic per seed and differs between seeds', () => {

@@ -688,6 +688,13 @@ export function tick(ctx: FeatureContext): void {
 
 export const morse = defineFeature({
   name: 'morse',
+  // purge test player: the cached clears and board no longer count them
+  onPurge(ctx) {
+    const s = state(ctx);
+    s.clears = null;
+    s.board = null;
+    s.boardVersion++;
+  },
 
   stickers: [
     { id: STICKERS.firstDecode, title: 'first dit', hint: 'decode your first morse word', shape: 'circle', color: 'sky', glyph: 'note', feature: 'morse', order: 60 },

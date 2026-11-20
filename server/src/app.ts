@@ -2,6 +2,7 @@ import { join } from 'node:path';
 import fastifyCookie from '@fastify/cookie';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Config } from './config';
+import { setPurgeHooks } from './core/auth/purge';
 import { registerAuthRoutes } from './core/auth/routes';
 import { purgeExpiredSessions } from './core/auth/sessions';
 import type { AppContext, ServerFeature } from './core/context';
@@ -94,6 +95,7 @@ export async function buildApp(opts: BuildOptions): Promise<{ app: FastifyInstan
       await app.register(async (scope) => register(scope, ctx), { prefix: `/api/${f.name}` });
     }
   }
+  setPurgeHooks(ctx, opts.features.flatMap((f) => (f.onPurge ? [f.onPurge] : [])));
   for (const f of opts.features) await f.boot?.(ctx);
 
   if (opts.config.webDist) await registerStatic(app, opts.config.webDist);

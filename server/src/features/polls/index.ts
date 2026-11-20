@@ -53,6 +53,7 @@ import {
   resetPoll,
   revealPoll,
   setWordHidden,
+  state as pollState,
   tallyFor,
   updatePoll,
   viewOf,
@@ -66,6 +67,12 @@ const IdParams = z.object({ id: z.coerce.number().int().positive() });
 
 export const polls = defineFeature({
   name: 'polls',
+  // purge test player: the live tally is rebuilt from the votes that are left
+  onPurge(ctx) {
+    const s = pollState(ctx);
+    s.tally = null;
+    s.dirty = true;
+  },
 
   stickers: [
     { id: 'polls-first-vote', title: 'first vote', hint: 'cast your first vote in any poll', shape: 'ticket', color: 'lime', glyph: 'check', feature: 'polls', order: 20 },

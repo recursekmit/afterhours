@@ -76,6 +76,8 @@ const IdParam = z.object({ id: z.coerce.number().int().positive() });
 
 export const recap = defineFeature({
   name: 'recap',
+  // purge test player: room totals and recaps are rebuilt without them
+  onPurge: (ctx) => invalidateRecap(ctx),
 
   stickers: [
     { id: RECAP_STICKERS.rewind, title: 'rewind', hint: 'watch your whole recap, start to end', shape: 'circle', color: 'grape', glyph: 'arrow', feature: 'recap', order: 90 },

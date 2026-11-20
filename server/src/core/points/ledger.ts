@@ -95,6 +95,16 @@ export class PointsService {
     return r.changes;
   }
 
+  /** Every award one attendee ever got ("purge test player"). Returns rows removed and tells the leaderboard. */
+  revokeAttendee(attendeeId: number): number {
+    const r = run(this.db, 'DELETE FROM points_ledger WHERE attendee_id = ?', attendeeId);
+    if (r.changes > 0) {
+      this.version++;
+      this.scheduleChanged();
+    }
+    return r.changes;
+  }
+
   /** Alias kept for the danger zones: every award from a source and its sub-sources. */
   revokeSource(source: string): number {
     return this.revoke(source);

@@ -34,6 +34,8 @@ import {
   type ParticipantListResponse,
   type ParticipantRow,
   ParticipantSettingsSchema,
+  type PurgeReport,
+  PurgeRequestSchema,
   RollSignInRequestSchema,
   parseIdQr,
   phoneLast4,
@@ -49,6 +51,7 @@ import { RateLimiter } from '../ratelimit';
 import { parse } from '../validate';
 import { safeEqual, sha256 } from './crypto';
 import { requireAdmin } from './guards';
+import { purgeParticipant } from './purge';
 import {
   type RosterEntry,
   addParticipant,
@@ -242,6 +245,14 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
     requireAdmin(req);
     removeParticipant(ctx, parse(IdParam, req.params.id));
     return { ok: true };
+  });
+
+  // POST /api/admin/participants/:id/purge { confirm: <their roll> }  -> PurgeReport. Mock testers: the
+  // participant and every trace of their activity go, as if they never came (core/auth/purge.ts).
+  app.post<{ Params: { id: string } }>('/api/admin/participants/:id/purge', async (req): Promise<PurgeReport> => {
+    requireAdmin(req);
+    const b = parse(PurgeRequestSchema, req.body);
+    return purgeParticipant(ctx, parse(IdParam, req.params.id), b.confirm);
   });
 
   app.post<{ Params: { id: string } }>('/api/admin/participants/:id/unbind', async (req): Promise<ParticipantRow> => {

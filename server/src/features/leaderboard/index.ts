@@ -260,6 +260,11 @@ export function tick(ctx: FeatureContext): void {
 
 export const leaderboard = defineFeature({
   name: 'leaderboard',
+  // purge test player: rebuild the board without them
+  onPurge(ctx) {
+    const s = state(ctx);
+    s.cache = null;
+  },
 
   stickers: [
     { id: 'leaderboard-top10', title: 'top ten', hint: 'be in the top 10 when the final reveal happens', shape: 'shield', color: 'tangerine', glyph: 'crown', feature: 'leaderboard', order: 60 },

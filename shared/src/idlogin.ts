@@ -369,3 +369,19 @@ export const DeskLookupResponseSchema = z.object({
   matches: z.array(ParticipantRowSchema),
 });
 export type DeskLookupResponse = z.infer<typeof DeskLookupResponseSchema>;
+
+/**
+ * POST /api/admin/participants/:id/purge (console): remove a mock tester and every trace of what they did.
+ * `confirm` must be their roll number, typed out.
+ */
+export const PurgeRequestSchema = z.object({ confirm: z.string().trim().min(1).max(40) });
+export type PurgeRequest = z.input<typeof PurgeRequestSchema>;
+export const PurgeReportSchema = z.object({
+  participantId: z.number().int(),
+  roll: z.string(),
+  attendeeId: z.number().int().nullable(),
+  nickname: z.string().nullable(),
+  /** rows removed (or released) per table */
+  rows: z.record(z.string(), z.number().int()),
+});
+export type PurgeReport = z.infer<typeof PurgeReportSchema>;

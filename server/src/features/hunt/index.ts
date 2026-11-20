@@ -481,6 +481,8 @@ function trailGraph(ctx: FeatureContext, trailId: number): TrailGraph {
 export const hunt = defineFeature({
   name: 'hunt',
   stickers: [...huntStickers],
+  // purge test player: crowd counts and finish lists are rebuilt without them
+  onPurge: (ctx) => bump(ctx),
 
   routes(app, ctx) {
     // ---------- player visibility: one switch per event, both off by default ----------

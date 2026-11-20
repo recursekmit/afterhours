@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   QuickSpecSchema,
+  formatQuizPaste,
   defaultDurationMin,
   parseHuntPaste,
   parseOptionsPaste,
@@ -44,6 +45,16 @@ describe('parseQuizPaste', () => {
     const { questions } = parseQuizPaste('Which one?\n*right\nwrong\nwrong');
     const r = QuickSpecSchema.safeParse({ template: 'quiz', questions });
     expect(r.success).toBe(true);
+  });
+});
+
+describe('formatQuizPaste', () => {
+  it('round-trips with the parser and can move the star', () => {
+    const text = 'one?\na\n*b\n\ntwo?\n*x\ny';
+    const { questions } = parseQuizPaste(text);
+    expect(formatQuizPaste(questions)).toBe(text);
+    questions[0]!.correct = 0;
+    expect(formatQuizPaste(questions)).toBe('one?\n*a\nb\n\ntwo?\n*x\ny');
   });
 });
 

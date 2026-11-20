@@ -86,6 +86,11 @@ export function parseQuizPaste(text: string): { questions: QuizQuestionDraft[]; 
   return { questions, problems };
 }
 
+/** The inverse of parseQuizPaste, so the form can rewrite the text when the organiser taps the right option. */
+export function formatQuizPaste(questions: QuizQuestionDraft[]): string {
+  return questions.map((q) => [q.question, ...q.options.map((o, i) => (i === q.correct ? `*${o}` : o))].join('\n')).join('\n\n');
+}
+
 export interface HuntStopDraft {
   clue: string;
   /** Riddle answer. Empty: a printed QR sticker has to be scanned. */

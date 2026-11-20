@@ -26,7 +26,7 @@
 .arrow { font-family: var(--font-display); font-size: var(--step-2); padding: 4px 10px; border: var(--line) solid var(--paper); border-radius: var(--cut-3); }
 .up { background: var(--lime); color: var(--ink); }
 .down { background: var(--pink); color: var(--ink); }
-.gap { font-family: var(--font-hand); font-weight: 800; color: var(--cream); }
+.gap { font-family: var(--font-hand); font-weight: 800; color: var(--ink); }
 .rankSlot { height: var(--step-6); min-width: 150px; overflow: hidden; position: relative; }
 .rankSlot .meRank { position: relative; }
 .flashUp { animation: flashup 1.8s var(--ease-out); }
@@ -39,10 +39,10 @@
 .keepChip { background: var(--ink); color: var(--lime); border-radius: var(--cut-3); padding: 2px 10px; margin-left: 4px; }
 .frozen { flex-wrap: wrap; }
 .gapWrap { padding: 22px 12px 24px 26px; }
-.gapTrack { position: relative; height: 22px; background: var(--paper-3); border: var(--line) solid var(--paper); border-radius: 999px; }
-.gapFill { height: 100%; background: var(--lime); border-radius: 999px; }
+.gapTrack { position: relative; height: 22px; background: var(--paper-2); border: var(--line) solid var(--frame, var(--ink)); border-radius: 999px; box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.25); }
+.gapFill { height: 100%; background: var(--gold); border-radius: 999px; }
 .gapYou { position: absolute; top: -24px; translate: -50% 0; font-family: var(--font-display); font-size: var(--step--1); background: var(--lime); color: var(--ink); border-radius: var(--cut-3); padding: 0 8px; white-space: nowrap; }
-.gapFlag { position: absolute; right: 0; top: 26px; max-width: 60%; font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gapFlag { position: absolute; right: 0; top: 26px; max-width: 60%; font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .flashUp, .flashDown { animation: none; } }
 
 /* projector */

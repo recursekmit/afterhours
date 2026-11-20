@@ -23,6 +23,8 @@ import {
   type MenuResponse,
   QR_WINDOW_MS,
   type QrResponse,
+  RESET_CONFIRM,
+  ResetRequestSchema,
   ScanRequestSchema,
   type ScanResponse,
   type ShopMe,
@@ -53,12 +55,14 @@ import {
 import {
   createItem,
   createStall,
+  ensureMocktailBar,
   exportCsv,
   importCsv,
   listTxns,
   overview,
   removeItem,
   removeStall,
+  resetPurchases,
   rotateCode,
 } from './admin';
 import { deleteImage, readImage, saveImage } from './images';
@@ -424,6 +428,17 @@ export const stalls = defineFeature({
       return exportCsv(ctx);
     });
 
+    // POST /api/stalls/admin/reset { confirm: 'RESET STALLS' }: danger zone (after the dry run). Wipes every
+    // purchase and basket; stalls, menus, codes and settings stay. Points earned are untouched.
+    app.post('/admin/reset', async (req): Promise<Ok> => {
+      requireAdmin(req);
+      const { confirm } = parse(ResetRequestSchema, req.body);
+      if (confirm !== RESET_CONFIRM) throw badRequest(`Type ${RESET_CONFIRM} to confirm.`);
+      resetPurchases(ctx);
+      L.spent.clear();
+      return { ok: true };
+    });
+
     // GET /api/stalls/admin/lookup?kit=AH-001: a person's wallet, for fixing things at the desk.
     app.get('/admin/lookup', async (req) => {
       requireAdmin(req);
@@ -434,8 +449,14 @@ export const stalls = defineFeature({
     });
   },
 
+  // A fresh database comes with the mocktail bar ready: one stall, one "mocktail" item that uses the free
+  // allowance first and then costs 50 points (editable). Only ever once, so deleting it in the console sticks.
+  boot(ctx) {
+    ensureMocktailBar(ctx);
+  },
+
   seed(ctx) {
-    if (one(ctx.db, 'SELECT 1 AS x FROM stalls_stall LIMIT 1')) return;
+    if (one(ctx.db, "SELECT 1 AS x FROM stalls_stall WHERE name = 'Snack Shack'")) return;
     importCsv(
       ctx,
       [

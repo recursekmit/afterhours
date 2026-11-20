@@ -7,6 +7,7 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { serverNow } from '../../core/clock';
 import { useLiveEvent } from '../../core/live';
 import { useMe } from '../../core/queries';
 import { Avatar, Button, Doodle, ErrorState, LoadingState, Qr } from '../../kit';
@@ -62,16 +63,14 @@ export function QrScreen() {
   // A hand-over closes this screen: the celebration overlay takes it from here.
   useLiveEvent('stalls.redeemed', () => nav('/wallet', { replace: true }));
 
-  // Rotate on the server's window edge, not the phone's clock.
+  // Rotate on the server's window edge, using the app-wide server clock offset (never the phone clock).
   const data = qr.data;
   useEffect(() => {
     if (!data) return;
-    const skew = data.serverNow - Date.now();
-    const edge = data.expiresAt - skew;
-    const tick = () => setLeftMs(Math.max(0, edge - Date.now()));
+    const tick = () => setLeftMs(Math.max(0, data.expiresAt - serverNow()));
     tick();
     const iv = window.setInterval(tick, 250);
-    const to = window.setTimeout(() => void qr.refetch(), Math.max(400, edge - Date.now() + 150));
+    const to = window.setTimeout(() => void qr.refetch(), Math.max(400, data.expiresAt - serverNow() + 150));
     return () => {
       window.clearInterval(iv);
       window.clearTimeout(to);

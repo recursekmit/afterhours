@@ -13,6 +13,7 @@ import {
   type AdminStall,
   ImportResultSchema,
   MAX_ALLOWANCE,
+  RESET_CONFIRM,
   RotateResultSchema,
   StallSettingsSchema,
 } from '@afterhours/shared/features/stalls';
@@ -277,7 +278,7 @@ function Settings({ ov, act }: { ov: z.infer<typeof AdminOverviewSchema>; act: (
         </label>
       </div>
       <p className={ui.hand}>
-        off by default: the board ranks everything earned, so nobody hoards points. this switch is saved, but the leaderboard does not read it yet (it needs a small change there).
+        leave the leaderboard switch off: the board ranks everything people earned, so buying a mocktail never costs anyone their rank. the switch is only saved for now; the board does not read it.
       </p>
     </Section>
   );
@@ -348,8 +349,33 @@ function ImportCsv({ act }: { act: (f: () => Promise<unknown>) => void }) {
   );
 }
 
+function DangerZone({ act }: { act: (f: () => Promise<unknown>) => void }) {
+  const [typed, setTyped] = useState('');
+  return (
+    <Section title="danger zone" tilt={0.2}>
+      <p className={ui.hand}>after the dry run: wipes every hand-over and basket, so everyone has their free mocktails again. stalls, menus, codes and earned points stay.</p>
+      <div className={ui.row}>
+        <TextField label={`type ${RESET_CONFIRM}`} value={typed} onChange={(e) => setTyped(e.target.value)} />
+        <Button
+          tone="pink"
+          disabled={typed !== RESET_CONFIRM}
+          onClick={() => {
+            act(() => api.post('/api/stalls/admin/reset', { confirm: RESET_CONFIRM }, OkSchema));
+            setTyped('');
+          }}
+        >
+          reset purchases
+        </Button>
+      </div>
+    </Section>
+  );
+}
+
 function Transactions({ act }: { act: (f: () => Promise<unknown>) => void }) {
   const q = useQuery({ queryKey: TX, queryFn: () => api.get('/api/stalls/admin/txns', AdminTxnsSchema), refetchInterval: 4000 });
+  const [find, setFind] = useState('');
+  const needle = find.trim().toLowerCase();
+  const rows = (q.data?.txns ?? []).filter((t) => !needle || t.kitId.toLowerCase().includes(needle) || t.nickname.toLowerCase().includes(needle) || t.stallName.toLowerCase().includes(needle));
   return (
     <Section
       title="hand-overs"
@@ -360,10 +386,13 @@ function Transactions({ act }: { act: (f: () => Promise<unknown>) => void }) {
         </Button>
       }
     >
+      <TextField label="find by kit, nickname or stall (to refund someone)" value={find} onChange={(e) => setFind(e.target.value)} placeholder="e.g. AH-042" />
       {q.isPending ? (
         <LoadingState label="loading..." />
       ) : q.data && q.data.txns.length === 0 ? (
         <p className={ui.hand}>nothing handed over yet.</p>
+      ) : rows.length === 0 ? (
+        <p className={ui.hand}>nothing matches "{find}".</p>
       ) : (
         <div className={s.tableScroll}>
           <table className={ui.table}>
@@ -378,7 +407,7 @@ function Transactions({ act }: { act: (f: () => Promise<unknown>) => void }) {
               </tr>
             </thead>
             <tbody>
-              {q.data?.txns.map((t) => (
+              {rows.map((t) => (
                 <tr key={t.id} className={t.status === 'void' ? s.rowOff : ''}>
                   <td>{clockTime(t.at)}</td>
                   <td>{t.stallName}</td>
@@ -442,6 +471,7 @@ export function StallsConsole() {
       <AddStall act={run} />
       <ImportCsv act={run} />
       <Transactions act={run} />
+      <DangerZone act={run} />
     </div>
   );
 }

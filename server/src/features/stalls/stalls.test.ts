@@ -1,6 +1,7 @@
-import { MAX_IMAGE_BYTES } from '@afterhours/shared/features/stalls';
+import { MAX_IMAGE_BYTES, mocktailProgress } from '@afterhours/shared/features/stalls';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type Jar, type TestApp, Jar as JarClass, adminJar, capture, makeApp, makeKits, req, signedInAttendee } from '../../../test/helpers';
+import { ensureMocktailBar } from './admin';
 import { parseCsv } from './csv';
 import { makeCode, makeTicket, makeToken } from './tokens';
 
@@ -18,6 +19,8 @@ describe('stalls', () => {
   beforeEach(async () => {
     t = await makeApp();
     admin = await adminJar(t.app);
+    // every test builds its own stalls: drop the mocktail bar a fresh database boots with
+    t.ctx.db.exec('DELETE FROM stalls_item; DELETE FROM stalls_stall;');
   });
   afterEach(async () => t.close());
 
@@ -118,6 +121,44 @@ describe('stalls', () => {
     cap.unsub();
   });
 
+  it('a fresh database boots with the mocktail bar: one mocktail, free allowance first, then 50 points', async () => {
+    const fresh = await makeApp();
+    try {
+      const jar = await adminJar(fresh.app);
+      const ov = (await req(fresh.app, jar, 'GET', '/api/stalls/admin/overview')).json() as J;
+      expect(ov.stalls).toHaveLength(1);
+      expect(ov.stalls[0]).toMatchObject({ name: 'mocktail bar', active: true });
+      expect(ov.stalls[0].items).toEqual([expect.objectContaining({ name: 'mocktail', price: 50, freeDrink: true, stock: null, limit: null })]);
+      expect(ov.settings.allowance).toBe(2);
+      // deleting it sticks: boot never brings it back
+      expect((await req(fresh.app, jar, 'DELETE', `/api/stalls/admin/stalls/${ov.stalls[0].id}`)).statusCode).toBe(200);
+      ensureMocktailBar(fresh.ctx);
+      expect(((await req(fresh.app, jar, 'GET', '/api/stalls/admin/overview')).json() as J).stalls).toHaveLength(0);
+    } finally {
+      await fresh.close();
+    }
+  });
+
+  it('progress to the next mocktail: what your points buy and how far to the next', () => {
+    expect(mocktailProgress(12, 50)).toEqual({ affordable: 0, toNext: 38, fraction: 0.24 });
+    expect(mocktailProgress(0, 50)).toEqual({ affordable: 0, toNext: 50, fraction: 0 });
+    expect(mocktailProgress(50, 50)).toEqual({ affordable: 1, toNext: 50, fraction: 0 });
+    expect(mocktailProgress(137, 50)).toEqual({ affordable: 2, toNext: 13, fraction: 0.74 });
+    expect(mocktailProgress(-5, 50)).toEqual({ affordable: 0, toNext: 50, fraction: 0 });
+    expect(mocktailProgress(100, 0)).toEqual({ affordable: 0, toNext: 0, fraction: 0 });
+  });
+
+  it('wallet: the cheapest priced mocktail drives the progress bar', async () => {
+    const st = await mkStall('Bar');
+    await mkItem(st.id, { name: 'fancy mocktail', price: 80, freeDrink: true });
+    await mkItem(st.id, { name: 'mocktail', price: 50, freeDrink: true });
+    await mkItem(st.id, { name: 'tee', price: 20 });
+    const a = await person('anna', 12);
+    const w = await wallet(a);
+    expect(w.nextMocktail).toEqual({ name: 'mocktail', price: 50, stallName: 'Bar' });
+    expect(mocktailProgress(w.balance, w.nextMocktail.price).toNext).toBe(38);
+  });
+
   it('a mixed line uses what is left of the allowance, then points', async () => {
     const st = await mkStall('Bar');
     const m = await mkItem(st.id, { name: 'mocktail', price: 10, freeDrink: true });
@@ -148,6 +189,39 @@ describe('stalls', () => {
     // and many more tries on fresh scans never pass 2
     for (let i = 0; i < 4; i++) await hand(shops[i % 2]!, a, [{ itemId: items[i % 2]!, qty: 1 }]);
     expect((await wallet(a)).allowance.used).toBe(2);
+  });
+
+  it('four stalls with fresh scans racing for one free drink each: exactly 2 go through', async () => {
+    const shops: Jar[] = [];
+    const items: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const s = await mkStall(`Bar ${i}`);
+      items.push(await mkItem(s.id, { price: 0, freeDrink: true }));
+      shops.push(await shopJar(s.code));
+    }
+    const a = await person('anna');
+    const { token } = await qr(a);
+    const tickets: string[] = [];
+    for (let i = 0; i < 4; i++) tickets.push(((await scan(shops[i]!, token)).json() as J).ticket);
+    const rs = await Promise.all(tickets.map((ticket, i) => post(shops[i]!, '/api/stalls/shop/commit', { ticket, key: nextKey(), lines: [{ itemId: items[i]!, qty: 1 }] })));
+    expect(rs.filter((r) => r.statusCode === 200)).toHaveLength(2);
+    expect(rs.filter((r) => r.statusCode === 409)).toHaveLength(2);
+    expect((await wallet(a)).allowance).toEqual({ total: 2, used: 2, left: 0 });
+  });
+
+  it('danger zone reset wipes purchases but keeps stalls, menus and earned points', async () => {
+    const st = await mkStall('Bar');
+    const m = await mkItem(st.id, { price: 10, freeDrink: true, stock: 5 });
+    const a = await person('anna', 40);
+    const shop = await shopJar(st.code);
+    expect((await hand(shop, a, [{ itemId: m, qty: 3 }])).statusCode).toBe(200);
+    expect((await post(admin, '/api/stalls/admin/reset', { confirm: 'nope' })).statusCode).toBe(400);
+    expect((await post(null, '/api/stalls/admin/reset', { confirm: 'RESET STALLS' })).statusCode).toBe(401);
+    expect((await post(admin, '/api/stalls/admin/reset', { confirm: 'RESET STALLS' })).statusCode).toBe(200);
+    const w = await wallet(a);
+    expect([w.earned, w.spent, w.balance, w.allowance.left, w.receipts.length]).toEqual([40, 0, 40, 2, 0]);
+    const ov = (await get(admin, '/api/stalls/admin/overview')).json() as J;
+    expect(ov.stalls[0].items[0]).toMatchObject({ stockLeft: 5, sold: 0 });
   });
 
   it('enforces stock and per-person limits', async () => {

@@ -36,6 +36,28 @@ export function createStall(ctx: FeatureContext, p: { name: string; emoji?: stri
   ).lastId;
 }
 
+/** The default mocktail bar, created once on a fresh database. */
+export const DEFAULT_MOCKTAIL_PRICE = 50;
+export function ensureMocktailBar(ctx: FeatureContext): void {
+  if (one(ctx.db, "SELECT 1 AS x FROM stalls_meta WHERE key = 'bootstrapped'")) return;
+  tx(ctx.db, () => {
+    if (!one(ctx.db, 'SELECT 1 AS x FROM stalls_stall LIMIT 1')) {
+      const id = createStall(ctx, { name: 'mocktail bar', emoji: '\u{1F379}', location: '' });
+      createItem(ctx, { stallId: id, name: 'mocktail', price: DEFAULT_MOCKTAIL_PRICE, freeDrink: true });
+    }
+    run(ctx.db, "INSERT OR IGNORE INTO stalls_meta (key, value) VALUES ('bootstrapped', '1')");
+  });
+}
+
+/** Danger zone: every purchase and basket goes; stalls, items, codes and settings stay. */
+export function resetPurchases(ctx: FeatureContext): void {
+  tx(ctx.db, () => {
+    run(ctx.db, 'DELETE FROM stalls_txn_line');
+    run(ctx.db, 'DELETE FROM stalls_txn');
+    run(ctx.db, 'DELETE FROM stalls_cart');
+  });
+}
+
 /** New code; shopkeepers signed in with the old one are signed out. */
 export function rotateCode(ctx: FeatureContext, stallId: number): string {
   const code = newStallCode(ctx);

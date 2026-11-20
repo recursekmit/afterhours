@@ -3,7 +3,7 @@
   glasses that get used up), a "show my QR" button, the stall menus with "you can afford this"
   highlighting, an optional basket the shopkeeper sees pre-filled, and a receipt list.
 */
-import { type ItemView, type PlanItem, type Receipt, type StallMenu, planCart } from '@afterhours/shared/features/stalls';
+import { type ItemView, type NextMocktail as NextMocktailT, type PlanItem, type Receipt, type StallMenu, mocktailProgress, planCart } from '@afterhours/shared/features/stalls';
 import { motion, useReducedMotion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
@@ -54,16 +54,7 @@ function Ticket() {
             <p className={s.fine}>{left > 0 ? 'everyone gets ' + d.allowance.total + '. after that, earn more by playing.' : 'earn more by playing, then buy one with points.'}</p>
           </div>
         </div>
-        {d.nextMocktail && (
-          <div className={s.next}>
-            <Meter value={Math.min(1, d.balance / d.nextMocktail.price)} tone="lime" label="progress to your next mocktail" />
-            <p className={s.fine}>
-              {d.balance >= d.nextMocktail.price
-                ? `you can buy a ${d.nextMocktail.name} now (${d.nextMocktail.price} pts at ${d.nextMocktail.stallName}).`
-                : `${d.nextMocktail.price - d.balance} more points to your next mocktail (${d.nextMocktail.price} pts).`}
-            </p>
-          </div>
-        )}
+        {d.nextMocktail && <NextMocktail balance={d.balance} next={d.nextMocktail} />}
         {d.puzzle && (d.puzzle.tokens > 0 || d.puzzle.cost > 0) && (
           <p className={s.puzzle}>
             puzzle tokens: <b>{d.puzzle.tokens}</b> <span className={s.fine}>({d.puzzle.cost} = one mocktail, claimed at the arcade desk)</span>
@@ -77,33 +68,52 @@ function Ticket() {
   );
 }
 
+/** The bar to the next mocktail bought with points. */
+function NextMocktail({ balance, next }: { balance: number; next: NextMocktailT }) {
+  const p = mocktailProgress(balance, next.price);
+  return (
+    <div className={s.next}>
+      <Meter value={p.fraction} tone="lime" label="progress to your next mocktail" />
+      <p className={s.fine}>
+        {p.affordable > 0
+          ? `your points already buy ${p.affordable} ${next.name.toLowerCase()}${p.affordable === 1 ? '' : 's'} (${next.price} pts at ${next.stallName}). ${p.toNext} more to the next.`
+          : `${p.toNext} more points to your next mocktail (${next.price} pts at ${next.stallName}).`}
+      </p>
+    </div>
+  );
+}
+
 /** What the home screen shows: the same facts, smaller. */
 export function WalletHomeCard() {
   const w = useWallet();
   const d = w.data;
+  const total = d?.allowance.total ?? 2;
   return (
     <Card tone="paper" tilt={-0.8} tape tapeColor="sky">
       <div className={s.homeCard}>
         <div className={s.homeTop}>
           <div>
-            <h3 className={s.homeTitle}>your wallet</h3>
-            <p className={s.fine}>spend points at the stalls. free mocktails are on us.</p>
+            <h3 className={s.homeTitle}>mocktails + stalls</h3>
+            <p className={s.fine}>
+              {total > 0 ? `${total} free mocktail${total === 1 ? '' : 's'}, then earn more by playing.` : 'earn mocktails by playing.'} spending never drops your rank.
+            </p>
           </div>
-          <Link to="/wallet" className={s.homeBal} aria-label="open wallet">
+          <Link to="/wallet" className={s.homeBal} aria-label={`open wallet, ${d?.balance ?? 0} points to spend`}>
             <NumberTicker value={d?.balance ?? 0} />
             <span className={s.hand}>pts</span>
           </Link>
         </div>
         <div className={s.homeRow}>
           {d && <Glasses total={d.allowance.total} left={d.allowance.left} size={40} />}
-          <span className={s.drinkLine}>{d ? (d.allowance.left > 0 ? `${d.allowance.left} free left` : 'all used') : '...'}</span>
+          <span className={s.drinkLine}>{d ? (d.allowance.left > 0 ? `${d.allowance.left} free left` : 'free ones used') : '...'}</span>
         </div>
+        {d?.nextMocktail && <NextMocktail balance={d.balance} next={d.nextMocktail} />}
         <div className={s.homeBtns}>
           <LinkButton to="/wallet/qr" tone="lime" size="sm" icon="qr">
             show my QR
           </LinkButton>
           <LinkButton to="/wallet" tone="paper" size="sm">
-            menu and receipts
+            menus and receipts
           </LinkButton>
         </div>
       </div>

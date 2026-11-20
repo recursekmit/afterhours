@@ -103,6 +103,17 @@ export function planCart(input: { items: PlanItem[]; lines: CartLine[]; freeLeft
   return { lines, freeUsed, points: total, problems, shortBy, ok: problems.length === 0 };
 }
 
+/**
+ * "38 more points to your next mocktail": how many mocktails your points already buy, how many points to
+ * the next one, and how full the bar is. Pure, so the phone and the tests agree.
+ */
+export function mocktailProgress(balance: number, price: number): { affordable: number; toNext: number; fraction: number } {
+  if (!(price > 0)) return { affordable: 0, toNext: 0, fraction: 0 };
+  const b = Math.max(0, Math.floor(balance));
+  const into = b % price;
+  return { affordable: Math.floor(b / price), toNext: price - into, fraction: into / price };
+}
+
 /* ------------------------------------------------------------------ shared views */
 
 export const StallBriefSchema = z.object({
@@ -292,7 +303,10 @@ export type ImportResult = z.infer<typeof ImportResultSchema>;
 export const StallSettingsSchema = z.object({
   /** free mocktails per attendee */
   allowance: z.number().int().min(0).max(MAX_ALLOWANCE),
-  /** If true, spending should lower leaderboard rank. Stored here; the leaderboard does not read it yet. */
+  /**
+   * If true, spending should lower leaderboard rank. Off by default. Stored here only: the leaderboard
+   * always ranks lifetime earned points (see README, "stalls"), so turning it on changes nothing yet.
+   */
   spendLowersBoard: z.boolean(),
 });
 export type StallSettings = z.infer<typeof StallSettingsSchema>;
@@ -336,6 +350,9 @@ export const AdminTxnSchema = z.object({
 });
 export type AdminTxn = z.infer<typeof AdminTxnSchema>;
 export const AdminTxnsSchema = z.object({ txns: z.array(AdminTxnSchema) });
+
+export const RESET_CONFIRM = 'RESET STALLS';
+export const ResetRequestSchema = z.object({ confirm: z.string().max(40) });
 
 export const VoidRequestSchema = z.object({ reason: z.string().trim().max(120).optional() });
 export const RotateResultSchema = z.object({ code: z.string() });

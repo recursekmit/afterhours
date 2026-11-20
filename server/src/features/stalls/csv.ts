@@ -2,7 +2,7 @@
 
 /** Parse CSV or tab-separated text (pasted from a spreadsheet). Handles "quoted, fields" and "" escapes. */
 export function parseCsv(text: string): { line: number; cells: string[] }[] {
-  const src = text.replace(/^﻿/, '');
+  const src = text.replace(/^\uFEFF/, '');
   const firstLine = src.split(/\r?\n/, 1)[0] ?? '';
   const delim = firstLine.includes('\t') && !firstLine.includes(',') ? '\t' : ',';
   const rows: { line: number; cells: string[] }[] = [];

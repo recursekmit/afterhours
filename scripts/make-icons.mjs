@@ -2,7 +2,7 @@
 // wave-navy ground inside the tickets' gold double rule with four-point stars, using the Chromium that
 // Playwright installs (canvas, no extra dependency).
 //   node scripts/make-icons.mjs
-/* global Image, document, FontFace */
+/* global Image, document, FontFace, window */
 import { chromium } from '@playwright/test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

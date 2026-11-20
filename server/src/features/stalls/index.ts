@@ -70,6 +70,7 @@ import {
   getCart,
   getSettings,
   menuFor,
+  nextMocktail,
   puzzleTokens,
   receiptsOf,
   setCart,
@@ -170,7 +171,7 @@ export const stalls = defineFeature({
     app.get('/wallet', async (req): Promise<Wallet> => {
       const me = requireAttendee(req);
       const b = balanceOf(ctx, me.attendeeId);
-      return { ...b, allowance: allowanceOf(ctx, me.attendeeId), puzzle: puzzleTokens(ctx, me.attendeeId), receipts: receiptsOf(ctx, me.attendeeId) };
+      return { ...b, nextMocktail: nextMocktail(ctx), allowance: allowanceOf(ctx, me.attendeeId), puzzle: puzzleTokens(ctx, me.attendeeId), receipts: receiptsOf(ctx, me.attendeeId) };
     });
 
     // GET /api/stalls/menu: every open stall with its items, as this person sees them.
@@ -439,9 +440,9 @@ export const stalls = defineFeature({
       ctx,
       [
         'stall,item,price,stock,limit,free',
-        'Brew Bar,Mocktail of the day,15,,,yes',
-        'Brew Bar,Cold coffee,10,60,2,',
-        'Brew Bar,Masala chai,5,,,',
+        'Mocktail Bar,Mocktail,50,,,yes',
+        'Mocktail Bar,Cold coffee,10,60,2,',
+        'Mocktail Bar,Masala chai,5,,,',
         'Snack Shack,Samosa,8,100,3,',
         'Snack Shack,Brownie,12,40,2,',
         'Snack Shack,Chips,5,,,',
@@ -449,7 +450,7 @@ export const stalls = defineFeature({
         'Merch Table,Recurse tee,120,12,1,',
       ].join('\n'),
     );
-    const bar = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Brew Bar'");
+    const bar = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Mocktail Bar'");
     const snack = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Snack Shack'");
     const merch = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Merch Table'");
     for (const [s, emoji, loc] of [

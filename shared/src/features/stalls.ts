@@ -157,7 +157,12 @@ export type StallMenu = z.infer<typeof StallMenuSchema>;
 /* ------------------------------------------------------------------ attendee */
 
 /** GET /api/stalls/wallet */
+/** The cheapest mocktail you can buy with points: drives the "N more points to your next mocktail" bar. */
+export const NextMocktailSchema = z.object({ name: z.string(), price: z.number().int(), stallName: z.string() });
+export type NextMocktail = z.infer<typeof NextMocktailSchema>;
+
 export const WalletSchema = z.object({
+  nextMocktail: NextMocktailSchema.nullable(),
   earned: z.number().int(),
   spent: z.number().int(),
   balance: z.number().int(),

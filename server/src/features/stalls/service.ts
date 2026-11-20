@@ -134,6 +134,16 @@ export function menuFor(ctx: FeatureContext, stallId: number, attendeeId: number
   return itemRows(ctx, stallId, attendeeId).map(toView);
 }
 
+/** Cheapest on-sale free-drink item that has a points price. */
+export function nextMocktail(ctx: FeatureContext): { name: string; price: number; stallName: string } | null {
+  const r = one<{ name: string; price: number; stall: string }>(
+    ctx.db,
+    `SELECT i.name, i.price, s.name AS stall FROM stalls_item i JOIN stalls_stall s ON s.id = i.stall_id
+      WHERE i.free_drink = 1 AND i.price > 0 AND i.active = 1 AND s.active = 1 ORDER BY i.price, i.id LIMIT 1`,
+  );
+  return r ? { name: r.name, price: r.price, stallName: r.stall } : null;
+}
+
 export function stallBrief(r: { id: number; name: string; emoji: string; location: string }): StallBrief {
   return { id: r.id, name: r.name, emoji: r.emoji, location: r.location };
 }

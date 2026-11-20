@@ -62,7 +62,7 @@
 .receiptCost { display: grid; justify-items: end; font-family: var(--font-display); }
 
 /* ---- full-screen QR ---- */
-.qrScreen { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; flex-direction: column; align-items: center; gap: var(--s-3); padding: calc(var(--s-3) + env(safe-area-inset-top)) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); background: var(--sun); overflow-y: auto; }
+.qrScreen { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; flex-direction: column; align-items: center; gap: var(--s-3); padding: calc(var(--s-3) + env(safe-area-inset-top)) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); background-color: var(--paper-2); background-image: radial-gradient(80% 60% at 50% 35%, rgb(255 196 110 / 0.12), transparent 70%), var(--grain); overflow-y: auto; }
 .qrTop { width: 100%; max-width: 520px; display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); }
 .qrWho { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .qrNick { font-family: var(--font-display); font-size: var(--step-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

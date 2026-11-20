@@ -186,7 +186,7 @@ export function DropsScreenOverlay() {
     const t = window.setTimeout(() => setFire(0), 5000);
     return () => window.clearTimeout(t);
   }, [fire]);
-  const items = feed.data?.muted ? [] : (feed.data?.items ?? []).slice(-4);
+  const items = feed.data?.muted ? [] : (feed.data?.items ?? []).slice(-4).reverse();
   const h = hype.data;
   return (
     <>

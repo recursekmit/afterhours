@@ -256,6 +256,9 @@ test.describe.serial('polish', () => {
     await proj.screenshot({ path: `${SHOT}/reactions-projector-1080.png` });
     await proj.context().close();
     await page.context().close();
+    // leave the big screen free for the specs after this one: no pin, no open check-in (any activity)
     await api('POST', '/api/admin/screen/pin', { sceneId: null });
+    const open = await api<{ open: { activityId: string }[] }>('GET', '/api/attendance/screen');
+    for (const o of open.open) await api('POST', '/api/attendance/admin/close', { activityId: o.activityId });
   });
 });

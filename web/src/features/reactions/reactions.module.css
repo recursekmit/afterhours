@@ -27,11 +27,11 @@
   65% { transform: translate(calc(var(--sway) * -0.7), -66vh) scale(1.05) rotate(520deg); opacity: 1; }
   100% { transform: translate(calc(var(--sway2, 0px) * 0.6), -112vh) scale(0.85) rotate(760deg); opacity: 0; }
 }
-.combo { justify-self: end; font-family: var(--font-display); font-size: var(--step-1); background: var(--ink); color: var(--lime); border-radius: var(--cut-3); padding: 0 12px; transform: rotate(-4deg); box-shadow: var(--shadow-sm); }
+.combo { justify-self: end; font-family: var(--font-display); font-size: var(--step-1); background: var(--ink); color: var(--lime); border-radius: var(--cut-3); padding: 0 12px;  box-shadow: var(--shadow-sm); }
 .barHead { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); min-height: 34px; }
 
 .bar { display: grid; gap: var(--s-3); }
-.barTitle { font-size: var(--step-1); transform: rotate(-1deg); }
+.barTitle { font-size: var(--step-1);  }
 .barHint { font-family: var(--font-hand); font-weight: 600; color: var(--ink-soft); font-size: var(--step--1); }
 .row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
 .pad {

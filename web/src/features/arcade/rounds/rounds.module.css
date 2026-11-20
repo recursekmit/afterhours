@@ -2,14 +2,14 @@
 
 /* ---- hub ------------------------------------------------------------------ */
 .sectionHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
-.sectionTitle { font-size: var(--step-3); line-height: 1; transform: rotate(-1.5deg); transform-origin: left; text-shadow: 3px 3px 0 var(--lime); }
-.banner { display: grid; gap: var(--s-2); color: var(--paper); }
+.sectionTitle { font-size: var(--step-3); line-height: 1;  transform-origin: left; text-shadow: var(--engrave); }
+.banner { display: grid; gap: var(--s-2); color: var(--cream); }
 .bannerBig { font-family: var(--font-display); font-size: var(--step-4); line-height: 1; color: var(--sun); }
-.bannerText { font-family: var(--font-hand); font-weight: 800; color: var(--paper-2); }
+.bannerText { font-family: var(--font-hand); font-weight: 800; color: var(--cream); }
 .dots { display: flex; gap: 6px; }
 .dot { width: 34px; height: 34px; display: grid; place-items: center; font-family: var(--font-display); font-size: var(--step--1); color: var(--ink); background: var(--paper-3); border: var(--line-thin) solid var(--paper); border-radius: var(--cut-3); }
 .dotOn { background: var(--lime); border-color: var(--ink); }
-.dotNow { background: var(--sun); transform: rotate(-6deg) scale(1.1); }
+.dotNow { background: var(--sun); transform: scale(1.1); }
 
 .duo { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
 .houseCard { display: grid; gap: var(--s-2); }
@@ -35,7 +35,7 @@
 .levels { display: flex; gap: var(--s-2); overflow-x: auto; padding: 4px 4px 10px; margin: 0 -4px; scrollbar-width: none; }
 .levelChip { flex: 0 0 auto; min-height: var(--tap); display: grid; gap: 0; justify-items: start; padding: 6px 12px; text-align: left; color: var(--ink); background: var(--paper-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; font-family: var(--font-body); touch-action: manipulation; }
 .levelChip:disabled { opacity: 0.5; cursor: default; box-shadow: none; border-style: dashed; }
-.levelChipOn { background: var(--sun); transform: rotate(-2deg); box-shadow: var(--shadow); }
+.levelChipOn { background: var(--sun);  box-shadow: var(--shadow); }
 .levelNo { font-family: var(--font-display); font-size: var(--step-0); line-height: 1.1; }
 .levelSub { font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); }
 .statusRow { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
@@ -55,7 +55,7 @@
 .outcomeGood { background: var(--lime); }
 .outcomeBad { background: var(--pink); }
 .mark { font-family: var(--font-display); min-width: 1.6em; text-align: center; }
-.hintBox { font-family: var(--font-hand); font-weight: 800; background: var(--sun); border: var(--outline); border-radius: var(--cut-3); padding: var(--s-2) var(--s-3); box-shadow: var(--shadow-sm); transform: rotate(-0.6deg); }
+.hintBox { font-family: var(--font-hand); font-weight: 800; background: var(--sun); border: var(--outline); border-radius: var(--cut-3); padding: var(--s-2) var(--s-3); box-shadow: var(--shadow-sm);  }
 
 /* ---- packet panic -------------------------------------------------------------- */
 .net { display: block; width: 100%; height: auto; touch-action: manipulation; user-select: none; -webkit-user-select: none; overflow: visible; }
@@ -84,7 +84,7 @@
 .stuckX { font-family: var(--font-display); font-size: 5px; fill: var(--pink); stroke: var(--ink); stroke-width: 0.3; text-anchor: middle; dominant-baseline: central; }
 .packetPicker { display: flex; gap: var(--s-2); flex-wrap: wrap; }
 .packetBtn { min-height: var(--tap); display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px 4px 6px; font-family: var(--font-display); color: var(--ink); background: var(--paper-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; touch-action: manipulation; }
-.packetBtnOn { background: var(--sun); transform: translateY(-2px) rotate(-2deg); box-shadow: var(--shadow); }
+.packetBtnOn { background: var(--sun); transform: translateY(-2px); box-shadow: var(--shadow); }
 .packetDest { font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); }
 .tickBar { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); font-family: var(--font-display); }
 
@@ -106,7 +106,7 @@
 .card:disabled { cursor: default; }
 .cardNo { font-size: var(--step--1); background: var(--ink); color: var(--paper); border-radius: 6px; text-align: center; padding: 2px 0; }
 .cardPatched { background: var(--sky); }
-.cardRunning { background: var(--sun); transform: translateX(8px) rotate(-1deg); box-shadow: var(--shadow); }
+.cardRunning { background: var(--sun); transform: translateX(8px); box-shadow: var(--shadow); }
 .cardFail { background: var(--pink); }
 .cardHint { outline: 3px dashed var(--grape); outline-offset: 3px; }
 .cardWas { font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); text-decoration: line-through; color: var(--ink-soft); }
@@ -137,7 +137,7 @@
 
 /* ---- result ------------------------------------------------------------------------------ */
 .win { display: grid; gap: var(--s-2); justify-items: center; text-align: center; }
-.winNum { font-family: var(--font-display); font-size: 64px; line-height: 1; text-shadow: 4px 4px 0 var(--pink); }
+.winNum { font-family: var(--font-display); font-size: 64px; line-height: 1; text-shadow: var(--engrave); }
 .winLabel { font-family: var(--font-display); font-size: var(--step-1); }
 
 /* Narrow phones: let the pixel board use the gutter so 6x6 cells stay at least 44px. */

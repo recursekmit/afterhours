@@ -12,7 +12,7 @@
   background: var(--paper-3);
   border: var(--outline);
   box-shadow: var(--shadow-lg);
-  transform: rotate(-1.2deg);
+  
   clip-path: polygon(0 0, 100% 0, 100% 92%, 94% 97%, 87% 93%, 79% 99%, 70% 94%, 61% 98%, 52% 93%, 43% 99%, 34% 94%, 25% 98%, 16% 93%, 8% 98%, 0 94%);
   background-image: repeating-linear-gradient(transparent 0 29px, color-mix(in srgb, var(--sky) 45%, transparent) 29px 31px);
 }
@@ -44,11 +44,11 @@
 .solvedTitle { font-size: var(--step-2); line-height: 1.05; }
 .reveal { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
 .finish { display: grid; justify-items: center; gap: var(--s-2); text-align: center; }
-.rank { font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--tangerine); text-shadow: 5px 5px 0 var(--ink); transform: rotate(-4deg); }
+.rank { font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--tangerine); text-shadow: var(--engrave);  }
 .time { font-family: var(--font-display); font-size: var(--step-3); }
 .bonus { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--font-hand); font-weight: 700; }
 .bonus b { font-family: var(--font-display); }
-.three { font-family: var(--font-display); font-size: 120px; line-height: 1; text-align: center; color: var(--tangerine); text-shadow: 6px 6px 0 var(--ink); }
+.three { font-family: var(--font-display); font-size: 120px; line-height: 1; text-align: center; color: var(--tangerine); text-shadow: var(--engrave); }
 .startCard { display: grid; gap: var(--s-4); }
 .startText { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
 .closed { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
@@ -74,10 +74,10 @@
 
 /* projector */
 .scene { display: grid; grid-template-columns: 1.2fr 1fr; gap: calc(var(--u) * 4); padding: calc(var(--u) * 4) calc(var(--u) * 6); align-items: center; }
-.sceneTitle { font-size: calc(var(--u) * 5); line-height: 1; transform: rotate(-2deg); transform-origin: left; text-shadow: 4px 5px 0 var(--ink); }
+.sceneTitle { font-size: calc(var(--u) * 5); line-height: 1;  transform-origin: left; text-shadow: var(--engrave); }
 .map { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2); margin-top: calc(var(--u) * 3); }
-.mapStop { position: relative; width: calc(var(--u) * 9); height: calc(var(--u) * 9); display: grid; place-items: center; background: var(--paper-3); color: var(--ink); border: 5px solid var(--ink); border-radius: var(--cut-round); font-family: var(--font-display); font-size: calc(var(--u) * 2.6); box-shadow: 6px 7px 0 var(--ink); }
-.mapStop:nth-child(odd) { transform: rotate(-6deg); }
+.mapStop { position: relative; width: calc(var(--u) * 9); height: calc(var(--u) * 9); display: grid; place-items: center; background: var(--paper-3); color: var(--ink); border: 5px solid var(--ink); border-radius: var(--cut-round); font-family: var(--font-display); font-size: calc(var(--u) * 2.6); box-shadow: var(--shadow-lg); }
+.mapStop:nth-child(odd) {  }
 .dots { position: absolute; bottom: calc(var(--u) * -2.2); left: 50%; translate: -50% 0; font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 1.6); background: var(--pink); border: 3px solid var(--ink); border-radius: var(--cut-3); padding: 0 calc(var(--u) * 0.6); white-space: nowrap; }
 .stats { display: flex; gap: calc(var(--u) * 4); font-family: var(--font-display); font-size: calc(var(--u) * 3); margin-top: calc(var(--u) * 3); }
 .stats span { display: grid; }
@@ -113,7 +113,7 @@
 /* slip stop */
 .slipBox { display: grid; gap: var(--s-3); }
 .slipWhich { display: flex; gap: var(--s-2); align-items: center; font-family: var(--font-hand); font-weight: 800; }
-.slipNo { font-family: var(--font-display); background: var(--ink); color: var(--paper); padding: 2px 10px; border-radius: var(--cut-3); transform: rotate(-3deg); }
+.slipNo { font-family: var(--font-display); background: var(--ink); color: var(--paper); padding: 2px 10px; border-radius: var(--cut-3);  }
 .slipCam { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-3); align-items: center; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-2); padding: var(--s-3) var(--s-4); font-family: var(--font-hand); font-weight: 600; }
 .slipResult { display: grid; gap: 4px; }
 .slipOutcome { font-family: var(--font-display); font-weight: 400; font-size: var(--step-1); }

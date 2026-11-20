@@ -1,6 +1,6 @@
 .card { display: grid; grid-template-columns: auto 1fr; gap: var(--s-3); align-items: center; }
 .cardText { display: grid; gap: 2px; }
-.cardTitle { font-size: var(--step-1); transform: rotate(-1deg); }
+.cardTitle { font-size: var(--step-1);  }
 .actions { display: flex; gap: var(--s-2); margin-top: var(--s-3); flex-wrap: wrap; }
 .steps { list-style: none; margin: 0 0 var(--s-4); padding: 0; display: grid; gap: var(--s-3); }
 .steps li { display: grid; grid-template-columns: 40px 1fr; gap: var(--s-3); align-items: start; font-size: var(--step-1); line-height: 1.25; }
@@ -15,14 +15,14 @@
   box-shadow: var(--shadow-sm);
   font-family: var(--font-display);
 }
-.stepArt { display: inline-block; vertical-align: middle; margin-left: 8px; transform: rotate(8deg); }
+.stepArt { display: inline-block; vertical-align: middle; margin-left: 8px;  }
 .note { font-family: var(--font-hand); font-weight: 600; margin-bottom: var(--s-4); color: var(--ink-soft); }
 
 /* the drawn iPhone in the explainer */
 .pic { display: flex; align-items: center; justify-content: center; gap: var(--s-3); margin-bottom: var(--s-4); }
 .phone { width: 112px; height: 196px; display: grid; grid-template-rows: auto 1fr auto; background: var(--paper-3); border: var(--line-fat) solid var(--ink); border-radius: 18px; box-shadow: var(--shadow); overflow: hidden; }
-.phone:last-child { transform: rotate(3deg); grid-template-rows: 1fr; }
-.phone:first-child { transform: rotate(-3deg); }
+.phone:last-child {  grid-template-rows: 1fr; }
+.phone:first-child {  }
 .phoneBar { font-size: 10px; font-weight: 800; text-align: center; padding: 6px 4px; border-bottom: var(--line-thin) solid var(--ink); background: var(--paper-2); }
 .phoneBody { display: grid; place-items: center; }
 .phoneTools { display: flex; justify-content: space-around; align-items: center; padding: 6px 0; border-top: var(--line-thin) solid var(--ink); background: var(--paper-2); }

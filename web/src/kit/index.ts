@@ -2,6 +2,7 @@
 export { Avatar, type AvatarProps, type Look } from './Avatar';
 export { Button, IconButton, LinkButton, type ButtonProps, type Tone } from './Button';
 export { Card, Tape, Torn, type CardProps } from './Card';
+export { CornerFlourish, CornerStars, Divider, Plaque, Rule, Star4 } from './Ornament';
 export { Doodle, DoodleDefs, Scribble, type IconName } from './Doodle';
 export { TextField, TextArea } from './Field';
 export { Mascot, type MascotMood } from './Mascot';

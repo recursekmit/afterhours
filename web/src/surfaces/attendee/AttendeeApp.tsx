@@ -5,6 +5,7 @@
 */
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useLocation } from 'react-router';
 import { LiveProvider, useLiveEvent } from '../../core/live';
 import { qk, useMe } from '../../core/queries';
 import { StickerCelebration } from '../../fun';
@@ -29,12 +30,30 @@ function LiveReactors() {
   return null;
 }
 
+/**
+  Each feature area is printed on its home ticket (docs/SPEC.md section 2): morse + slips on the armillary
+  maroon, hunt + trails on the wave navy, polls + schedule + check-in on the ginkgo forest, arcade + drops +
+  recap on the ruins plum. Home, the wallet and the rest stay on the base wave palette.
+*/
+export function paletteFor(path: string): string {
+  if (/^\/(morse|dev\/slips)/.test(path)) return 'armillary';
+  if (/^\/(hunt|trails)/.test(path)) return 'wave';
+  if (/^\/(polls|schedule|checkin|attendance)/.test(path)) return 'ginkgo';
+  if (/^\/(arcade|drop|recap|stickers)/.test(path)) return 'ruins';
+  return 'wave';
+}
+
 export function AttendeeApp() {
   const me = useMe();
+  const { pathname } = useLocation();
   useEffect(() => {
     document.body.dataset.surface = 'phone';
     return () => document.body.removeAttribute('data-surface');
   }, []);
+  useEffect(() => {
+    document.body.dataset.palette = paletteFor(pathname);
+  }, [pathname]);
+  useEffect(() => () => document.body.removeAttribute('data-palette'), []);
   const identity = me.data ? `a${me.data.attendee.id}` : 'anon';
 
   return (

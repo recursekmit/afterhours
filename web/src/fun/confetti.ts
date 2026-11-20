@@ -1,5 +1,5 @@
 /*
-  confetti: cut-paper scraps, squiggles and stars with ink outlines, on one
+  confetti: gold four-point stars, sparks and flakes of gold leaf, on one
   shared canvas that exists only while pieces are flying.
   prefers-reduced-motion: fewer pieces that drift down gently (reduced, not removed).
 */
@@ -43,8 +43,8 @@ function palette(): { colors: string[]; ink: string } {
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string, fb: string) => cs.getPropertyValue(n).trim() || fb;
   return {
-    colors: [v('--tangerine', '#ff6a1f'), v('--lime', '#c4f03c'), v('--pink', '#ff4fa0'), v('--grape', '#6b3fe0'), v('--sky', '#38b6f2'), v('--sun', '#ffd23f')],
-    ink: v('--ink', '#1d1630'),
+    colors: [v('--gold', '#e3c48a'), v('--gold-bright', '#f5dfac'), v('--cream', '#f3e8cc'), v('--ink-soft', '#c9b48a')],
+    ink: v('--paper-2', '#0b1124'),
   };
 }
 
@@ -76,9 +76,10 @@ function resize() {
 
 function drawStar(c: CanvasRenderingContext2D, r: number) {
   c.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = (i * Math.PI) / 5 - Math.PI / 2;
-    const rr = i % 2 ? r * 0.45 : r;
+  // the tickets' four-point star
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 - Math.PI / 2;
+    const rr = i % 2 ? r * 0.28 : r * 1.25;
     c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
   }
   c.closePath();
@@ -167,7 +168,7 @@ export function confetti(opts: ConfettiOptions = {}): void {
   const oy = (opts.y ?? 0.45) * window.innerHeight;
   const spread = ((opts.spread ?? 110) * Math.PI) / 180;
   const power = opts.power ?? 1;
-  const kinds: Kind[] = ['scrap', 'scrap', 'scrap', 'squiggle', 'star', 'dot'];
+  const kinds: Kind[] = ['star', 'star', 'star', 'dot', 'dot', 'scrap'];
   for (let i = 0; i < count; i++) {
     const a = -Math.PI / 2 + (Math.random() - 0.5) * spread;
     const v = slow ? 1 + Math.random() * 2 : (7 + Math.random() * 9) * power;

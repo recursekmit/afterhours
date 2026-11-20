@@ -1,81 +1,103 @@
 /*
-  After Hours design tokens: "zine at dusk".
+  After Hours design tokens: "engraved tickets".
+  Antique gold and cream line work on deep, slightly grained grounds, like the four ticket designs in
+  design/tickets (armillary maroon, wave navy, ginkgo forest, ruins plum).
   The ONLY place colours, fonts, shadows, radii and motion values are defined.
   Feature CSS uses var(--…) from here and the UI kit; never raw hex.
+
+  Names kept from the first theme so every feature follows: "paper" is now the GROUND (dark), "ink" is the
+  ENGRAVING (gold), and the six accent names are deep ticket tints that all carry gold text at AA or better.
 */
 :root {
-  /* ---- paper + ink ---------------------------------------------------- */
-  --paper: #f6e7c8;          /* photocopy cream */
-  --paper-2: #ecd6a6;        /* kraft, for backing sheets and torn edges */
-  --paper-3: #fff8e8;        /* fresh sheet, inputs, sticker die-cut border */
-  --ink: #1d1630;            /* dusk ink: all lines, all body text */
-  --ink-soft: #4a4060;       /* secondary text on paper (7.9:1 on --paper) */
+  /* ---- the four tickets (sampled from the art) --------------------------- */
+  --ticket-armillary: #28051b;
+  --ticket-wave: #131d37;
+  --ticket-ginkgo: #101513;
+  --ticket-ruins: #27132d;
 
-  /* ---- loud blocks (flat, never gradients) ---------------------------- */
-  --tangerine: #ff6a1f;
-  --lime: #c4f03c;
-  --pink: #ff4fa0;
-  --grape: #6b3fe0;
-  --sky: #38b6f2;
-  --sun: #ffd23f;
+  /* ---- ground + engraving (base palette: wave navy) ----------------------- */
+  --paper: #121a33;          /* the ground: page background */
+  --paper-2: #0b1124;        /* deeper ground: backing sheets, wells */
+  --paper-3: #1a2547;        /* raised ground: cards, inputs */
+  --ink: #e3c48a;            /* antique gold: lines, display type, body text (9.9:1 on the ground) */
+  --ink-soft: #c9b48a;       /* muted gold for secondary text (8.2:1 on the ground) */
+  --gold: #e3c48a;
+  --gold-bright: #f5dfac;    /* highlights, focus, the lit lantern */
+  --cream: #f3e8cc;          /* engraved cream line work, the ticket margins */
+  --on-gold: #141b30;        /* text on a gold fill */
+  --rule: rgb(227 196 138 / 0.5);   /* hairline rules */
+  --rule-soft: rgb(227 196 138 / 0.22);
 
-  /* text that sits on each block (all ≥ 4.5:1) */
+  /* ---- accents: deep ticket tints (gold text on every one is AA+) -------- */
+  --tangerine: #4c1a2e;      /* armillary maroon, lit */
+  --lime: #1f3a2c;           /* ginkgo forest, lit */
+  --pink: #5a2140;           /* rose wine */
+  --grape: #3a1f4f;          /* ruins plum, lit */
+  --sky: #213762;            /* wave navy, lit */
+  --sun: #4a3714;            /* bronze */
+
   --on-tangerine: var(--ink);
   --on-lime: var(--ink);
   --on-pink: var(--ink);
-  --on-grape: var(--paper-3);
+  --on-grape: var(--ink);
   --on-sky: var(--ink);
   --on-sun: var(--ink);
-  --on-ink: var(--paper);
+  --on-ink: var(--on-gold);
 
   /* status, expressed in the same palette */
   --good: var(--lime);
   --bad: var(--pink);
   --warn: var(--sun);
 
-  /* ---- dusk (projector + dark surfaces) -------------------------------- */
-  --dusk: #221a3a;
-  --dusk-2: #30264f;
-  --dusk-line: #f6e7c8;
+  /* ---- dusk (projector): the ruins plum, deepest -------------------------- */
+  --dusk: #170c1c;
+  --dusk-2: #26142e;
+  --dusk-line: var(--gold);
 
-  /* ---- type ------------------------------------------------------------ */
-  --font-display: 'Bowlby One', 'Arial Black', Impact, sans-serif;
-  --font-body: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
-  --font-hand: 'Shantell Sans', 'Comic Neue', 'Segoe Print', cursive;
+  /* ---- type ---------------------------------------------------------------- */
+  --font-display: 'Cinzel', 'Trajan Pro', 'Times New Roman', serif;
+  --font-body: 'EB Garamond', Garamond, Georgia, serif;
+  --font-hand: 'IM Fell English', 'EB Garamond', Georgia, serif;
 
-  /* modular scale, 1.25 from 16px */
-  --step--1: 0.8125rem;  /* 13 */
-  --step-0: 1rem;        /* 16 body */
-  --step-1: 1.25rem;     /* 20 */
-  --step-2: 1.5625rem;   /* 25 */
-  --step-3: 1.953rem;    /* 31 */
-  --step-4: 2.441rem;    /* 39 */
-  --step-5: 3.052rem;    /* 49 */
-  --step-6: 3.815rem;    /* 61 */
-  --step-7: 4.768rem;    /* 76 */
+  /* modular scale, 1.25 from 16px (the root runs at 17px for the old-style body) */
+  --step--1: 0.8125rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5625rem;
+  --step-3: 1.953rem;
+  --step-4: 2.441rem;
+  --step-5: 3.052rem;
+  --step-6: 3.815rem;
+  --step-7: 4.768rem;
 
-  /* ---- lines, shadows, radii ------------------------------------------ */
-  --line: 3px;
-  --line-thin: 2px;
-  --line-fat: 4px;
+  /* ---- rules, depth, corners ----------------------------------------------- */
+  --line: 1.5px;
+  --line-thin: 1px;
+  --line-fat: 2px;
   --outline: var(--line) solid var(--ink);
-  --shadow-sm: 2px 3px 0 var(--ink);
-  --shadow: 4px 5px 0 var(--ink);
-  --shadow-lg: 7px 8px 0 var(--ink);
-  --shadow-pressed: 1px 1px 0 var(--ink);
-  /* hand-cut corners: deliberately uneven */
-  --cut-1: 14px 20px 12px 18px / 18px 12px 20px 14px;
-  --cut-2: 22px 10px 18px 12px / 12px 20px 10px 22px;
-  --cut-3: 8px 16px 10px 14px / 14px 8px 16px 10px;
-  --cut-round: 48% 52% 50% 50% / 52% 48% 52% 48%;
+  /* the ticket's double rule: a ground-coloured gap, then a hairline, then soft depth */
+  --shadow-sm: 0 0 0 3px var(--paper), 0 0 0 4px var(--rule-soft), 0 4px 10px rgb(0 0 0 / 0.35);
+  --shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--rule), 0 10px 24px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 0 0 5px var(--paper), 0 0 0 6px var(--rule), 0 18px 40px rgb(0 0 0 / 0.55);
+  --shadow-pressed: 0 0 0 2px var(--paper), 0 0 0 3px var(--rule-soft);
+  --glow: 0 0 18px rgb(245 223 172 / 0.35);
+  /* display type on the ground: a cut-in shadow and a faint gold bloom */
+  --engrave: 0 1px 0 rgb(0 0 0 / 0.55), 0 0 16px rgb(227 196 138 / 0.16);
+  /* engraved corners: crisp, nearly square (cards also get notches from the kit) */
+  --cut-1: 4px;
+  --cut-2: 3px;
+  --cut-3: 2px;
+  --cut-round: 50%;
+  /* corner notch size for chamfered cards and buttons */
+  --notch: 10px;
 
-  /* ---- tilt ----------------------------------------------------------- */
-  --tilt-l: -2.2deg;
-  --tilt-r: 1.8deg;
-  --tilt-l-2: -4deg;
-  --tilt-r-2: 3.5deg;
+  /* ---- tilt: the engraved style sits straight ------------------------------- */
+  --tilt-l: 0deg;
+  --tilt-r: 0deg;
+  --tilt-l-2: 0deg;
+  --tilt-r-2: 0deg;
 
-  /* ---- space ---------------------------------------------------------- */
+  /* ---- space ---------------------------------------------------------------- */
   --s-1: 4px;
   --s-2: 8px;
   --s-3: 12px;
@@ -89,32 +111,75 @@
   --page-max: 520px;         /* attendee column */
   --nav-h: 76px;
 
-  /* ---- texture -------------------------------------------------------- */
-  --halftone: radial-gradient(circle at center, rgb(29 22 48 / 0.2) 1.1px, transparent 1.6px) 0 0 / 7px 7px;
-  --halftone-light: radial-gradient(circle at center, rgb(255 248 232 / 0.35) 1.1px, transparent 1.6px) 0 0 / 7px 7px;
+  /* ---- texture: star dust and paper grain --------------------------------- */
+  --halftone: radial-gradient(circle at center, rgb(227 196 138 / 0.09) 0.7px, transparent 1.2px) 0 0 / 11px 11px;
+  --halftone-light: radial-gradient(circle at center, rgb(243 232 204 / 0.12) 0.7px, transparent 1.2px) 0 0 / 11px 11px;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .89 0 0 0 0 .77 0 0 0 0 .54 0 0 0 1.1 -.78'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
 
-  /* ---- motion --------------------------------------------------------- */
+  /* ---- motion ------------------------------------------------------------- */
   --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 120ms;
   --dur: 220ms;
   --dur-slow: 420ms;
 
-  /* ---- layers --------------------------------------------------------- */
+  /* ---- layers --------------------------------------------------------------- */
   --z-nav: 20;
   --z-overlay: 40;
   --z-sheet: 50;
   --z-toast: 70;
   --z-celebrate: 80;
   --z-confetti: 90;
+
+  --page-bg: var(--paper);
+  --text: var(--ink);
+  --text-soft: var(--ink-soft);
+}
+
+/*
+  The four tickets as palettes. Each feature area has a home ticket (the attendee shell and the
+  projector scenes set data-palette): morse + slips = armillary, hunt + trails = wave,
+  polls + schedule + check-in = ginkgo, arcade + drops + recap = ruins.
+*/
+[data-palette='armillary'] {
+  --paper: #22071a;
+  --paper-2: #150410;
+  --paper-3: #34102a;
+}
+[data-palette='wave'] {
+  --paper: #121a33;
+  --paper-2: #0b1124;
+  --paper-3: #1a2547;
+}
+[data-palette='ginkgo'] {
+  --paper: #0f1512;
+  --paper-2: #080c0a;
+  --paper-3: #18221d;
+  --ink: #e6dcbc;
+  --ink-soft: #c7bd9c;
+}
+[data-palette='ruins'] {
+  --paper: #231129;
+  --paper-2: #160a1a;
+  --paper-3: #331b3b;
+}
+
+/* Depth tokens re-resolve inside a palette, so the double rule's gap matches that ground. */
+[data-palette] {
+  --shadow-sm: 0 0 0 3px var(--paper), 0 0 0 4px var(--rule-soft), 0 4px 10px rgb(0 0 0 / 0.35);
+  --shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--rule), 0 10px 24px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 0 0 5px var(--paper), 0 0 0 6px var(--rule), 0 18px 40px rgb(0 0 0 / 0.55);
+  --shadow-pressed: 0 0 0 2px var(--paper), 0 0 0 3px var(--rule-soft);
+  --page-bg: var(--paper);
+  --text: var(--ink);
+  --text-soft: var(--ink-soft);
 }
 
 /* Projector / dark surfaces opt in with data-surface="dusk". */
 [data-surface='dusk'] {
   --page-bg: var(--dusk);
-  --text: var(--paper);
-  --text-soft: #d9cdb2;
-  --halftone: radial-gradient(circle at center, rgb(246 231 200 / 0.12) 1.1px, transparent 1.6px) 0 0 / 9px 9px;
+  --text: var(--ink);
+  --text-soft: var(--ink-soft);
 }
 
 @media (prefers-reduced-motion: reduce) {

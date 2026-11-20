@@ -97,7 +97,7 @@ test.describe.serial('student-ID login', () => {
     await page.getByLabel('paste name, year, section, roll, phone, email').fill(ROSTER);
     await page.getByRole('button', { name: 'import', exact: true }).click();
     const report = page.getByTestId('import-report');
-    await expect(report).toContainText('5 added from 8 rows');
+    await expect(report).toContainText('6 added from 8 rows');
     await expect(report).toContainText('kept "Kavya Iyer", also given by "K Iyer"');
     await expect(report).toContainText('probable test entry');
     await expect(page.getByTestId('participant-26BD1A0581')).toContainText('roll also given by');

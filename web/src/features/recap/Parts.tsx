@@ -116,7 +116,7 @@ export default function RecapScene() {
           <span className={s.rareKicker}>rarest sticker of the day</span>
           <Sticker def={room.rarest.sticker} size={150} tilt={-8} slap />
           <span className={s.rareTitle}>{room.rarest.sticker.title}</span>
-          <span className={s.rarePct}>only {room.rarest.pct}% have it</span>
+          <span className={s.rarePct}>{room.rarest.pct <= 25 ? `only ${room.rarest.pct}% have it` : `${room.rarest.pct}% of the room have it`}</span>
           <ul className={s.holders}>
             {room.rarest.holders.slice(0, 5).map((h) => (
               <li key={h.nickname} className={s.holder}>

@@ -1,6 +1,7 @@
 // Recap end to end: locked until the console opens it, then the story (count-ups, tap through), the
 // personality card with a non-empty 1080x1920 share canvas and a download fallback, the console preview,
 // the projector's room recap and the upgraded sticker book. Screenshots go to docs/screens/recap-*.png.
+import { writeFileSync } from 'node:fs';
 import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
 
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
@@ -136,11 +137,7 @@ test.describe.serial('recap', () => {
     await stick(phone); // "show-off": shared it
     // the share image itself, for the docs
     const png = await story.getByTestId('recap-share-canvas').evaluate((el) => (el as HTMLCanvasElement).toDataURL('image/png'));
-    const img = await phone.context().newPage();
-    await img.setViewportSize({ width: 540, height: 960 });
-    await img.setContent(`<body style="margin:0"><img src="${png}" style="width:540px;height:960px;display:block"></body>`);
-    await img.screenshot({ path: `${SHOT}/recap-share-image.png` });
-    await img.close();
+    writeFileSync(`${SHOT}/recap-share-image.png`, Buffer.from(png.replace(/^data:image\/png;base64,/, ''), 'base64'));
 
     // console preview of the same person
     await con.getByLabel('find by kit or nickname').fill('rewinder1');

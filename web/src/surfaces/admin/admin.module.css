@@ -73,3 +73,9 @@
   .twoCol, .stats { grid-template-columns: 1fr; }
   .tableHead { grid-template-columns: 1fr; }
 }
+
+/* Printing from the console (QR stickers, Morse cards): only the sheet goes to paper. */
+@media print {
+  .shell { display: block; min-height: 0; }
+  .side { display: none !important; }
+}

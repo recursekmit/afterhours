@@ -9,6 +9,7 @@ import { hunt } from './hunt';
 import { leaderboard } from './leaderboard';
 import { morse } from './morse';
 import { polls } from './polls';
+import { quick } from './quick';
 import { reactions } from './reactions';
 import { recap } from './recap';
 import { schedule } from './schedule';
@@ -23,6 +24,7 @@ export const features: ServerFeature[] = [
   leaderboard,
   morse,
   polls,
+  quick,
   reactions,
   recap,
   schedule,

@@ -10,6 +10,7 @@
 */
 import {
   type DeskLookupResponse,
+  KMIT_ROLL_RE,
   type ImportReport,
   type ParticipantInput,
   type ParticipantListResponse,
@@ -412,7 +413,8 @@ export function importParticipants(ctx: AppContext, text: string): ImportReport 
  */
 export function deskLookup(ctx: AppContext, q: string): DeskLookupResponse {
   const everyone = listParticipants(ctx).participants;
-  const qr = parseIdQr(q);
+  // A bare roll is a roll, not a card: it goes to the roll lookup (and can prefill a walk-in).
+  const qr = KMIT_ROLL_RE.test(normaliseRoll(q)) ? null : parseIdQr(q);
   if (qr) {
     const res = resolveIdQr(qr, everyone);
     const suffix = rollKey(qr.suffix);

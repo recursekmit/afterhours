@@ -12,9 +12,10 @@ export interface Viewer {
   attendeeId: number | null;
   admin: boolean;
   screen: boolean;
+  gate?: boolean;
 }
 
-export const anonymousViewer: Viewer = { attendeeId: null, admin: false, screen: false };
+export const anonymousViewer: Viewer = { attendeeId: null, admin: false, screen: false, gate: false };
 
 export interface LiveClient {
   viewer: Viewer;
@@ -35,6 +36,7 @@ export function matchesAudience(audiences: Audience[], v: Viewer): boolean {
     if (a === 'attendees' && v.attendeeId !== null) return true;
     if (a === 'admins' && v.admin) return true;
     if (a === 'screens' && (v.screen || v.admin)) return true;
+    if (a === 'gates' && (v.gate || v.admin)) return true;
     if (typeof a === 'object' && v.attendeeId !== null && a.attendeeId === v.attendeeId) return true;
   }
   return false;

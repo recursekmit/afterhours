@@ -3,13 +3,14 @@ import type { AppContext } from '../context';
 import { one, run } from '../db';
 import { newToken, sha256 } from './crypto';
 
-export type SessionKind = 'attendee' | 'admin' | 'screen';
+export type SessionKind = 'attendee' | 'admin' | 'screen' | 'gate';
 
 /** Separate cookies so a laptop can hold a console and an attendee session at once. */
 export const COOKIES = {
   attendee: 'ah_sid',
   admin: 'ah_admin',
   screen: 'ah_screen',
+  gate: 'ah_gate',
   /** Long-lived random id of this browser; its hash is what a kit binds to. */
   device: 'ah_dev',
 } as const;

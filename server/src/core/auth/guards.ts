@@ -63,10 +63,20 @@ export function requireScreen(req: FastifyRequest): void {
   if (!isScreen(req)) throw unauthorized('Projector PIN needed.');
 }
 
+/** Door / gate coordinator routes. An admin session also passes. */
+export function isGate(req: FastifyRequest): boolean {
+  return findSession(req.server.ctx, 'gate', req.cookies[COOKIES.gate]) !== null || isAdmin(req);
+}
+
+export function requireGate(req: FastifyRequest): void {
+  if (!isGate(req)) throw unauthorized('Gate PIN needed.');
+}
+
 /** Who this request is, for live-event audience matching. */
 export function viewerOf(req: FastifyRequest): Viewer {
   const a = getAttendee(req);
   const admin = isAdmin(req);
   const screen = findSession(req.server.ctx, 'screen', req.cookies[COOKIES.screen]) !== null;
-  return { attendeeId: a?.attendeeId ?? null, admin, screen };
+  const gate = findSession(req.server.ctx, 'gate', req.cookies[COOKIES.gate]) !== null;
+  return { attendeeId: a?.attendeeId ?? null, admin, screen, gate };
 }

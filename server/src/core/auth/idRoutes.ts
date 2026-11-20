@@ -23,6 +23,11 @@
 import {
   DeskLookupRequestSchema,
   type DeskLookupResponse,
+  type GateEnterResponse,
+  GateLookupRequestSchema,
+  type GateLookupResponse,
+  type GateStats,
+  type GateUndoResponse,
   IdResolveRequestSchema,
   type IdResolveResponse,
   IdSignInRequestSchema,
@@ -48,19 +53,23 @@ import { HttpError } from '../errors';
 import { RateLimiter } from '../ratelimit';
 import { parse } from '../validate';
 import { safeEqual, sha256 } from './crypto';
-import { requireAdmin } from './guards';
+import { requireAdmin, requireGate } from './guards';
 import {
   type RosterEntry,
   addParticipant,
   deskLookup,
   findByRoll,
+  gateLookup,
+  gateStats,
   getIdLoginSettings,
   importParticipants,
   listParticipants,
+  markGateEntered,
   removeParticipant,
   roster,
   setIdLoginSettings,
   unbindParticipant,
+  undoGateEntered,
   updateParticipant,
 } from './participants';
 import { COOKIES } from './sessions';
@@ -257,5 +266,27 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
   app.post('/api/admin/desk/lookup', async (req): Promise<DeskLookupResponse> => {
     requireAdmin(req);
     return deskLookup(ctx, parse(DeskLookupRequestSchema, req.body).q);
+  });
+
+  /* --------------------------------------------------------------- gate */
+
+  app.get('/api/gate/stats', async (req): Promise<GateStats> => {
+    requireGate(req);
+    return gateStats(ctx);
+  });
+
+  app.post('/api/gate/lookup', async (req): Promise<GateLookupResponse> => {
+    requireGate(req);
+    return gateLookup(ctx, parse(GateLookupRequestSchema, req.body).q);
+  });
+
+  app.post<{ Params: { id: string } }>('/api/gate/participants/:id/enter', async (req): Promise<GateEnterResponse> => {
+    requireGate(req);
+    return markGateEntered(ctx, parse(IdParam, req.params.id));
+  });
+
+  app.post<{ Params: { id: string } }>('/api/gate/participants/:id/undo', async (req): Promise<GateUndoResponse> => {
+    requireGate(req);
+    return undoGateEntered(ctx, parse(IdParam, req.params.id));
   });
 }

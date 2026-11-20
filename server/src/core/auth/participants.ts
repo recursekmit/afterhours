@@ -294,7 +294,7 @@ export function parseParticipantCsv(text: string): { rows: ParsedParticipant[]; 
   const skipped: { line: number; reason: string }[] = [];
   let columns: (Field | null)[] = DEFAULT_COLUMNS;
   let first = true;
-  const lines = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n');
+  const lines = (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text).replace(/\r\n?/g, '\n').split('\n');
   for (const [i, raw] of lines.entries()) {
     const line = raw.trim();
     if (!line) continue;

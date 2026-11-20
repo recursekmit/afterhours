@@ -50,7 +50,7 @@ The scanner runs entirely on the phone (camera frames into a canvas, no upload).
 - An orientation with no reading set gives a friendly "nothing there, try turning it" response.
 - Unknown sequences get the same friendly response, and never reveal what the valid readings are.
 - Trails can be linear (as today) or a **graph**: a stop's outcomes can point to different next stops, so different orientations send people down different paths.
-- Slips can be **shared** (the same slips in every kit) or **per-kit** (each kit's slip words come from a pool, and the server knows which words belong to which kit).
+- Slips can be **shared** (the same slips in every kit), **per-kit** (each kit's slip words come from a pool, and the server knows which words belong to which kit) or **unique** (below: every printed copy has its own words and belongs to whoever scans it first).
 - Readings are matched on the normalised Morse sequence (exact), and also on the decoded text for typed fallbacks.
 - Scoring, cooldowns and "pays once" rules follow the existing trail rules.
 
@@ -68,3 +68,25 @@ Kit slips print as one of the four engraved after hours tickets (the owner's art
 - **Camera:** the scanner asks for 1920 x 1080 (was 1280 x 720), so a whole 176 mm ticket in a portrait frame still gets 4-5 px/mm.
 - **Proof:** `web/src/lib/slips/scanner/tickets.test.ts` reads the real renderer's print of each design (`fixtures/ticket-*.png`) through the synthetic camera: 4 designs x 4 turns x 12 conditions (tilt, perspective, blur, motion, noise, dim, low contrast, gradient and shadow, dark table, everything at once). Result on 20 Nov: **372 / 384 correct (96.9 %), 0 wrong**, misses only under strong perspective (no frame found, never a wrong word); the 45 degree zone gave **0 readings in 32 frames**. The fake-camera e2e (`e2e/trails-camera.spec.ts`) scans the armillary kit ticket.
 - Choose the design in the console (trails, slips, "print slips as") or on `/dev/slips` (`?size=ticket&ticket=wave&square=qr`).
+
+## Unique slips (default for kit slips)
+
+Every student decodes different Morse. A unique set prints **N copies** of every slip (default 80, `UNIQUE_SLIP_COPIES`), and every copy carries **its own word on every edge**. What each orientation *does* (next, branch, clue, bonus, decoy and their targets) is still defined once per slip, so the trail is the same for everyone. Kits are packed first come, first served and registered students sign in with their student ID, so a copy is not tied to a kit or a person in advance: **the first person whose reading matches a copy claims it.**
+
+- **Data** (`server/src/features/hunt/migrations/004_unique_slips.sql`): `hunt_slip_sets.mode = 'unique'` and `copies`; `hunt_slip_copies` (slip, serial 1..N, `claimed_by`, `claimed_at`; unique index on (slip, claimed_by)); `hunt_slip_copy_words` (copy, reading, word, Morse key; the key is unique across every unique copy). Readings with no word are generated per copy; an `extra` with no sequence is that copy's top strip read upside down.
+- **Words** (`server/src/features/hunt/slipwords.ts`), for every word handed out:
+  1. unique across every copy and edge (and every other unique set);
+  2. at least two symbol edits from every other word on copies of the same slip, so a misread lands on "nothing there", never on someone else's copy;
+  3. never the upside-down reversal of a word in use, never its own reversal (top-strip decoys stay unambiguous);
+  4. fits its edge on the 176 x 80 ticket with dots of at least 1.6 mm (short edges: 34 units, about 3 letters; long edges: 45 units, about 4) and on the plain 85 x 55 card (`edgeCapacity`);
+  5. not on the polls profanity list (read only) or the slip blocklist, nor is the text its upside-down strip spells.
+  Order of preference: real short tech words (BIT, GPU, NODE, CACHE...), pronounceable codes (CVC on short edges, CVCV on long ones), then letter+digit codes.
+- **Claiming** (`unique.ts`, `submitSlip`): a reading at a slip stop is looked up across every copy of that slip. Unclaimed: claimed atomically (one conditional UPDATE, backed by the unique index), then the outcome applies. Claimed by you: works. Claimed by someone else: `outcome: 'taken'`, "this slip belongs to someone else. scan your own.", nothing happens. You already hold another copy of this slip: `taken`, "yours is no. 037". Unknown: the usual "nothing there". Refusals count against the same scan rate limit as misses. Slips 1, 2, 3 are claimed independently. A trail reset frees every copy.
+- **Printing**: copies in serial order, slips 1..n of one serial together, 3 tickets per A4, crop marks; the plaque reads "no. 037, slip 2". For 80 kits of the 3-slip trail that is 80 pages (240 tickets); the 1-slip hunt set is 27 pages. A serial range can be printed on its own.
+- **Console** (trail, "slips"): "copies" opens the copies table (serial; per slip: claimed by, at, **release**), the copy count (grow any time, shrink only past unclaimed serials, "new words for all" only while nothing is claimed), a warning when fewer copies than people signed in, "print set" / a serial range, and the private **answer key CSV** (serial -> words). A shared set nobody has scanned yet has "switch to unique copies".
+- **API**: `GET|POST /api/hunt/admin/slip-sets/:id/copies` (`{ copies, regenerate? }`), `PUT /api/hunt/admin/slip-sets/:id/mode` (`{ mode: 'unique', copies }`), `POST /api/hunt/admin/slip-copies/:id/release`, `GET /api/hunt/admin/slip-sets/:id/answer-key.csv`. `slip-print` items carry `serial`; `HuntSlipResult` carries `serial`; the current stop's `slip` says `unique` and your `serial`.
+- **Proof**: `server/src/features/hunt/unique.test.ts` (generator at 80 and 120 copies, claiming, the race, release, every orientation, typed vs scanned, migration); `web/src/lib/slips/scanner/unique.test.ts` reads 12 generated copies as tickets under 8 hall conditions: 383 / 384 correct, 0 wrong, nothing in the 45 degree zone; `e2e/unique-slips.spec.ts` scans two printed copies on two phones with the fake camera.
+
+## Physical Morse cards: K of M stops
+
+Cards stuck on venue objects cannot differ per student. A shuffled or fixed trail can instead give each player **K of its M stops before the finale** (console, trail settings, "each player gets"; `subsetK`, off by default). The K are picked per attendee from the trail's seed (the same hash as the shuffled order), so neighbours walk different objects; everyone ends at the shared finale.

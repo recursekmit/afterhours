@@ -4,6 +4,7 @@ import type { WebFeature } from '../core/feature';
 import { alerts } from './alerts';
 import { arcade } from './arcade';
 import { attendance } from './attendance';
+import { drops } from './drops';
 import { hunt } from './hunt';
 import { leaderboard } from './leaderboard';
 import { morse } from './morse';
@@ -16,6 +17,7 @@ export const features: WebFeature[] = [
   alerts,
   arcade,
   attendance,
+  drops,
   hunt,
   leaderboard,
   morse,

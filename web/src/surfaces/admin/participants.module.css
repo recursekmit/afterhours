@@ -1,0 +1,43 @@
+/* Participants panel and desk mode. Tokens only. */
+.subhead { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-1); margin-bottom: var(--s-1); }
+.list { display: grid; gap: 2px; padding-left: var(--s-5); font-size: var(--step-0); }
+.formGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--s-3); }
+.actions { display: inline-flex; gap: var(--s-2); justify-content: flex-end; flex-wrap: wrap; }
+.tag, .noteTag {
+  display: inline-block;
+  margin-left: var(--s-2);
+  padding: 0 8px;
+  border: var(--line-thin) solid var(--ink);
+  border-radius: var(--cut-3);
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: var(--step--1);
+}
+.tag { background: var(--sky); }
+.noteTag { background: var(--sun); max-width: 360px; white-space: normal; }
+.unbound { font-weight: 600; color: var(--ink-soft); }
+
+/* desk */
+.desk { display: grid; grid-template-columns: minmax(300px, 420px) 1fr; gap: var(--s-6); align-items: start; }
+.lookupRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-3); align-items: end; }
+.person { display: grid; gap: var(--s-3); }
+.personHead { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.personName { font-size: var(--step-3); }
+.personRoll { font-family: var(--font-display); font-size: var(--step-1); letter-spacing: 0.05em; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px var(--s-4); font-size: var(--step-0); }
+.facts dt { font-family: var(--font-hand); font-weight: 800; }
+.verdict {
+  justify-self: start;
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  padding: var(--s-2) var(--s-4);
+  border: var(--outline);
+  border-radius: var(--cut-2);
+  box-shadow: var(--shadow-sm);
+  transform: rotate(-1deg);
+}
+.vIn { background: var(--lime); }
+.vWaiting { background: var(--sky); }
+.vNo { background: var(--pink); }
+.pick { outline: var(--line-fat) solid var(--grape); outline-offset: 3px; }
+@media (max-width: 900px) { .desk { grid-template-columns: 1fr; } }

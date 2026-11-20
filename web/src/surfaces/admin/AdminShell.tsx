@@ -1,6 +1,6 @@
 /*
   Console shell: index-tab side nav built from the feature registry (plus the
-  two core panels, Kits and Projector), and a routed content area.
+  core panels: participants, desk, kits and projector), and a routed content area.
 */
 import { Suspense } from 'react';
 import { Navigate, NavLink, Route, Routes } from 'react-router';
@@ -9,7 +9,9 @@ import { useStaffSignOut } from '../../core/queries';
 import { Button, Doodle, EmptyState, type IconName, LoadingState, RecurseLogo, type Tone } from '../../kit';
 import { Wordmark } from '../shared/Wordmark';
 import s from './admin.module.css';
+import { DeskPanel } from './DeskPanel';
 import { KitsPanel } from './KitsPanel';
+import { ParticipantsPanel } from './ParticipantsPanel';
 import { ProjectorPanel } from './ProjectorPanel';
 
 interface NavEntry {
@@ -19,6 +21,8 @@ interface NavEntry {
 }
 
 const CORE: NavEntry[] = [
+  { path: 'participants', label: 'participants', icon: 'users' },
+  { path: 'desk', label: 'desk', icon: 'qr' },
   { path: 'kits', label: 'kits', icon: 'ticket' },
   { path: 'projector', label: 'projector', icon: 'screen' },
 ];
@@ -50,6 +54,8 @@ export function AdminShell() {
       <main className={s.content}>
         <Routes>
           <Route index element={<Navigate to="kits" replace />} />
+          <Route path="participants" element={<ParticipantsPanel />} />
+          <Route path="desk" element={<DeskPanel />} />
           <Route path="kits" element={<KitsPanel />} />
           <Route path="projector" element={<ProjectorPanel />} />
           {consolePanels.map((p) => (

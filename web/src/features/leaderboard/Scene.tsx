@@ -69,9 +69,9 @@ export default function LeaderboardScene() {
             <motion.div
               key="champ"
               className={s.champ}
-              initial={reduce ? { opacity: 0 } : { scale: 0.2, rotate: -20, opacity: 0 }}
-              animate={{ scale: 1, rotate: -2, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 220, damping: 12, delay: 0.25 }}
+              initial={reduce ? { opacity: 0 } : { scaleY: 0.04, opacity: 0 }}
+              animate={{ scaleY: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 160, damping: 24, delay: 0.25 }}
             >
               <motion.span
                 className={s.champCrown}
@@ -79,10 +79,10 @@ export default function LeaderboardScene() {
                 animate={{ y: 0, rotate: -8, opacity: 1 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 11, delay: 0.7 }}
               >
-                <Doodle name="crown" size={190} fill="var(--sun)" />
+                <Doodle name="crown" size={150} fill="var(--gold)" stroke="var(--brass-dark)" />
               </motion.span>
               <div className={s.champAvatar}>
-                <Avatar config={first.avatar} size={300} />
+                <Avatar config={first.avatar} size={220} />
               </div>
               <p className={s.champLabel}>your champion</p>
               <h2 className={s.champName}>{first.nickname}</h2>
@@ -126,7 +126,7 @@ export default function LeaderboardScene() {
               animate={{ rotateX: 0, scale: 1, opacity: 1 }}
               transition={{ type: 'spring', stiffness: 220, damping: 14, layout: { type: 'spring', stiffness: 260, damping: 24 } }}
             >
-              {r.rank === 1 && reveal?.startedAt && <Doodle name="crown" size={64} fill="var(--sun)" className={s.crown} />}
+              {r.rank === 1 && reveal?.startedAt && <Doodle name="crown" size={64} fill="var(--gold)" className={s.crown} />}
               <span>#{r.rank}</span>
               <Avatar config={r.avatar} size={44} />
               <span className={s.sceneNick}>{r.nickname}</span>

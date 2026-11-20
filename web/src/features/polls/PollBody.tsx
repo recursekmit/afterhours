@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, isApiError } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { confetti, haptics, sfx } from '../../fun';
-import { Button, Doodle, Meter, NumberTicker, type Tone, useToast } from '../../kit';
+import { Button, Doodle, Hourglass, Meter, NumberTicker, type Tone, useToast } from '../../kit';
 import { Stamp, ui } from '../common/ui';
 import { MarkerSlider } from './MarkerSlider';
 import s from './polls.module.css';
@@ -66,7 +66,7 @@ function ChoiceVote({ poll }: { poll: PublicPollOf<'single'> | PublicPollOf<'qui
             type="button"
             className={`${s.option} ${s[`tone-${TONES[i % TONES.length]}`]}`}
             initial={reduce ? false : { opacity: 0, x: i % 2 ? 60 : -60, rotate: i % 2 ? 6 : -6 }}
-            animate={{ opacity: other ? 0.45 : 1, x: 0, rotate: mine ? 0 : i % 2 ? 1 : -1, scale: mine ? 1.05 : other ? 0.96 : 1 }}
+            animate={{ opacity: other ? 0.45 : 1, x: 0, rotate: 0, scale: mine ? 1.05 : other ? 0.96 : 1 }}
             transition={{ type: 'spring', stiffness: 420, damping: 20, delay: picked === null && !reduce ? i * 0.06 : 0 }}
             whileTap={reduce ? { scale: 0.96 } : { scale: 0.9, scaleY: 0.84, rotate: i % 2 ? 3.5 : -3.5 }}
             disabled={vote.isPending || picked !== null}
@@ -102,7 +102,7 @@ function MultiVote({ poll }: { poll: PublicPollOf<'multi'> }) {
             type="button"
             aria-pressed={picked.includes(i)}
             className={`${s.option} ${picked.includes(i) ? s[`tone-${TONES[i % TONES.length]}`] : s.optionOff}`}
-            animate={{ rotate: picked.includes(i) ? (i % 2 ? 1.8 : -1.8) : 0, scale: picked.includes(i) ? 1.03 : 1 }}
+            animate={{ rotate: 0, scale: picked.includes(i) ? 1.03 : 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 16 }}
             whileTap={{ scale: 0.9, scaleY: 0.84, rotate: i % 2 ? 3.5 : -3.5 }}
             onClick={() => toggle(i)}
@@ -295,7 +295,7 @@ function QuizVote({ poll }: { poll: PublicPollOf<'quiz'> }) {
   );
 }
 
-/** The timer drains in a straight line, locked to the server's deadlineAt (through the clock offset). */
+/** The enchanted exam's sand glass: an hourglass and a draining line, locked to the server's deadlineAt (through the clock offset). */
 function QuizTimer({ poll, now }: { poll: PublicPollOf<'quiz'>; now: number }) {
   const end = poll.deadlineAt ?? now;
   const left = Math.max(0, end - now);
@@ -312,6 +312,7 @@ function QuizTimer({ poll, now }: { poll: PublicPollOf<'quiz'>; now: number }) {
   }, [sec]);
   return (
     <div className={`${s.timer} ${hot ? s.timerHot : ''}`}>
+      <Hourglass frac={frac} size={46} />
       <div className={s.drainTrack} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(frac * 100)} aria-label="time left">
         <div className={`${s.drainFill} ${hot ? s.drainHot : ''}`} style={{ width: `${frac * 100}%` }} />
       </div>

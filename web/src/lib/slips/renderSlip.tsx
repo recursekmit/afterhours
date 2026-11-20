@@ -36,8 +36,8 @@ function PlainSlipArt({ layout: L, cutLine = false }: { layout: SlipLayout; cutL
   const cx = dd.x + dd.w / 2;
   const cy = dd.y + dd.h * 0.4;
   const R = dd.w * 0.25;
-  const hand = "'Shantell Sans', 'Comic Neue', cursive";
-  const display = "'Bowlby One', 'Arial Black', Impact, sans-serif";
+  const hand = "'IM Fell English', 'EB Garamond', Georgia, serif";
+  const display = "'Cinzel', 'Trajan Pro', 'Times New Roman', serif";
   return (
     <g>
       <rect x={0} y={0} width={L.widthMm} height={L.heightMm} fill={PAPER} />

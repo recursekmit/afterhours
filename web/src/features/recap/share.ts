@@ -5,7 +5,7 @@
   Colours and fonts come from the live design tokens, so it always matches the app.
 */
 import { PERSONALITIES, type Recap } from '@afterhours/shared/features/recap';
-import logoBlack from '../../assets/brand/recurse-logo-black.png';
+import logoWhite from '../../assets/brand/recurse-logo-white.png';
 
 export const SHARE_W = 1080;
 export const SHARE_H = 1920;
@@ -56,55 +56,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Uneven "hand cut" rounded rectangle, like the cards. */
-function cutRect(c: Ctx, x: number, y: number, w: number, h: number, r: [number, number, number, number]) {
-  const [a, b, d, e] = r;
-  c.beginPath();
-  c.moveTo(x + a, y);
-  c.lineTo(x + w - b, y);
-  c.quadraticCurveTo(x + w, y, x + w, y + b);
-  c.lineTo(x + w, y + h - d);
-  c.quadraticCurveTo(x + w, y + h, x + w - d, y + h);
-  c.lineTo(x + e, y + h);
-  c.quadraticCurveTo(x, y + h, x, y + h - e);
-  c.lineTo(x, y + a);
-  c.quadraticCurveTo(x, y, x + a, y);
-  c.closePath();
-}
-
-/** Ink outline + hard offset shadow, the zine card look. */
-function block(c: Ctx, tk: Tokens, x: number, y: number, w: number, h: number, fill: string, opts: { rot?: number; shadow?: number; line?: number; r?: [number, number, number, number] } = {}) {
-  const { rot = 0, shadow = 18, line = 8, r = [34, 48, 30, 42] } = opts;
-  c.save();
-  c.translate(x + w / 2, y + h / 2);
-  c.rotate((rot * Math.PI) / 180);
-  c.translate(-w / 2, -h / 2);
-  if (shadow) {
-    cutRect(c, shadow, shadow * 1.2, w, h, r);
-    c.fillStyle = tk.ink;
-    c.fill();
-  }
-  cutRect(c, 0, 0, w, h, r);
-  c.fillStyle = fill;
-  c.fill();
-  c.lineWidth = line;
-  c.strokeStyle = tk.ink;
-  c.stroke();
-  c.restore();
-}
-
-function halftone(c: Ctx, tk: Tokens, x: number, y: number, w: number, h: number, alpha = 0.16) {
-  c.save();
-  c.globalAlpha = alpha;
-  c.fillStyle = tk.ink;
-  for (let yy = y; yy < y + h; yy += 22) for (let xx = x + ((yy / 22) % 2) * 11; xx < x + w; xx += 22) {
-    c.beginPath();
-    c.arc(xx, yy, 3, 0, Math.PI * 2);
-    c.fill();
-  }
-  c.restore();
-}
-
 function wrap(c: Ctx, text: string, maxW: number): string[] {
   const words = text.split(/\s+/);
   const lines: string[] = [];
@@ -131,27 +82,13 @@ function fitText(c: Ctx, text: string, family: string, start: number, maxW: numb
   return { size: 24, lines: wrap(c, text, maxW) };
 }
 
-function starburst(c: Ctx, tk: Tokens, cx: number, cy: number, r: number, fill: string) {
-  c.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + (i * Math.PI) / 5;
-    const rr = i % 2 ? r * 0.42 : r;
-    c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
-  }
-  c.closePath();
-  c.fillStyle = fill;
-  c.fill();
-  c.lineWidth = 6;
-  c.strokeStyle = tk.ink;
-  c.stroke();
-}
-
 async function fontsReady(tk: Tokens) {
   try {
     await Promise.all([
       document.fonts.load(`120px ${tk.display}`),
-      document.fonts.load(`700 48px ${tk.hand}`),
-      document.fonts.load(`800 40px ${tk.body}`),
+      document.fonts.load(`900 120px ${tk.display}`),
+      document.fonts.load(`italic 48px ${tk.hand}`),
+      document.fonts.load(`italic 600 40px ${tk.body}`),
     ]);
   } catch {
     /* system fallbacks still draw */
@@ -163,177 +100,224 @@ export interface ShareArt {
   doodle: SVGSVGElement | null;
 }
 
-/** Draw the story image onto `canvas` (sized to 1080x1920). */
+/** Draw the story image onto `canvas` (sized to 1080x1920): an engraved ticket on the ruins plum. */
 export async function renderShareImage(canvas: HTMLCanvasElement, recap: Recap, art: ShareArt): Promise<void> {
   const tk = tokens();
   await fontsReady(tk);
   const [avatar, doodle, logo] = await Promise.all([
     art.avatar ? svgToImage(art.avatar, 520, tk).catch(() => null) : null,
     art.doodle ? svgToImage(art.doodle, 520, tk).catch(() => null) : null,
-    loadImage(logoBlack).catch(() => null),
+    loadImage(logoWhite).catch(() => null),
   ]);
   canvas.width = SHARE_W;
   canvas.height = SHARE_H;
   const c = canvas.getContext('2d');
   if (!c) return;
   const p = PERSONALITIES[recap.personality.id];
-  const tone = tk.get(p.color, tk.paper2);
-  const onTone = p.color === 'grape' ? tk.paper3 : tk.ink;
+  const col = {
+    ground: tk.get('ticket-ruins', '#27132d'),
+    deep: tk.get('dusk', '#170c1c'),
+    night: tk.get('night', '#0a0d18'),
+    gold: tk.get('gold', '#e3c48a'),
+    bright: tk.get('gold-bright', '#f5dfac'),
+    cream: tk.get('cream', '#f3e8cc'),
+    parchment: tk.get('parchment', '#f1e5c6'),
+    iron: tk.get('iron-gall', '#2a1c10'),
+    wax: tk.get('wax', '#8e1f24'),
+    waxDark: tk.get('wax-dark', '#5a0f14'),
+  };
 
-  // paper
-  c.fillStyle = tk.paper;
+  // the ground, lit by a candle near the top
+  c.fillStyle = col.deep;
   c.fillRect(0, 0, SHARE_W, SHARE_H);
-  halftone(c, tk, 0, 0, SHARE_W, SHARE_H, 0.05);
+  const glow = c.createRadialGradient(SHARE_W / 2, 560, 40, SHARE_W / 2, 560, 1100);
+  glow.addColorStop(0, col.ground);
+  glow.addColorStop(1, col.deep);
+  c.fillStyle = glow;
+  c.fillRect(0, 0, SHARE_W, SHARE_H);
+  stardust(c, col.gold);
 
-  // the big colour block
-  block(c, tk, 60, 150, 950, 1090, tone, { rot: -1.6, shadow: 22, line: 9 });
-  c.save();
-  c.translate(SHARE_W / 2, 695);
-  c.rotate((-1.6 * Math.PI) / 180);
-  c.beginPath();
-  c.rect(-440, -500, 880, 1000);
-  c.clip();
-  halftone(c, tk, -440, -500, 560, 420, 0.18);
-  c.restore();
+  // the ticket's double rule with notched corners and four-point stars
+  frame(c, 44, 44, SHARE_W - 88, SHARE_H - 88, col.gold);
 
-  // logo on a paper label with tape
+  // Recurse, top centre
   if (logo) {
-    const lh = 92;
+    const lh = 78;
     const lw = Math.round((lh * logo.width) / logo.height);
-    block(c, tk, 96, 60, lw + 56, lh + 40, tk.paper3, { rot: -3, shadow: 8, line: 6, r: [18, 24, 16, 20] });
-    c.save();
-    c.translate(96 + (lw + 56) / 2, 60 + (lh + 40) / 2);
-    c.rotate((-3 * Math.PI) / 180);
-    c.drawImage(logo, -lw / 2, -lh / 2, lw, lh);
-    c.restore();
-    c.save();
-    c.translate(96 + (lw + 56) / 2, 58);
-    c.rotate((4 * Math.PI) / 180);
-    c.globalAlpha = 0.85;
-    c.fillStyle = tk.get('sun', tk.paper2);
-    c.fillRect(-80, -20, 160, 40);
-    c.restore();
+    c.drawImage(logo, (SHARE_W - lw) / 2, 110, lw, lh);
   }
 
-  // "my after hours personality"
-  c.fillStyle = onTone;
-  c.font = `800 56px ${tk.hand}`;
-  c.save();
-  c.translate(130, 330);
-  c.rotate((-2 * Math.PI) / 180);
-  c.fillText('my after hours personality:', 0, 0);
-  c.restore();
-
-  // the title, chunky with an offset shadow
-  const title = fitText(c, p.title, tk.display, 168, 820, 2);
-  c.save();
-  c.translate(130, 330 + title.size * 1.05);
-  c.rotate((-2.4 * Math.PI) / 180);
-  title.lines.forEach((l, i) => {
-    const y = i * title.size * 0.98;
-    c.fillStyle = p.color === 'grape' ? tk.ink : tk.paper3;
-    c.fillText(l, 9, y + 10);
-    c.fillStyle = onTone;
-    c.fillText(l, 0, y);
-  });
-  c.restore();
-  const afterTitle = 330 + title.size * 1.05 + (title.lines.length - 1) * title.size * 0.98;
-
-  // the line, in an ink scrap
-  c.font = `700 46px ${tk.hand}`;
-  const lines = wrap(c, p.line, 760);
-  const boxH = lines.length * 60 + 56;
-  block(c, tk, 120, afterTitle + 60, 840, boxH, tk.ink, { rot: 1.2, shadow: 0, line: 6, r: [20, 30, 18, 26] });
-  c.save();
-  c.translate(160, afterTitle + 60 + 72);
-  c.rotate((1.2 * Math.PI) / 180);
-  c.fillStyle = tk.paper;
-  lines.forEach((l, i) => c.fillText(l, 0, i * 60));
-  c.restore();
-
-  // avatar sticker + doodle, overlapping the bottom of the block
-  const artY = 1180 - 420;
-  c.save();
-  c.translate(330, artY + 230);
-  c.rotate((-6 * Math.PI) / 180);
-  c.beginPath();
-  c.arc(14, 18, 230, 0, Math.PI * 2);
-  c.fillStyle = tk.ink;
-  c.fill();
-  c.beginPath();
-  c.arc(0, 0, 230, 0, Math.PI * 2);
-  c.fillStyle = tk.paper3;
-  c.fill();
-  c.lineWidth = 9;
-  c.strokeStyle = tk.ink;
-  c.stroke();
-  if (avatar) c.drawImage(avatar, -190, -190, 380, 380);
-  c.restore();
-  if (doodle) {
-    c.save();
-    c.translate(790, artY + 250);
-    c.rotate((8 * Math.PI) / 180);
-    c.drawImage(doodle, -200, -200, 400, 400);
-    c.restore();
-  }
-  starburst(c, tk, 560, artY + 40, 54, tk.get('sun', tk.paper2));
-
-  // nickname tag
-  c.font = `800 64px ${tk.body}`;
-  const nick = `@${recap.attendee.nickname}`.slice(0, 22);
-  const nw = Math.min(900, c.measureText(nick).width + 70);
-  block(c, tk, 150, 1225, nw, 104, tk.paper3, { rot: -2, shadow: 10, line: 7, r: [16, 22, 14, 20] });
-  c.save();
-  c.translate(150 + nw / 2, 1225 + 52);
-  c.rotate((-2 * Math.PI) / 180);
-  c.fillStyle = tk.ink;
   c.textAlign = 'center';
-  c.textBaseline = 'middle';
-  c.fillText(nick, 0, 4);
-  c.restore();
+  c.fillStyle = col.cream;
+  c.font = `italic 52px ${tk.hand}`;
+  c.fillText('my after hours personality', SHARE_W / 2, 280);
 
-  // three big numbers
-  const stats: { big: string; small: string; color: string; rot: number }[] = [
-    { big: recap.standing.rank ? `#${recap.standing.rank}` : '-', small: 'final rank', color: tk.get('sun', tk.paper2), rot: -3 },
-    { big: recap.standing.total.toLocaleString('en-IN'), small: 'points', color: tk.get('lime', tk.paper2), rot: 2 },
-    { big: `${recap.stickers.count}`, small: 'stickers', color: tk.get('pink', tk.paper2), rot: -1.5 },
+  // the title, struck in gold capitals
+  const title = fitText(c, p.title.toUpperCase(), tk.display, 128, 880, 2, '900');
+  c.font = `900 ${title.size}px ${tk.display}`;
+  c.fillStyle = col.gold;
+  c.shadowColor = 'rgb(255 196 110 / 0.35)';
+  c.shadowBlur = 30;
+  title.lines.forEach((l, i) => c.fillText(l, SHARE_W / 2, 280 + title.size * 1.1 + i * title.size * 1.02));
+  c.shadowBlur = 0;
+  const afterTitle = 280 + title.size * 1.1 + (title.lines.length - 1) * title.size * 1.02;
+  starRule(c, SHARE_W / 2, afterTitle + 50, 360, col.gold);
+
+  // the line, on a parchment cartouche
+  c.font = `italic 600 44px ${tk.body}`;
+  const lines = wrap(c, p.line, 740);
+  const boxH = lines.length * 58 + 64;
+  const boxY = afterTitle + 100;
+  plaque(c, 140, boxY, 800, boxH, 22, col.parchment, col.gold);
+  c.fillStyle = col.iron;
+  lines.forEach((l, i) => c.fillText(l, SHARE_W / 2, boxY + 70 + i * 58));
+
+  // avatar in a gold medallion, the personality's doodle beside it
+  const artY = Math.max(boxY + boxH + 230, 1000);
+  c.save();
+  c.translate(SHARE_W / 2 - 120, artY);
+  c.beginPath();
+  c.arc(0, 0, 210, 0, Math.PI * 2);
+  c.fillStyle = col.night;
+  c.fill();
+  c.lineWidth = 8;
+  c.strokeStyle = col.gold;
+  c.stroke();
+  c.beginPath();
+  c.arc(0, 0, 192, 0, Math.PI * 2);
+  c.lineWidth = 2;
+  c.globalAlpha = 0.6;
+  c.stroke();
+  c.globalAlpha = 1;
+  if (avatar) c.drawImage(avatar, -160, -160, 320, 320);
+  c.restore();
+  if (doodle) c.drawImage(doodle, SHARE_W / 2 + 110, artY - 170, 300, 300);
+  star(c, SHARE_W / 2 + 120, artY - 210, 34, col.bright);
+
+  // nickname under the medallion
+  c.font = `700 60px ${tk.display}`;
+  c.fillStyle = col.cream;
+  const nick = `@${recap.attendee.nickname}`.slice(0, 22);
+  c.fillText(nick, SHARE_W / 2, artY + 300);
+
+  // three numbers on night plaques
+  const stats: { big: string; small: string }[] = [
+    { big: recap.standing.rank ? `#${recap.standing.rank}` : '-', small: 'final rank' },
+    { big: recap.standing.total.toLocaleString('en-IN'), small: 'points' },
+    { big: `${recap.stickers.count}`, small: 'stickers' },
   ];
+  const sy = Math.min(artY + 370, 1460);
   stats.forEach((st, i) => {
-    const x = 70 + i * 322;
-    const y = 1400;
-    block(c, tk, x, y, 292, 250, st.color, { rot: st.rot, shadow: 12, line: 7, r: [22, 30, 18, 26] });
-    c.save();
-    c.translate(x + 146, y + 125);
-    c.rotate((st.rot * Math.PI) / 180);
-    c.fillStyle = tk.ink;
-    c.textAlign = 'center';
-    const big = fitText(c, st.big, tk.display, 110, 250, 1);
-    c.font = `${big.size}px ${tk.display}`;
-    c.fillText(st.big, 0, 20);
-    c.font = `800 40px ${tk.hand}`;
-    c.fillText(st.small, 0, 84);
-    c.restore();
+    const x = 92 + i * 310;
+    plaque(c, x, sy, 276, 230, 18, col.night, col.gold);
+    c.fillStyle = col.gold;
+    const big = fitText(c, st.big, tk.display, 100, 230, 1, '900');
+    c.font = `900 ${big.size}px ${tk.display}`;
+    c.fillText(st.big, x + 138, sy + 130);
+    c.fillStyle = col.cream;
+    c.font = `italic 40px ${tk.hand}`;
+    c.fillText(st.small, x + 138, sy + 190);
   });
 
   // top moment
   if (recap.topMoment) {
-    c.fillStyle = tk.ink;
-    c.font = `800 44px ${tk.hand}`;
+    c.fillStyle = col.cream;
     const tm = `biggest moment: +${recap.topMoment.points} ${recap.topMoment.label}`;
-    const fit = fitText(c, tm, tk.hand, 44, 920, 1, '800');
-    c.font = `800 ${fit.size}px ${tk.hand}`;
-    c.textAlign = 'left';
-    c.fillText(fit.lines[0] ?? tm, 80, 1735);
+    const fit = fitText(c, tm, tk.hand, 44, 880, 1);
+    c.font = `italic ${fit.size}px ${tk.hand}`;
+    c.fillText(fit.lines[0] ?? tm, SHARE_W / 2, sy + 310);
   }
 
-  // footer strip
-  c.fillStyle = tk.ink;
-  c.fillRect(0, SHARE_H - 120, SHARE_W, 120);
-  c.fillStyle = tk.paper;
-  c.font = `800 48px ${tk.hand}`;
-  c.textAlign = 'center';
-  c.fillText(EVENT_LINE, SHARE_W / 2, SHARE_H - 46);
+  // the event line, sealed
+  c.fillStyle = col.gold;
+  c.font = `700 40px ${tk.display}`;
+  c.fillText(EVENT_LINE.toUpperCase(), SHARE_W / 2, SHARE_H - 110);
+  starRule(c, SHARE_W / 2, SHARE_H - 160, 300, col.gold);
   c.textAlign = 'left';
+}
+
+function star(c: Ctx, cx: number, cy: number, r: number, fill: string) {
+  c.beginPath();
+  for (let i = 0; i < 8; i++) {
+    const a = (i * Math.PI) / 4 - Math.PI / 2;
+    const rr = i % 2 ? r * 0.22 : r;
+    c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr);
+  }
+  c.closePath();
+  c.fillStyle = fill;
+  c.fill();
+}
+
+function notched(c: Ctx, x: number, y: number, w: number, h: number, n: number) {
+  c.beginPath();
+  c.moveTo(x + n, y);
+  c.lineTo(x + w - n, y);
+  c.lineTo(x + w, y + n);
+  c.lineTo(x + w, y + h - n);
+  c.lineTo(x + w - n, y + h);
+  c.lineTo(x + n, y + h);
+  c.lineTo(x, y + h - n);
+  c.lineTo(x, y + n);
+  c.closePath();
+}
+
+/** The tickets' border: a gold rule, a gap, a hairline, stars in the corners. */
+function frame(c: Ctx, x: number, y: number, w: number, h: number, gold: string) {
+  c.strokeStyle = gold;
+  c.lineWidth = 5;
+  notched(c, x, y, w, h, 34);
+  c.stroke();
+  c.globalAlpha = 0.55;
+  c.lineWidth = 2;
+  notched(c, x + 16, y + 16, w - 32, h - 32, 26);
+  c.stroke();
+  c.globalAlpha = 1;
+  for (const [sx, sy] of [
+    [x, y],
+    [x + w, y],
+    [x, y + h],
+    [x + w, y + h],
+  ] as const)
+    star(c, sx, sy, 34, gold);
+}
+
+/** The notched cartouche: a filled plaque with a gold double rule. */
+function plaque(c: Ctx, x: number, y: number, w: number, h: number, n: number, fill: string, gold: string) {
+  notched(c, x, y, w, h, n);
+  c.fillStyle = fill;
+  c.fill();
+  c.strokeStyle = gold;
+  c.lineWidth = 4;
+  c.stroke();
+  c.globalAlpha = 0.6;
+  c.lineWidth = 1.5;
+  notched(c, x + 9, y + 9, w - 18, h - 18, n - 5);
+  c.stroke();
+  c.globalAlpha = 1;
+}
+
+function starRule(c: Ctx, cx: number, cy: number, half: number, gold: string) {
+  c.strokeStyle = gold;
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(cx - half, cy);
+  c.lineTo(cx - 34, cy);
+  c.moveTo(cx + 34, cy);
+  c.lineTo(cx + half, cy);
+  c.stroke();
+  star(c, cx, cy, 22, gold);
+}
+
+/** A scatter of faint gold stars over the ground (seeded, so every image is the same). */
+function stardust(c: Ctx, gold: string) {
+  c.save();
+  let s = 7;
+  const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+  for (let i = 0; i < 70; i++) {
+    c.globalAlpha = 0.12 + rnd() * 0.25;
+    star(c, rnd() * SHARE_W, rnd() * SHARE_H, 3 + rnd() * 7, gold);
+  }
+  c.restore();
 }
 
 export function canvasToFile(canvas: HTMLCanvasElement, name = 'after-hours-recap.png'): Promise<File | null> {

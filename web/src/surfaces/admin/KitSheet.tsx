@@ -83,7 +83,7 @@ export function KitSheet({ kits, appUrl, eventDate, onClose }: { kits: Generated
       </div>
       <div className={s.pages}>
         {pages.map((p, pi) => (
-          <section key={pi} className={s.page}>
+          <section key={pi} className={s.page} data-ground="parchment">
             {p.map((k, i) => (
               <KitCard key={k.kitId} kit={k} appUrl={appUrl} i={pi * 8 + i} date={date} />
             ))}

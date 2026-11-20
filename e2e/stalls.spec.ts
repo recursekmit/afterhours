@@ -3,6 +3,10 @@
 // through on points, and the attendee's phone celebrates each one. Screenshots go to docs/screens/stalls-*.png.
 import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
 
+// believable nicknames for the screenshots
+const NICKS = ['anika', 'rahul', 'maya', 'krish', 'sneha', 'aryan', 'jiya', 'om'];
+const nick = (n: number) => NICKS[(n - 1) % NICKS.length]! + (n > NICKS.length ? String(Math.ceil(n / NICKS.length)) : '');
+
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SMALL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const TABLET = { viewport: { width: 800, height: 1100 }, deviceScaleFactor: 1.5, isMobile: true, hasTouch: true } as const;
@@ -26,7 +30,7 @@ async function attendee(browser: Browser, opts: typeof PHONE | typeof SMALL = PH
   const kit = kits[next++]!;
   expect((await page.request.post('/api/auth/signin', { data: kit })).ok()).toBeTruthy();
   const prof = await page.request.put('/api/me/profile', {
-    data: { name: `Stall ${next}`, roll: `S${next}`, nickname: `sipper${next}`, avatar: { shape: 'blob', color: 'pink', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
+    data: { name: nick(next), roll: `S${next}`, nickname: nick(next), avatar: { shape: 'blob', color: 'pink', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
   });
   expect(prof.ok()).toBeTruthy();
   return page;
@@ -138,7 +142,7 @@ test.describe.serial('stalls', () => {
     // 1st: the typed code
     await shop.getByLabel('or type their code').fill((await typed.textContent())!.replace(' ', ''));
     await shop.getByRole('button', { name: 'go' }).click();
-    await expect(shop.getByRole('heading', { name: 'sipper1' })).toBeVisible();
+    await expect(shop.getByRole('heading', { name: 'anika' })).toBeVisible();
     await expect(shop.getByLabel('2 free mocktails left', { exact: true })).toBeVisible();
     await shop.getByRole('button', { name: 'add mocktail' }).click();
     await expect(shop.locator('[class*=verdict][role=status]')).toContainText('1 free drink');
@@ -163,7 +167,7 @@ test.describe.serial('stalls', () => {
     const qr = (await (await phone.request.get('/api/stalls/qr')).json()) as { url: string; token: string };
     expect(qr.url).toBe(`${baseURL}/stall/r/${qr.token}`);
     await shop.goto(`/stall/r/${qr.token}`);
-    await expect(shop.getByRole('heading', { name: 'sipper1' })).toBeVisible();
+    await expect(shop.getByRole('heading', { name: 'anika' })).toBeVisible();
     await expect(shop).toHaveURL(/\/stall$/);
     await expect(shop.getByLabel('1 free mocktail left', { exact: true })).toBeVisible();
     await shop.getByRole('button', { name: 'add mocktail' }).click();

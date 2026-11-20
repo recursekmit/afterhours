@@ -1,6 +1,10 @@
 // Main flow of every feature, end to end on the built app (empty DB, set up through the console API).
 import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
 
+// believable nicknames for the screenshots
+const NICKS = ['arjun', 'nisha', 'vikram', 'sana', 'dev_k', 'priya', 'yash', 'kavya', 'aditi', 'rehan', 'mira', 'samar'];
+const nick = (n: number) => NICKS[(n - 1) % NICKS.length]! + (n > NICKS.length ? String(Math.ceil(n / NICKS.length)) : '');
+
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 
 let admin: APIRequestContext;
@@ -20,7 +24,7 @@ async function attendee(browser: Browser): Promise<Page> {
   const kit = kits[next++]!;
   expect((await page.request.post('/api/auth/signin', { data: kit })).ok()).toBeTruthy();
   const prof = await page.request.put('/api/me/profile', {
-    data: { name: `Player ${next}`, roll: `R${next}`, nickname: `player${next}`, avatar: { shape: 'blob', color: 'sky', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
+    data: { name: nick(next), roll: `R${next}`, nickname: nick(next), avatar: { shape: 'blob', color: 'sky', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
   });
   expect(prof.ok()).toBeTruthy();
   return page;

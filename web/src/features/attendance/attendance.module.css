@@ -3,10 +3,10 @@
 .openFor { font-family: var(--font-hand); font-weight: 700; text-align: center; }
 .closed { font-family: var(--font-hand); font-weight: 700; text-align: center; color: var(--ink-soft); }
 .actions { display: flex; gap: var(--s-3); flex-wrap: wrap; justify-content: center; }
-.counter { display: flex; align-items: center; gap: var(--s-2); justify-content: center; font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); transform: rotate(-1deg); }
+.counter { display: flex; align-items: center; gap: var(--s-2); justify-content: center; font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1);  }
 .success { display: grid; justify-items: center; gap: var(--s-3); text-align: center; padding-top: var(--s-5); }
 .youre { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-2); }
-.pos { font-family: var(--font-display); font-size: var(--step-5); display: inline-block; transform: rotate(-4deg); text-shadow: 3px 3px 0 var(--paper-3); }
+.pos { font-family: var(--font-display); font-size: var(--step-5); display: inline-block;  text-shadow: var(--engrave); }
 .what { font-size: var(--step-2); line-height: 1.05; }
 .plusTen { font-family: var(--font-display); font-size: var(--step-3); background: var(--ink); color: var(--lime); border-radius: var(--cut-2); padding: 2px 16px; box-shadow: var(--shadow-sm); }
 .entry { position: relative; }
@@ -32,12 +32,12 @@
 .sceneKicker { font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 2.6); }
 .sceneTitle { font-size: calc(var(--u) * 3.6); line-height: 1; overflow-wrap: anywhere; }
 .bigCode { display: flex; gap: calc(var(--u) * 1.4); }
-.bigChar { display: grid; place-items: center; width: calc(var(--u) * 11); height: calc(var(--u) * 13); font-family: var(--font-display); font-size: calc(var(--u) * 7.6); line-height: 1; color: var(--ink); background: var(--sun); border: 6px solid var(--ink); border-radius: var(--cut-3); box-shadow: 8px 10px 0 var(--ink); }
-.bigChar:nth-child(even) { transform: rotate(3deg); background: var(--lime); }
-.bigChar:nth-child(odd) { transform: rotate(-3deg); }
+.bigChar { display: grid; place-items: center; width: calc(var(--u) * 11); height: calc(var(--u) * 13); font-family: var(--font-display); font-size: calc(var(--u) * 7.6); line-height: 1; color: var(--ink); background: var(--sun); border: 6px solid var(--ink); border-radius: var(--cut-3); box-shadow: var(--shadow-lg); }
+.bigChar:nth-child(even) {  background: var(--lime); }
+.bigChar:nth-child(odd) {  }
 .sceneRight { display: grid; justify-items: center; gap: calc(var(--u) * 1.6); }
-.qrBox { background: var(--paper-3); border: 5px solid var(--ink); border-radius: var(--cut-2); padding: calc(var(--u) * 1.6); box-shadow: 8px 10px 0 var(--ink); transform: rotate(2deg); }
-.sceneCount { font-family: var(--font-display); font-size: calc(var(--u) * 3.4); text-shadow: 3px 3px 0 var(--ink); }
+.qrBox { background: var(--paper-3); border: 5px solid var(--ink); border-radius: var(--cut-2); padding: calc(var(--u) * 1.6); box-shadow: var(--shadow-lg);  }
+.sceneCount { font-family: var(--font-display); font-size: calc(var(--u) * 3.4); text-shadow: var(--engrave); }
 .ringRow { display: flex; align-items: center; gap: calc(var(--u) * 1.6); font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 2.2); }
 .chips { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 0.8); max-width: calc(var(--u) * 60); }
 .chip { font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 2.2); color: var(--ink); background: var(--paper-3); border: 3px solid var(--ink); border-radius: var(--cut-3); padding: calc(var(--u) * 0.3) calc(var(--u) * 1); }

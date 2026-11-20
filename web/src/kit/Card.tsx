@@ -1,16 +1,22 @@
 /*
-  Card: a piece of card stock. Hard ink outline, offset shadow, hand-cut corners.
-    <Card tone="sun" tilt={-1.5} tape>...</Card>
+  Card: an engraved ticket. Gold rule with an inner hairline (the double rule) and a star in each corner.
+    <Card tone="sun" tape>...</Card>
     <Card press onClick={...}>tappable</Card>
-  Tape: the strip on top; Torn: a coloured strip with a ripped bottom edge.
+  Tape: (kept for the API) a star seal set into the top rule; Torn: a stub with a perforated edge.
+  `tilt` is accepted for compatibility and ignored: the engraved style sits straight.
 */
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
 import type { Tone } from './Button';
+import { CornerStars, Star4 } from './Ornament';
 import s from './kit.module.css';
 
-export function Tape({ side = 'center', color }: { side?: 'center' | 'left' | 'right'; color?: 'sun' | 'pink' | 'sky' | 'lime' }) {
-  const c = [s.tape, side === 'left' ? s['tape-left'] : side === 'right' ? s['tape-right'] : '', color && color !== 'sun' ? s[`tape-${color}`] : ''];
-  return <span className={c.filter(Boolean).join(' ')} aria-hidden="true" />;
+export function Tape({ side = 'center' }: { side?: 'center' | 'left' | 'right'; color?: 'sun' | 'pink' | 'sky' | 'lime' }) {
+  const c = [s.tape, side === 'left' ? s['tape-left'] : side === 'right' ? s['tape-right'] : ''];
+  return (
+    <span className={c.filter(Boolean).join(' ')} aria-hidden="true">
+      <Star4 size={14} />
+    </span>
+  );
 }
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -29,12 +35,13 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
 }
 
-export function Card({ tone = 'paper', tilt = 0, tape, tapeColor, halftone, pad = true, lift, flat, press, className, style, children, ...rest }: CardProps) {
+export function Card({ tone = 'paper', tilt: _tilt, tape, tapeColor, halftone, pad = true, lift, flat, press, className, style, children, ...rest }: CardProps) {
   const cn = [s.card, s[`tone-${tone}`], pad ? s['card-pad'] : '', halftone ? s['card-halftone'] : '', lift ? s['card-lift'] : '', flat ? s['card-flat'] : '', press ? s['card-press'] : '', className ?? '']
     .filter(Boolean)
     .join(' ');
   return (
-    <div {...rest} className={cn} style={{ '--tilt': `${tilt}deg`, ...style } as CSSProperties} role={press && !rest.role ? 'button' : rest.role} tabIndex={press ? 0 : rest.tabIndex}>
+    <div data-ground={tone === 'paper' ? 'parchment' : undefined} {...rest} className={cn} style={style as CSSProperties} role={press && !rest.role ? 'button' : rest.role} tabIndex={press ? 0 : rest.tabIndex}>
+      {!flat && <CornerStars size={9} inset={9} />}
       {tape && <Tape side={tape === true ? 'center' : tape} color={tapeColor} />}
       {children}
     </div>

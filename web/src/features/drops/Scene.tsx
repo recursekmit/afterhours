@@ -217,7 +217,7 @@ export function DropsScreenOverlay() {
           <motion.div
             className={s.onFire}
             initial={reduce ? { opacity: 0 } : { scale: 0.3, rotate: -20, opacity: 0 }}
-            animate={{ scale: 1, rotate: -4, opacity: 1 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
             exit={{ opacity: 0, scale: 1.4 }}
             transition={{ type: 'spring', stiffness: 260, damping: 12 }}
           >

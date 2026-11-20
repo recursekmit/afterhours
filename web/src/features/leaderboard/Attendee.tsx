@@ -140,7 +140,7 @@ export function LeaderboardPage() {
         </motion.p>
       )}
       {me && (
-        <Card tone="ink" tilt={-1.2} className={s.meCard}>
+        <Card tone="paper" className={s.meCard}>
           <div className={s.meRow}>
             <div>
               <p className={s.meLabel}>you are</p>

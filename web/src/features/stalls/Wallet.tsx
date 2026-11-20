@@ -10,7 +10,7 @@ import { Link } from 'react-router';
 import { Button, Card, Doodle, ErrorState, LinkButton, LoadingState, Meter, NumberTicker, Torn } from '../../kit';
 import { PageHead, Stamp, ui } from '../common/ui';
 import { changeLine, useCart, useMenu, useSetCart, useWallet } from './api';
-import { Mocktail, StallMark, Thumb, clockTime, linesText, pts } from './parts';
+import { GoldCoins, Mocktail, StallMark, Thumb, clockTime, linesText, pts } from './parts';
 import s from './stalls.module.css';
 
 export function Glasses({ total, left, size = 64, wobble }: { total: number; left: number; size?: number; wobble?: boolean }) {
@@ -32,8 +32,8 @@ function Ticket() {
   const d = w.data;
   const left = d.allowance.left;
   return (
-    <motion.div initial={reduce ? false : { rotate: -3, y: 14, opacity: 0 }} animate={{ rotate: -1, y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
-      <Card tone="sun" tape tapeColor="pink" className={s.ticket}>
+    <motion.div initial={reduce ? false : { y: 14, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 20 }}>
+      <Card tone="paper" tape tapeColor="pink" className={s.ticket}>
         <div className={s.ticketTop}>
           <div>
             <p className={s.hand}>points to spend</p>
@@ -44,7 +44,7 @@ function Ticket() {
               earned {d.earned}, spent {d.spent}
             </p>
           </div>
-          <Doodle name="ticket" size={54} fill="var(--paper-3)" />
+          <GoldCoins size={64} />
         </div>
         <div className={s.perf} aria-hidden="true" />
         <div className={s.ticketMid}>

@@ -6,12 +6,12 @@
 .glasses { display: flex; gap: var(--s-2); align-items: flex-end; }
 
 .thumb { object-fit: cover; border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); background: var(--paper-3); flex: none; }
-.thumbFallback { display: inline-grid; place-items: center; flex: none; font-family: var(--font-display); background: var(--sky); color: var(--ink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); transform: rotate(-3deg); }
+.thumbFallback { display: inline-grid; place-items: center; flex: none; font-family: var(--font-display); background: var(--sky); color: var(--ink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3);  }
 
 /* ---- the ticket ---- */
 .ticket { display: grid; gap: var(--s-4); }
 .ticketTop { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s-3); }
-.bigNum { font-family: var(--font-display); font-size: var(--step-7); line-height: 0.95; text-shadow: 3px 3px 0 var(--paper-3); }
+.bigNum { font-family: var(--font-display); font-size: var(--step-7); line-height: 0.95; text-shadow: var(--engrave); }
 .perf { height: 0; border-top: var(--line) dashed var(--ink); margin: 0 calc(var(--s-3) * -1); }
 .ticketMid { display: flex; gap: var(--s-4); align-items: center; }
 .drinkLine { font-family: var(--font-display); font-size: var(--step-1); line-height: 1.05; }
@@ -24,7 +24,7 @@
 /* ---- home card ---- */
 .homeCard { display: grid; gap: var(--s-3); }
 .homeTop { display: flex; justify-content: space-between; gap: var(--s-3); align-items: flex-start; }
-.homeTitle { font-size: var(--step-2); transform: rotate(-1deg); transform-origin: left; }
+.homeTitle { font-size: var(--step-2);  transform-origin: left; }
 .homeBal { display: grid; justify-items: end; font-family: var(--font-display); font-size: var(--step-4); line-height: 1; text-decoration: none; min-width: var(--tap); min-height: var(--tap); }
 .homeRow { display: flex; gap: var(--s-3); align-items: center; }
 .homeBtns { display: flex; gap: var(--s-2); flex-wrap: wrap; }
@@ -32,10 +32,10 @@
 /* ---- menu ---- */
 .chips { display: flex; flex-wrap: wrap; gap: var(--s-2); padding: 4px 2px 8px; }
 .chip { display: inline-flex; gap: 6px; align-items: center; flex: none; min-height: var(--tap); padding: 0 var(--s-4); font-family: var(--font-display); font-size: var(--step-0); background: var(--paper-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); }
-.chipOn { background: var(--sun); transform: rotate(-1.2deg); }
+.chipOn { background: var(--sun);  }
 .items { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
 .item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--s-3); align-items: center; padding: var(--s-3); background: var(--paper-3); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-2); }
-.item:nth-child(even) { transform: rotate(0.4deg); }
+.item:nth-child(even) {  }
 .itemCan { border-color: var(--ink); border-width: var(--line); box-shadow: var(--shadow-sm); background: color-mix(in srgb, var(--lime) 35%, var(--paper-3)); }
 .itemOut { opacity: 0.6; }
 .itemBody { min-width: 0; }
@@ -62,7 +62,7 @@
 .receiptCost { display: grid; justify-items: end; font-family: var(--font-display); }
 
 /* ---- full-screen QR ---- */
-.qrScreen { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; flex-direction: column; align-items: center; gap: var(--s-3); padding: calc(var(--s-3) + env(safe-area-inset-top)) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); background: var(--sun); overflow-y: auto; }
+.qrScreen { position: fixed; inset: 0; z-index: var(--z-overlay); display: flex; flex-direction: column; align-items: center; gap: var(--s-3); padding: calc(var(--s-3) + env(safe-area-inset-top)) var(--s-4) calc(var(--s-4) + env(safe-area-inset-bottom)); background-color: var(--paper-2); background-image: radial-gradient(80% 60% at 50% 35%, rgb(255 196 110 / 0.12), transparent 70%), var(--grain); overflow-y: auto; }
 .qrTop { width: 100%; max-width: 520px; display: flex; justify-content: space-between; align-items: center; gap: var(--s-3); }
 .qrWho { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
 .qrNick { font-family: var(--font-display); font-size: var(--step-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -75,9 +75,9 @@
 .qrHint { display: flex; gap: 6px; align-items: center; font-family: var(--font-hand); font-weight: 800; text-align: center; }
 
 /* ---- celebration ---- */
-.celebrate { position: fixed; inset: 0; z-index: var(--z-celebrate); display: grid; place-items: center; padding: var(--s-4); background: color-mix(in srgb, var(--ink) 70%, transparent); }
+.celebrate { position: fixed; inset: 0; z-index: var(--z-celebrate); display: grid; place-items: center; padding: var(--s-4); background: rgb(6 8 16 / 0.86); }
 .celebrateCard { display: grid; justify-items: center; gap: var(--s-3); text-align: center; width: min(92vw, 400px); }
-.celebrateTitle { font-size: var(--step-4); transform: rotate(-2deg); }
+.celebrateTitle { font-size: var(--step-4);  }
 .celebrateWhat { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-1); }
 .celebrateGlasses { display: flex; gap: var(--s-2); align-items: flex-end; }
 .celebrateLeft { font-family: var(--font-display); font-size: var(--step-2); }
@@ -90,7 +90,7 @@
 .addRow { display: flex; gap: var(--s-3); flex-wrap: wrap; align-items: flex-end; }
 .addRow > * { flex: 1 1 150px; }
 .stallHead { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: var(--s-4); align-items: start; }
-.codeBox { display: grid; gap: var(--s-2); padding: var(--s-3); background: var(--sun); border: var(--outline); border-radius: var(--cut-2); box-shadow: var(--shadow-sm); transform: rotate(-1deg); }
+.codeBox { display: grid; gap: var(--s-2); padding: var(--s-3); background: var(--sun); border: var(--outline); border-radius: var(--cut-2); box-shadow: var(--shadow-sm);  }
 .codeBig { font-family: var(--font-display); font-size: var(--step-5); line-height: 1; letter-spacing: 0.04em; white-space: nowrap; }
 .stallFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--s-3); }
 .tableScroll { overflow-x: auto; }

@@ -1,7 +1,7 @@
 /* Shared bits for feature screens: page heads, stamps, console sections. Tokens only. */
 .page { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); padding: calc(var(--s-6) + env(safe-area-inset-top)) var(--gutter) 0; }
 .head { display: grid; gap: 6px; justify-items: start; }
-.title { font-size: var(--step-5); line-height: 0.95; transform: rotate(-2deg); transform-origin: left; text-shadow: 3px 3px 0 var(--sun); }
+.title { font-size: var(--step-5); line-height: 0.95;  transform-origin: left; text-shadow: var(--engrave); }
 .hand {
   font-family: var(--font-hand);
   font-weight: 600;
@@ -19,7 +19,6 @@
   padding: 5px 9px 4px;
   border: var(--line) solid currentColor;
   border-radius: var(--cut-3);
-  transform: rotate(var(--rot, -6deg));
   white-space: nowrap;
   background: var(--paper-3);
 }
@@ -33,12 +32,12 @@
 .row { display: flex; gap: var(--s-3); flex-wrap: wrap; align-items: center; }
 .between { display: flex; gap: var(--s-3); align-items: center; justify-content: space-between; }
 .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
-.cardTitle { font-size: var(--step-2); line-height: 1.05; transform: rotate(-0.8deg); transform-origin: left; }
+.cardTitle { font-size: var(--step-2); line-height: 1.05;  transform-origin: left; }
 .kicker { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-0); }
 
 /* console */
 .section { display: grid; gap: var(--s-4); }
-.sectionTitle { font-size: var(--step-2); transform: rotate(-0.8deg); transform-origin: left; }
+.sectionTitle { font-size: var(--step-2);  transform-origin: left; }
 .select {
   min-height: var(--tap);
   padding: 0 var(--s-3);
@@ -64,6 +63,6 @@
 .danger { border-color: var(--pink); }
 
 /* projector: sized in --u (1% of the 16:9 stage) */
-.scene { position: relative; display: grid; align-content: center; gap: calc(var(--u) * 2.4); padding: calc(var(--u) * 4) calc(var(--u) * 6); color: var(--paper); overflow: hidden; }
-.sceneTitle { font-size: calc(var(--u) * 5); line-height: 1; transform: rotate(-2deg); transform-origin: left; text-shadow: 4px 5px 0 var(--ink); }
+.scene { position: relative; display: grid; align-content: center; gap: calc(var(--u) * 2.4); padding: calc(var(--u) * 4) calc(var(--u) * 6); color: var(--cream); overflow: hidden; }
+.sceneTitle { font-size: calc(var(--u) * 5); line-height: 1;  transform-origin: left; text-shadow: var(--engrave); }
 .sceneHand { font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 2.2); }

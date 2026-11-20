@@ -104,7 +104,7 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 ### Recap and sticker book
 - After the closing reveal, or when the console opens it: an Instagram-story recap on every phone (arrival, check-ins, quiz, trail path, Morse, arcade, stickers, final rank, top moment, "after hours personality") with a 1080x1920 share image.
 - The projector shows the room's recap; the console previews anyone's.
-- The sticker book is a flippable zine with a page per category, completion, rarity ("only N% have this"), hints on locked stickers and tap to slap.
+- The sticker book is a flippable tome (enamel pins on parchment leaves) with a page per category, completion, rarity ("only N% have this"), hints on locked stickers and tap to slap.
 
 ### Fair play and safety
 - All scoring is decided on the server. Answers, future clues and quiz solutions never reach phones early.

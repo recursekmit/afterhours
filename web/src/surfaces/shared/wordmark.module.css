@@ -1,18 +1,49 @@
-.wordmark { display: grid; gap: 4px; justify-items: start; margin: 0; line-height: 1; }
-.line { display: flex; gap: 5px; align-items: flex-end; }
-.line:nth-child(2) { margin-left: 26px; }
-.letter {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: var(--outline);
-  border-radius: 6px 12px 5px 10px / 10px 5px 12px 6px;
-  box-shadow: var(--shadow);
-  font-family: var(--font-display);
+/* the engraved wordmark: gold capitals in a notched double-rule cartouche */
+.wordmark {
+  --wm-n: 0.32em;
+  position: relative;
+  display: inline-grid;
+  justify-items: center;
+  justify-self: start;
+  gap: 0.04em;
+  margin: 0;
+  padding: 0.3em 0.55em 0.34em;
   line-height: 1;
-  cursor: grab;
+  color: var(--gold);
+  border: 2px solid var(--gold);
+  clip-path: polygon(var(--wm-n) 0, calc(100% - var(--wm-n)) 0, 100% var(--wm-n), 100% calc(100% - var(--wm-n)), calc(100% - var(--wm-n)) 100%, var(--wm-n) 100%, 0 calc(100% - var(--wm-n)), 0 var(--wm-n));
+  background: radial-gradient(90% 120% at 50% 0%, rgb(255 196 110 / 0.12), transparent 70%);
+}
+.wordmark::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--rule);
+  clip-path: inherit;
+  pointer-events: none;
+}
+.line { display: flex; gap: 0.02em; align-items: baseline; }
+.letter {
+  display: inline-block;
+  padding: 0 0.02em;
+  min-height: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1em;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: var(--engrave);
+  cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none;
+  touch-action: manipulation;
+  transition: color var(--dur) var(--ease-out), text-shadow var(--dur) var(--ease-out);
 }
-.letter:active { cursor: grabbing; }
+.letter:active { color: var(--gold-bright); text-shadow: var(--candle); }
+.star { display: flex; align-items: center; gap: 0.2em; width: 100%; color: var(--gold); }
+.star i { flex: 1; height: 0.08em; min-height: 3px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule-soft); }
+.star svg { display: block; flex: none; }

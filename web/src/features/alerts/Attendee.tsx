@@ -1,6 +1,7 @@
 /*
   Alerts on the phone:
-  - BannerOverlay: every 'alerts.banner' becomes a toast that opens its url.
+  - BannerOverlay: every 'alerts.banner' arrives as a sealed letter: the wax seal cracks, the letter unfolds,
+    and tapping it opens its url.
     On load, /recent fills in what was missed while offline (once each).
   - PushCard: the friendly "ping me before the big stuff" opt-in on home, with
     a test push, and the iPhone Add-to-Home-Screen explainer when needed.
@@ -15,7 +16,7 @@ import { serverNow } from '../../core/clock';
 import { useLiveEvent } from '../../core/live';
 import { InstallHelp, isIOS, isStandalone } from '../../core/pwa/install';
 import { celebrate, haptics, sfx } from '../../fun';
-import { Button, Card, Doodle, useToast } from '../../kit';
+import { Button, Card, Doodle, useToast, WaxSeal } from '../../kit';
 import { ui } from '../common/ui';
 import s from './alerts.module.css';
 import { enablePush, isSubscribed, pushPermission, pushSupported } from './push';
@@ -42,7 +43,7 @@ function writeNum(key: string, n: number): void {
 const BANNER_MS = 7000;
 const TAPE_TONE: Record<Banner['kind'], string> = { soon: s.tapeSun ?? '', live: s.tapeLime ?? '', announcement: s.tapePink ?? '' };
 
-/** One strip of torn tape that flies in, can be swiped away, and drains while it waits. */
+/** A sealed letter that drops in, cracks its seal and unfolds; can be swiped away, and drains while it waits. */
 function TapeBanner({ b, onGone }: { b: Banner; onGone: () => void }) {
   const reduce = useReducedMotion();
   const navigate = useNavigate();
@@ -56,11 +57,13 @@ function TapeBanner({ b, onGone }: { b: Banner; onGone: () => void }) {
   return (
     <motion.div
       className={`${s.banner} ${TAPE_TONE[b.kind]}`}
+      data-ground="parchment"
       role="status"
-      initial={reduce ? { opacity: 0 } : { y: -150, x: -70, rotate: -14, opacity: 0 }}
-      animate={{ y: 0, x: 0, rotate: -1.6, opacity: 1 }}
-      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 260, rotate: 8, transition: { duration: 0.22 } }}
-      transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+      style={{ transformOrigin: '50% 0%' }}
+      initial={reduce ? { opacity: 0 } : { y: -60, scaleY: 0.18, opacity: 0 }}
+      animate={{ y: 0, x: 0, scaleY: 1, opacity: 1 }}
+      exit={reduce ? { opacity: 0 } : { opacity: 0, x: 260, transition: { duration: 0.22 } }}
+      transition={reduce ? { duration: 0.2 } : { y: { type: 'spring', stiffness: 380, damping: 24 }, opacity: { duration: 0.15 }, scaleY: { delay: 0.35, type: 'spring', stiffness: 260, damping: 22 } }}
       drag={reduce ? 'x' : true}
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.9}
@@ -69,11 +72,13 @@ function TapeBanner({ b, onGone }: { b: Banner; onGone: () => void }) {
         if (Math.abs(i.offset.x) > 70 || i.offset.y < -40 || Math.abs(i.velocity.x) > 500) onGone();
         else setHold(false);
       }}
-      whileDrag={{ scale: 1.03, rotate: 2 }}
+      whileDrag={{ scale: 1.02 }}
     >
-      <span className={s.scotch} aria-hidden="true" />
       <span className={s.bannerIcon} aria-hidden="true">
-        <Doodle name={b.kind === 'announcement' ? 'megaphone' : 'bell'} size={30} fill="var(--paper-3)" strokeWidth={2.4} />
+        <WaxSeal glyph={b.kind === 'announcement' ? 'megaphone' : 'bell'} size={52} seed={b.id} />
+        <svg className={s.crack} viewBox="0 0 52 52">
+          <path d="M27 4L23 15L29 22L22 31L28 39L24 48" pathLength={100} />
+        </svg>
       </span>
       <button
         type="button"

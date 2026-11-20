@@ -1,7 +1,7 @@
 /*
   Trails on the phone (the treasure hunt is trail 1, a Morse trail and slip trails are others).
   - /hunt: the open trails, with your progress on each.
-  - /hunt/t/:trailId: the passport (stamp slots that slam down), the current clue on a torn
+  - /hunt/t/:trailId: the passport (an inked map: wax seals pressed at each stop, footprints between), the current clue on a torn
     paper card with "n others on this stop", scratch-off hints with their cost,
     scan (in-app or camera app) or type the sticker code / the answer.
     Wrong answer: shake + a ring until lockedUntil. Finish: rank, time, bonuses.
@@ -18,32 +18,16 @@ import { api } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { fmtElapsed } from '../../core/time';
 import { celebrate, haptics, sfx } from '../../fun';
-import { Button, Card, Doodle, ErrorState, LinkButton, LoadingState, NumberTicker, ProgressRing, Sticker, TextField, useToast } from '../../kit';
+import { Button, Card, Doodle, ErrorState, LinkButton, LoadingState, NumberTicker, ProgressRing, Sticker, TextField, useToast, WaxSeal } from '../../kit';
 import { Scanner } from '../common/Scanner';
 import { PageHead, Stamp, ui } from '../common/ui';
 import s from './hunt.module.css';
 import { MorseHelper, SlipStop } from './Stops';
 import { useHunt, useHuntBoard, useSetHunt, useTrails } from './useHunt';
 
-/** A rough ink splat behind a freshly slammed stamp. */
-function Splat({ seed }: { seed: number }) {
-  const pts = Array.from({ length: 14 }, (_, i) => {
-    const a = (i / 14) * Math.PI * 2;
-    const r = 30 + ((seed * 7 + i * 13) % 11) + (i % 2 ? 6 : 0);
-    return `${(40 + Math.cos(a) * r).toFixed(1)},${(40 + Math.sin(a) * r).toFixed(1)}`;
-  }).join(' ');
-  return (
-    <svg className={s.splat} viewBox="0 0 80 80" aria-hidden="true">
-      <polygon points={pts} />
-      <circle cx={12 + (seed % 9)} cy={66} r={4} />
-      <circle cx={70} cy={14 + (seed % 7)} r={3} />
-    </svg>
-  );
-}
-
 function Passport({ me }: { me: HuntMe }) {
   const slots = Array.from({ length: me.total }, (_, i) => me.solved[i] ?? null);
-  // Stamps already there when the page opened sit still; a new one slams down with a splat.
+  // Seals already there when the page opened sit still; a new one is pressed into the wax.
   const seen = useRef<Set<number> | null>(null);
   seen.current ??= new Set(me.solved.map((x) => x.stopId));
   const fresh = me.solved.filter((x) => !seen.current!.has(x.stopId)).map((x) => x.stopId);
@@ -55,24 +39,31 @@ function Passport({ me }: { me: HuntMe }) {
     return () => window.clearTimeout(t);
   }, [fresh.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <Card tone="paper" tilt={0.6} className={s.passport}>
+    <Card tone="paper" className={s.passport}>
       <div className={ui.between}>
         <h3 className={ui.cardTitle}>passport</h3>
         <span className={s.count}>
           <NumberTicker value={me.solved.length} />/{me.total}
         </span>
       </div>
+      <svg className={s.compass} viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="17" />
+        <circle cx="20" cy="20" r="13" />
+        <path d="M20 2L22.5 17.5L38 20L22.5 22.5L20 38L17.5 22.5L2 20L17.5 17.5Z" />
+      </svg>
       <div className={s.slots}>
-        {slots.map((st, i) => (
-          <div key={i} className={`${s.slot} ${st ? s.slotFilled : ''}`}>
-            {st && fresh.includes(st.stopId) && <Splat seed={st.stopId} />}
-            {st ? (
-              <Sticker def={{ shape: 'circle', color: st.color, glyph: st.glyph }} size={62} tilt={((i * 29) % 21) - 10} slap={fresh.includes(st.stopId)} />
-            ) : (
-              <span className={s.slotNum}>{i + 1}</span>
-            )}
-          </div>
-        ))}
+        {slots.map((st, i) => {
+          // the path snakes: left to right, then right to left, four stops a row
+          const row = Math.floor(i / 4);
+          const col = row % 2 ? 3 - (i % 4) : i % 4;
+          const last = i === slots.length - 1;
+          const dir = last ? undefined : i % 4 === 3 ? 'd' : row % 2 ? 'l' : 'r';
+          return (
+            <div key={i} className={`${s.slot} ${st ? s.slotFilled : ''}`} style={{ gridRow: row + 1, gridColumn: col + 1 }} data-path={dir} data-walked={st && slots[i + 1] ? 'yes' : undefined}>
+              {st ? <WaxSeal glyph={st.glyph} seed={st.stopId} size={60} tilt={((i * 29) % 21) - 10} press={fresh.includes(st.stopId)} /> : <span className={s.slotNum}>{i + 1}</span>}
+            </div>
+          );
+        })}
       </div>
     </Card>
   );

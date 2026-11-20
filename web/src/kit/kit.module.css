@@ -1,6 +1,6 @@
 /*
   UI kit styles. Everything uses tokens from styles/tokens.css.
-  Look: card stock, hard ink outlines, offset shadows, hand-cut corners.
+  Look: engraved tickets. Gold rules on deep grounds, double rules, notched corners, star ornaments.
 */
 
 /* ---------------------------------------------------------------- tones */
@@ -11,10 +11,13 @@
 .tone-sky { --bg: var(--sky); --fg: var(--on-sky); }
 .tone-sun { --bg: var(--sun); --fg: var(--on-sun); }
 .tone-paper { --bg: var(--paper-3); --fg: var(--ink); }
-.tone-ink { --bg: var(--ink); --fg: var(--on-ink); }
+/* ink: a night-black plaque with cream letters (buttons in this tone are struck in gold, below) */
+.tone-ink { --bg: var(--night); --fg: var(--cream); }
 
 /* --------------------------------------------------------------- button */
+/* A ticket stub: gold rule, an inner hairline (the double rule), notched corners. Primary tones fill with gold. */
 .btn {
+  --n: 7px;
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -22,13 +25,15 @@
   gap: var(--s-2);
   min-height: var(--tap);
   padding: 0 var(--s-5);
-  background: var(--bg, var(--tangerine));
+  background: var(--bg, var(--paper-3));
   color: var(--fg, var(--ink));
-  border: var(--outline);
+  border: var(--line) solid var(--ink);
   border-radius: var(--cut-3);
-  box-shadow: var(--shadow);
+  box-shadow: inset 0 0 0 3px var(--bg, var(--paper-3)), inset 0 0 0 4px var(--rule-soft);
   font-family: var(--font-display);
+  font-weight: 700;
   font-size: var(--step-0);
+  letter-spacing: 0.04em;
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
@@ -36,126 +41,172 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
-  transform: rotate(var(--rot, 0deg));
-  transition: transform var(--dur) var(--ease-pop), box-shadow var(--dur) var(--ease-pop);
+  transition: transform var(--dur) var(--ease-pop), filter var(--dur) var(--ease-out), background-color var(--dur);
 }
-.btn:nth-child(even) { --rot: 0.6deg; border-radius: var(--cut-2); }
-.btn:nth-child(odd) { --rot: -0.5deg; }
+/* the call-to-action tones are struck in gold */
+.btn.tone-lime, .btn.tone-sun, .btn.tone-ink {
+  --bg: var(--gold);
+  --fg: var(--on-gold);
+  box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 4px rgb(20 27 48 / 0.35), var(--glow);
+}
+[data-ground='parchment'] .btn:not(.tone-lime):not(.tone-sun):not(.tone-ink):not(.btn-ghost) {
+  --bg: var(--ticket-wave);
+  --fg: var(--enamel-gold);
+  --ink: var(--enamel-gold);
+  border-color: var(--frame);
+  box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 4px rgb(244 216 146 / 0.3);
+}
+[data-ground='parchment'] .btn.tone-lime, [data-ground='parchment'] .btn.tone-sun, [data-ground='parchment'] .btn.tone-ink {
+  border-color: var(--frame);
+  box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 4px rgb(40 25 8 / 0.4), 0 2px 0 rgb(90 55 15 / 0.35);
+}
+[data-ground='parchment'] .btn-ghost { color: var(--ink); border-color: var(--frame); }
 @media (hover: hover) {
-  .btn:hover:not(:disabled) { transform: translate(-1px, -2px) rotate(calc(var(--rot) * -2)); box-shadow: 5px 7px 0 var(--ink); }
+  .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.12); }
 }
 .btn:active:not(:disabled),
 .btn[data-pressed='true'] {
-  transform: translate(3px, 4px) rotate(0deg) scale(0.985);
-  box-shadow: var(--shadow-pressed);
+  transform: translateY(1px) scale(0.97);
+  filter: brightness(0.92);
   transition-duration: 60ms;
 }
-.btn:disabled { opacity: 0.55; cursor: not-allowed; box-shadow: var(--shadow-sm); filter: saturate(0.6); }
-.btn-sm { min-height: 44px; padding: 0 var(--s-4); font-size: var(--step--1); box-shadow: var(--shadow-sm); }
-.btn-lg { min-height: 64px; padding: 0 var(--s-6); font-size: var(--step-2); border-radius: var(--cut-1); box-shadow: var(--shadow-lg); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; filter: saturate(0.5); }
+.btn-sm { min-height: 44px; padding: 0 var(--s-4); font-size: var(--step--1); --n: 5px; }
+.btn-lg { min-height: 64px; padding: 0 var(--s-6); font-size: var(--step-2); --n: 10px; }
 .btn-block { display: flex; width: 100%; }
-.btn-ghost { background: transparent; box-shadow: none; border-style: dashed; }
-.btn-ghost:active:not(:disabled) { box-shadow: none; }
+.btn-ghost { background: transparent; border-style: dashed; box-shadow: none; }
 .btn-icon { padding: 0; width: var(--tap); }
 .btn-icon.btn-sm { width: 44px; }
-.btnSpin { width: 18px; height: 18px; border: 3px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.btnSpin { width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ----------------------------------------------------------------- card */
+/* A ticket: gold rule, an inner hairline, notched corners and a star in each corner (kit/Ornament). */
 .card {
+  --n: var(--notch);
   position: relative;
   background: var(--bg, var(--paper-3));
+  background-image: var(--halftone);
   color: var(--fg, var(--ink));
-  border: var(--outline);
-  border-radius: var(--cut-1);
-  box-shadow: var(--shadow);
-  transform: rotate(var(--tilt, 0deg));
+  border: var(--line) solid var(--ink);
+  border-radius: var(--cut-2);
+  box-shadow: 0 10px 22px rgb(0 0 0 / 0.4);
 }
-.card-pad { padding: var(--s-4); }
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border: 1px solid var(--rule);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 0;
+}
+.card-pad { padding: calc(var(--s-4) + 4px); }
 .card-halftone::after {
   content: '';
   position: absolute;
   inset: 0;
-  border-radius: inherit;
-  background: var(--halftone);
+  background: var(--halftone-light);
   -webkit-mask-image: linear-gradient(115deg, #000 0%, transparent 60%);
   mask-image: linear-gradient(115deg, #000 0%, transparent 60%);
   pointer-events: none;
 }
-.card-lift { box-shadow: var(--shadow-lg); }
+.card-lift { box-shadow: 0 18px 34px rgb(0 0 0 / 0.5); }
 .card-flat { box-shadow: none; }
-.card-press { cursor: pointer; touch-action: manipulation; transition: transform var(--dur) var(--ease-pop), box-shadow var(--dur) var(--ease-pop); }
-.card-press:active { transform: translate(3px, 4px) rotate(0deg); box-shadow: var(--shadow-pressed); }
+.card-press { cursor: pointer; touch-action: manipulation; transition: transform var(--dur) var(--ease-pop), filter var(--dur); }
+.card-press:active { transform: scale(0.985); filter: brightness(1.1); }
 .card > * { position: relative; z-index: 1; }
 
+/* aged parchment (tone paper): warm cream, foxed edges, a faint fibre, an engraved gold-brown frame */
+.card[data-ground='parchment'] {
+  background-color: var(--paper-3);
+  background-image: var(--foxing), var(--mottle), var(--fibre);
+  background-size: 100% 100%, 100% 100%, 240px 240px;
+  border-color: var(--frame);
+  box-shadow: inset 0 0 0 1px rgb(255 250 235 / 0.35), inset 0 0 26px rgb(120 78 26 / 0.22), 0 12px 26px rgb(0 0 0 / 0.5);
+}
+.card[data-ground='parchment']::before { border-color: var(--rule); }
+.card[data-ground='parchment'].card-flat { box-shadow: inset 0 0 26px rgb(120 78 26 / 0.22); }
+.card[data-ground='parchment'].card-lift { box-shadow: inset 0 0 0 1px rgb(255 250 235 / 0.35), inset 0 0 26px rgb(120 78 26 / 0.22), 0 20px 36px rgb(0 0 0 / 0.55); }
+.card-press[data-ground='parchment']:active { filter: brightness(0.97); }
+
+/* the old tape becomes an engraved star seal on the top rule */
 .tape {
   position: absolute;
-  top: -13px;
+  top: 1px;
   left: 50%;
-  width: 82px;
-  height: 26px;
-  margin-left: -41px;
-  background: color-mix(in srgb, var(--tape, var(--sun)) 80%, transparent);
-  border-left: 2px dashed color-mix(in srgb, var(--ink) 20%, transparent);
-  border-right: 2px dashed color-mix(in srgb, var(--ink) 20%, transparent);
-  clip-path: polygon(0 0, 5% 12%, 0 25%, 5% 38%, 0 50%, 5% 62%, 0 75%, 5% 88%, 0 100%, 100% 100%, 95% 88%, 100% 75%, 95% 62%, 100% 50%, 95% 38%, 100% 25%, 95% 12%, 100% 0);
-  transform: rotate(var(--tape-rot, -3deg));
+  width: 26px;
+  height: 14px;
+  margin-left: -13px;
+  background: transparent;
   z-index: 3 !important;
   pointer-events: none;
+  display: grid;
+  place-items: center;
+  color: var(--frame, var(--ink));
 }
-.tape-left { left: 18px; margin-left: 0; --tape-rot: -22deg; top: -10px; }
-.tape-right { left: auto; right: 18px; margin-left: 0; --tape-rot: 20deg; top: -10px; }
-.tape-pink { --tape: var(--pink); }
-.tape-sky { --tape: var(--sky); }
-.tape-lime { --tape: var(--lime); }
+.tape-left { left: 28px; margin-left: 0; }
+.tape-right { left: auto; right: 28px; margin-left: 0; }
 
-/* torn-edge banner: a coloured strip with a ripped bottom */
+/* banner strip: a candlelit band over the night ground, closed by the tickets' double gold rule */
 .torn {
   position: relative;
-  background: var(--bg);
-  color: var(--fg);
+  background-color: var(--paper-2);
+  background-image: radial-gradient(70% 110% at 88% 0%, rgb(255 196 110 / 0.16), transparent 62%), var(--grain);
+  background-size: 100% 100%, 180px 180px;
+  color: var(--ink);
   padding-bottom: 14px;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), 96% 100%, 91% calc(100% - 7px), 85% calc(100% - 1px), 78% calc(100% - 8px), 70% 100%, 63% calc(100% - 6px), 55% calc(100% - 2px), 47% calc(100% - 9px), 40% 100%, 32% calc(100% - 5px), 24% calc(100% - 1px), 17% calc(100% - 8px), 9% 100%, 4% calc(100% - 5px), 0 calc(100% - 9px));
+  border-bottom: 5px double var(--frame);
+}
+.torn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  background: var(--frame);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
 }
 
 /* ---------------------------------------------------------------- field */
 .field { display: grid; gap: 6px; }
 .label {
   font-family: var(--font-hand);
-  font-variation-settings: 'INFM' 1, 'BNCE' 0.5;
-  font-weight: 700;
-  font-size: var(--step-0);
-  transform: rotate(-1deg);
-  transform-origin: left;
+  font-size: var(--step-1);
+  line-height: 1.1;
 }
 .input {
   width: 100%;
   min-height: var(--tap);
   padding: 10px 14px;
-  background: var(--paper-3);
-  border: var(--outline);
+  background: var(--paper-2);
+  color: var(--ink);
+  border: var(--line) solid var(--rule);
+  border-bottom-color: var(--ink);
   border-radius: var(--cut-3);
-  box-shadow: inset 3px 4px 0 color-mix(in srgb, var(--ink) 14%, transparent);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35);
   font-size: var(--step-1);
-  font-weight: 600;
-  transition: transform var(--dur) var(--ease-pop), box-shadow var(--dur) var(--ease-out);
+  font-weight: 500;
+  transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
 }
-.input::placeholder { color: color-mix(in srgb, var(--ink-soft) 80%, var(--paper-3)); font-weight: 500; }
-.input:focus { outline: none; box-shadow: 4px 5px 0 var(--grape); transform: translate(-1px, -2px) rotate(-0.4deg); }
-.input[aria-invalid='true'] { border-color: var(--ink); background: color-mix(in srgb, var(--pink) 28%, var(--paper-3)); }
+.input::placeholder { color: var(--ink-soft); opacity: 0.7; font-style: italic; }
+.input:focus { outline: none; border-color: var(--gold-bright); box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35), 0 0 0 3px var(--paper), 0 0 0 4px var(--gold-bright); }
+[data-ground='parchment'] .input { background: rgb(255 250 235 / 0.55); box-shadow: inset 0 1px 4px rgb(90 55 15 / 0.25); border-color: var(--rule); border-bottom-color: var(--ink); }
+[data-ground='parchment'] .input:focus { box-shadow: inset 0 1px 4px rgb(90 55 15 / 0.25), 0 0 0 3px var(--paper-3), 0 0 0 5px var(--gold-bright); }
+.input[aria-invalid='true'] { border-color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, var(--paper-2)); }
 .textarea { min-height: 110px; resize: vertical; font-family: var(--font-body); }
-.hint { font-family: var(--font-hand); font-size: var(--step--1); color: var(--ink-soft); }
+.hint { font-family: var(--font-hand); font-size: var(--step-0); color: var(--ink-soft); }
 .err {
   display: inline-block;
   justify-self: start;
   font-family: var(--font-hand);
-  font-weight: 700;
-  font-size: var(--step--1);
+  font-size: var(--step-0);
+  color: var(--ink);
   background: var(--pink);
   border: var(--line-thin) solid var(--ink);
-  border-radius: var(--cut-3);
   padding: 2px 10px;
-  transform: rotate(-1.2deg);
 }
 .inputWrap { position: relative; }
 .inputSuffix { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
@@ -165,7 +216,7 @@
   position: fixed;
   inset: 0;
   z-index: var(--z-sheet);
-  background: color-mix(in srgb, var(--ink) 62%, transparent);
+  background: rgb(5 6 14 / 0.72);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -178,23 +229,25 @@
   max-height: 88dvh;
   overflow: auto;
   overscroll-behavior: contain;
-  background: var(--paper);
-  border: var(--outline);
+  background-color: var(--paper-3);
+  background-image: var(--foxing), var(--mottle), var(--fibre);
+  background-size: 100% 100%, 100% 100%, 240px 240px;
+  border: var(--line) solid var(--frame);
   border-bottom: 0;
-  border-radius: 26px 20px 0 0 / 22px 28px 0 0;
-  box-shadow: 0 -6px 0 var(--ink);
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 0 0 5px var(--paper-3), inset 0 0 0 6px var(--rule), inset 0 0 30px rgb(120 78 26 / 0.25), 0 -10px 30px rgb(0 0 0 / 0.5);
   padding: var(--s-5) var(--s-4) calc(var(--s-6) + env(safe-area-inset-bottom));
   touch-action: pan-y;
 }
 .sheet-center {
-  border-bottom: var(--outline);
+  border-bottom: var(--line) solid var(--frame);
   border-radius: var(--cut-1);
-  box-shadow: var(--shadow-lg);
+  box-shadow: inset 0 0 0 5px var(--paper-3), inset 0 0 0 6px var(--rule), inset 0 0 30px rgb(120 78 26 / 0.25), 0 18px 40px rgb(0 0 0 / 0.55);
   padding-bottom: var(--s-5);
   max-width: 440px;
 }
 .sheetGrip { display: block; width: 64px; height: 10px; margin: -6px auto var(--s-3); }
-.sheetTitle { font-size: var(--step-3); margin-bottom: var(--s-3); transform: rotate(-1deg); }
+.sheetTitle { font-size: var(--step-3); margin-bottom: var(--s-3); }
 .sheetClose { position: absolute; top: 10px; right: 10px; }
 
 /* ---------------------------------------------------------------- toast */
@@ -222,19 +275,17 @@
   padding: 12px 16px;
   background: var(--bg, var(--sun));
   color: var(--fg, var(--ink));
-  border: var(--outline);
+  border: var(--line) solid var(--ink);
   border-radius: var(--cut-2);
-  box-shadow: var(--shadow);
+  box-shadow: inset 0 0 0 3px var(--bg, var(--sun)), inset 0 0 0 4px var(--rule-soft), 0 12px 26px rgb(0 0 0 / 0.5);
   font-family: var(--font-hand);
-  font-variation-settings: 'INFM' 1, 'BNCE' 0.5;
-  font-weight: 700;
-  font-size: var(--step-0);
+  font-size: var(--step-1);
   line-height: 1.25;
   touch-action: pan-y;
 }
 .toastLink { cursor: pointer; }
 .toastBody { display: grid; gap: 2px; }
-.toastTitle { font-family: var(--font-display); font-weight: 400; font-size: var(--step-0); line-height: 1; }
+.toastTitle { font-family: var(--font-display); font-weight: 700; font-size: var(--step-0); line-height: 1.1; letter-spacing: 0.04em; }
 
 /* ----------------------------------------------------------------- tabs */
 .tabs { display: flex; gap: 6px; flex-wrap: wrap; padding-bottom: 6px; }
@@ -246,38 +297,45 @@
   min-height: 44px;
   padding: 0 16px;
   background: var(--paper-2);
-  border: var(--outline);
-  border-radius: 16px 14px 6px 8px / 14px 16px 8px 6px;
-  box-shadow: var(--shadow-sm);
+  color: var(--ink);
+  border: var(--line-thin) solid var(--rule);
+  border-radius: var(--cut-3);
   font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
   font-size: var(--step--1);
   cursor: pointer;
   transition: transform var(--dur) var(--ease-pop);
   touch-action: manipulation;
 }
-.tab[aria-selected='true'] { background: transparent; box-shadow: none; transform: translateY(-3px); }
-.tab > span { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; }
+.tab[aria-selected='true'] { background: transparent; color: var(--on-gold); border-color: transparent; }
+.tab > span:not(.tabBg) { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; }
 .tabBg {
   position: absolute;
-  inset: -3px;
-  background: var(--sun);
-  border: var(--outline);
-  border-radius: 16px 14px 6px 8px / 14px 16px 8px 6px;
-  box-shadow: var(--shadow);
+  inset: -1px;
+  background: var(--gold);
+  border: var(--line) solid var(--gold);
+  border-radius: var(--cut-3);
+  box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 0 3px rgb(20 27 48 / 0.35), var(--glow);
+  z-index: 0;
 }
+[data-ground='parchment'] .tab { background: rgb(255 250 235 / 0.4); }
 
 /* -------------------------------------------------------------- numbers */
 .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
 .meter {
   position: relative;
-  height: 26px;
-  background: var(--paper-3);
-  border: var(--outline);
-  border-radius: 14px 10px 14px 10px / 10px 14px 10px 14px;
+  height: 18px;
+  background: var(--paper-2);
+  border: var(--line-thin) solid var(--ink);
+  outline: 1px solid var(--rule-soft);
+  outline-offset: 2px;
+  border-radius: 1px;
   overflow: hidden;
 }
-.meterFill { position: absolute; inset: 0 auto 0 0; background: var(--bg, var(--lime)); border-right: var(--outline); border-radius: inherit; }
-.meterFill::after { content: ''; position: absolute; inset: 0; background: var(--halftone); opacity: 0.8; }
+/* the fill is struck gold whatever tone is asked for: the ticket has one ink */
+.meterFill { position: absolute; inset: 2px auto 2px 2px; max-width: calc(100% - 4px); background: var(--gold); box-shadow: var(--glow); }
+.meterFill::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 7px, rgb(20 27 48 / 0.25) 7px 8px); }
 
 /* ---------------------------------------------------------------- ring */
 .ring { position: relative; display: inline-grid; place-items: center; }
@@ -285,12 +343,13 @@
 
 /* -------------------------------------------------------------- states */
 .state { display: grid; justify-items: center; gap: var(--s-3); text-align: center; padding: var(--s-6) var(--s-4); }
-.stateTitle { font-size: var(--step-2); transform: rotate(-1.5deg); }
-.stateHint { font-family: var(--font-hand); font-weight: 600; max-width: 30ch; color: var(--ink-soft); }
-.loadingDots { display: inline-flex; gap: 6px; }
-.loadingDots i { width: 14px; height: 14px; border: var(--line-thin) solid var(--ink); border-radius: 50%; background: var(--tangerine); animation: bounce 0.9s var(--ease-pop) infinite; }
-.loadingDots i:nth-child(2) { background: var(--lime); animation-delay: 0.12s; }
-.loadingDots i:nth-child(3) { background: var(--pink); animation-delay: 0.24s; }
+.stateTitle { font-size: var(--step-2); }
+.stateHint { font-family: var(--font-hand); font-size: var(--step-1); max-width: 30ch; color: var(--ink-soft); }
+.loadingDots { display: inline-flex; gap: 10px; }
+/* three four-point stars that twinkle */
+.loadingDots i { width: 14px; height: 14px; background: var(--gold); clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%); animation: bounce 0.9s var(--ease-pop) infinite; }
+.loadingDots i:nth-child(2) { animation-delay: 0.12s; }
+.loadingDots i:nth-child(3) { animation-delay: 0.24s; }
 @keyframes bounce { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-12px); } }
 [data-surface='dusk'] .stateHint { color: var(--text-soft); }
 
@@ -306,4 +365,17 @@
 @media (prefers-reduced-motion: reduce) {
   .mascotEyes, .loadingDots i, .btnSpin { animation-duration: 3s; }
   .btn, .card-press, .tab, .input { transition-duration: 1ms; }
+}
+
+/* candlelight: highlight cards on the night ground (gold-leaf tone, lifted) breathe a soft flicker.
+   box-shadow, not filter: a filter would trap fixed-position children. */
+.card.tone-sun:not([data-ground]), .card-lift:not([data-ground]) { animation: candle 3.6s ease-in-out infinite; }
+@keyframes candle {
+  0%, 100% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 18px rgb(255 190 100 / 0.14); }
+  37% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 26px rgb(255 190 100 / 0.26); }
+  52% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 14px rgb(255 190 100 / 0.1); }
+  74% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 22px rgb(255 190 100 / 0.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card.tone-sun:not([data-ground]), .card-lift:not([data-ground]) { animation: none; box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 18px rgb(255 190 100 / 0.18); }
 }

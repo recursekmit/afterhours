@@ -29,7 +29,7 @@ function Reveal({ ev, onClose }: { ev: RedeemedEvent; onClose: () => void }) {
   const title = ev.freeUsed > 0 ? 'enjoy your mocktail!' : 'enjoy!';
   return (
     <motion.div className={s.celebrate} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} role="alertdialog" aria-label={title}>
-      <motion.div initial={reduce ? false : { scale: 0.6, rotate: -8 }} animate={{ scale: 1, rotate: -1.5 }} transition={{ type: 'spring', stiffness: 320, damping: 17 }} onClick={(e) => e.stopPropagation()}>
+      <motion.div initial={reduce ? false : { scale: 0.6, rotate: -8 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 17 }} onClick={(e) => e.stopPropagation()}>
         <Card tone="lime" tape tapeColor="pink" className={s.celebrateCard}>
           <Mascot size={70} mood="wow" follow={false} />
           <h2 className={s.celebrateTitle}>{title}</h2>

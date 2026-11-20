@@ -26,7 +26,9 @@ const CORE: NavEntry[] = [
   { path: 'kits', label: 'kits', icon: 'ticket' },
   { path: 'projector', label: 'projector', icon: 'screen' },
 ];
-const NAV: NavEntry[] = [...CORE, ...consolePanels.map((p) => ({ path: p.path, label: p.label, icon: p.icon }))];
+const entry = (p: (typeof consolePanels)[number]): NavEntry => ({ path: p.path, label: p.label, icon: p.icon });
+// A panel with a negative `order` (quick session) is listed ahead of the core panels.
+const NAV: NavEntry[] = [...consolePanels.filter((p) => p.order < 0).map(entry), ...CORE, ...consolePanels.filter((p) => p.order >= 0).map(entry)];
 const TONES: Tone[] = ['tangerine', 'lime', 'pink', 'sky', 'sun', 'grape'];
 
 export function AdminShell() {

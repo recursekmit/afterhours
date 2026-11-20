@@ -9,45 +9,29 @@
   overflow: hidden;
   isolation: isolate;
 }
+/* behind the gate: the armillary ticket's engraving, faded into the night */
 .gate::before {
   content: '';
   position: absolute;
   z-index: -1;
-  width: 520px;
-  height: 520px;
-  right: -180px;
-  top: -200px;
-  background: var(--pink);
-  border: var(--outline);
-  border-radius: var(--cut-round);
-  transform: rotate(12deg);
+  inset: 0;
+  background: url('../../assets/tickets/armillary-field-sm.webp') 20% 50% / cover no-repeat;
+  opacity: 0.18;
+  -webkit-mask-image: radial-gradient(70% 70% at 50% 50%, transparent 30%, #000 100%);
+  mask-image: radial-gradient(70% 70% at 50% 50%, transparent 30%, #000 100%);
+  pointer-events: none;
 }
-.gate[data-role='screen']::before { background: var(--grape); border-color: var(--paper); }
-.gate::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  width: 460px;
-  height: 300px;
-  left: -140px;
-  bottom: -80px;
-  background: var(--lime);
-  border: var(--outline);
-  border-radius: var(--cut-2);
-  transform: rotate(-9deg);
-}
-.gate[data-role='screen']::after { background: var(--tangerine); border-color: var(--paper); }
 .head { transform: scale(0.9); }
 .card { width: min(380px, 100%); padding: var(--s-5) var(--s-4); }
 .form { display: grid; gap: var(--s-4); }
 .titleRow { display: flex; align-items: center; gap: var(--s-3); }
-.title { font-size: var(--step-2); transform: rotate(-1deg); }
+.title { font-size: var(--step-2);  }
 .hint { font-family: var(--font-hand); font-weight: 600; color: var(--ink-soft); font-size: var(--step--1); }
 .display { position: relative; display: grid; place-items: center; min-height: 64px; background: var(--ink); border: var(--outline); border-radius: var(--cut-3); box-shadow: inset 3px 4px 0 rgb(0 0 0 / 0.4); }
 .pinInput { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: text; }
 .dots { display: flex; gap: 12px; }
 .dots i { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--paper); transition: transform var(--dur) var(--ease-pop), background var(--dur-fast); }
 .dots i[data-on='true'] { background: var(--lime); transform: scale(1.15); }
-.error { font-family: var(--font-hand); font-weight: 700; background: var(--pink); border: var(--outline); border-radius: var(--cut-3); padding: 6px 12px; transform: rotate(-1deg); }
+.error { font-family: var(--font-hand); font-weight: 700; color: var(--ink); background: var(--pink); border: var(--outline); border-radius: var(--cut-3); padding: 6px 12px;  }
 .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .keys button { min-height: 52px; font-size: var(--step-1); }

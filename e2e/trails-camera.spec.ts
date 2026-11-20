@@ -163,7 +163,7 @@ test.describe.serial('trails: slip camera', () => {
     await expect(sheet).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(400);
-    await page.screenshot({ path: `${SHOTS}/trails-console-slip-sheet.png` });
+    await page.screenshot({ path: `${SHOTS}/trails-console-slip-sheet-900.png` });
     await ctx.close();
   });
 });

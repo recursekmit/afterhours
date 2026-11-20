@@ -81,7 +81,7 @@ About **60-70 participants**, each running it on their phone as an installable a
 - **Points, leaderboard, stickers, reactions.**
   - One points ledger where each thing pays once.
   - "You are #N, X behind" on the leaderboard, plus a freeze and top-10 countdown reveal.
-  - A sticker book you flip like a zine (a page per category, completion, "only N% have this", cheeky hints on locked ones, tap to slap), and emoji reactions that rain on the projector.
+  - A sticker book you flip like an old tome (a page per category, completion, "only N% have this", cheeky hints on locked ones, tap to slap), and emoji reactions that rain on the projector.
 
 **Fair play.** The server decides all scoring. Answers, future clues and quiz solutions never reach phones early. Everything spammable is rate-limited, and passwords are stored hashed (scrypt).
 
@@ -208,7 +208,7 @@ The click-by-click version is [docs/EVENT-DAY.md](docs/EVENT-DAY.md). The run sh
 
 - Read [docs/EXTENDING.md](docs/EXTENDING.md). A feature is one folder on each side plus one line in each registry.
 - Run `npm run check` before committing. Commit small, with clear messages.
-- The visual style is a deliberate cut-paper "zine": heavy ink outlines, offset shadows, tape, and loud flat colour. Use the kit components and the tokens in `web/src/styles/tokens.css`. Don't add new colours or fonts.
+- The visual style is an original wizarding-academy look built on the four engraved tickets: gold line art and double rules on dark ticket grounds, aged parchment cards for reading, wax seals and enamel pins (docs/SPEC.md section 2, including the no-Harry-Potter-IP rule). Use the kit components and the tokens in `web/src/styles/tokens.css`. Don't add new colours or fonts.
 - Server-authoritative by design: anything that decides points is validated on the server.
 
 ## Credits

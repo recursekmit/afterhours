@@ -1,6 +1,10 @@
 // Polish pass: drives the interactive bits of the non-trail features and saves screenshots to docs/screens/polish-*.png.
 import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
 
+// believable nicknames for the screenshots
+const NICKS = ['lakshmi', 'omar', 'riya', 'neel', 'aisha', 'karthik', 'tanvi', 'sid', 'pooja', 'farhan', 'esha', 'manav', 'leela', 'kunal', 'divya', 'arnav', 'gauri', 'vihaan', 'naina', 'reyansh'];
+const nick = (n: number) => NICKS[(n - 1) % NICKS.length]! + (n > NICKS.length ? String(Math.ceil(n / NICKS.length)) : '');
+
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SMALL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SHOT = 'docs/screens';
@@ -22,7 +26,7 @@ async function attendee(browser: Browser, opts: typeof PHONE | typeof SMALL = PH
   const kit = kits[next++]!;
   expect((await page.request.post('/api/auth/signin', { data: kit })).ok()).toBeTruthy();
   const prof = await page.request.put('/api/me/profile', {
-    data: { name: `Polish ${next}`, roll: `P${next}`, nickname: `polish${next}`, avatar: { shape: 'blob', color: 'lime', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
+    data: { name: nick(next), roll: `P${next}`, nickname: nick(next), avatar: { shape: 'blob', color: 'lime', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
   });
   expect(prof.ok()).toBeTruthy();
   return page;
@@ -57,18 +61,18 @@ test.describe.serial('polish', () => {
     await page.goto('/');
     await expect(page.getByText('happening now')).toBeVisible();
     await page.waitForTimeout(1500);
-    await page.screenshot({ path: `${SHOT}/polish-schedule-home-390.png` });
+    await page.screenshot({ path: `${SHOT}/schedule-home-390.png` });
     await page.goto('/schedule');
     await expect(page.getByRole('heading', { name: 'the afternoon' })).toBeVisible();
     await api('POST', `/api/schedule/${big}/delay`, { minutes: 10 });
     await expect(page.getByText('+10', { exact: true }).first()).toBeVisible({ timeout: 4000 });
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${SHOT}/polish-schedule-delay-390.png` });
+    await page.screenshot({ path: `${SHOT}/schedule-delay-390.png` });
     await page.context().close();
     const small = await attendee(browser, SMALL);
     await small.goto('/schedule');
     await small.waitForTimeout(1200);
-    await small.screenshot({ path: `${SHOT}/polish-schedule-timeline-360.png` });
+    await small.screenshot({ path: `${SHOT}/schedule-timeline-360.png` });
     await small.context().close();
   });
 
@@ -80,7 +84,7 @@ test.describe.serial('polish', () => {
     const banner = page.getByRole('status').filter({ hasText: 'chai is out' });
     await expect(banner).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(700);
-    await page.screenshot({ path: `${SHOT}/polish-alerts-banner-390.png` });
+    await page.screenshot({ path: `${SHOT}/alerts-banner-390.png` });
     await banner.getByRole('button', { name: 'dismiss' }).click();
     await expect(banner).toHaveCount(0, { timeout: 3000 });
     await page.context().close();
@@ -100,11 +104,11 @@ test.describe.serial('polish', () => {
     await page.keyboard.press('ArrowRight');
     await expect(slider).toHaveAttribute('aria-valuenow', '5');
     await page.waitForTimeout(600);
-    await page.screenshot({ path: `${SHOT}/polish-polls-rating-390.png` });
+    await page.screenshot({ path: `${SHOT}/polls-rating-390.png` });
     await dialog.getByRole('button', { name: "that's my number" }).click();
     await page.getByRole('button', { name: 'stick it in' }).click();
     await page.waitForTimeout(1600);
-    await page.screenshot({ path: `${SHOT}/polish-polls-results-390.png` });
+    await page.screenshot({ path: `${SHOT}/polls-results-390.png` });
     await dialog.getByRole('button', { name: 'hide poll' }).click();
     await api('POST', `/api/polls/admin/${rate.poll.id}/close`, {});
 
@@ -113,24 +117,24 @@ test.describe.serial('polish', () => {
     const proj = await projector(browser, 'polls');
     const lead = page.getByText('ready?');
     await expect(lead).toBeVisible({ timeout: 5000 });
-    await page.screenshot({ path: `${SHOT}/polish-polls-quiz-leadin-390.png` });
+    await page.screenshot({ path: `${SHOT}/polls-quiz-leadin-390.png` });
     const pick = page.getByRole('button', { name: /443/ });
     await expect(pick).toBeVisible({ timeout: 8000 });
     await page.waitForTimeout(800);
-    await page.screenshot({ path: `${SHOT}/polish-polls-quiz-390.png` });
-    await proj.screenshot({ path: `${SHOT}/polish-polls-projector-quiz-1080.png` });
+    await page.screenshot({ path: `${SHOT}/polls-quiz-390.png` });
+    await proj.screenshot({ path: `${SHOT}/polls-projector-quiz-1080.png` });
     await pick.click();
     await expect(page.getByText('locked in').first()).toBeVisible({ timeout: 4000 });
     await page.waitForTimeout(700);
-    await page.screenshot({ path: `${SHOT}/polish-polls-locked-390.png` });
+    await page.screenshot({ path: `${SHOT}/polls-locked-390.png` });
     await api('POST', `/api/polls/admin/${quiz.poll.id}/close`, {});
     await proj.waitForTimeout(1500);
-    await proj.screenshot({ path: `${SHOT}/polish-polls-projector-drumroll-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/polls-projector-drumroll-1080.png` });
     await api('POST', `/api/polls/admin/${quiz.poll.id}/reveal`, {});
     await page.waitForTimeout(2500);
-    await page.screenshot({ path: `${SHOT}/polish-polls-reveal-390.png` });
+    await page.screenshot({ path: `${SHOT}/polls-reveal-390.png` });
     await proj.waitForTimeout(2500);
-    await proj.screenshot({ path: `${SHOT}/polish-polls-projector-reveal-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/polls-projector-reveal-1080.png` });
     await proj.context().close();
     await page.context().close();
   });
@@ -144,17 +148,20 @@ test.describe.serial('polish', () => {
     await page.goto('/checkin');
     await page.getByLabel('code character 1').fill(code.split('').reverse().join('') === code ? code.slice(1) + code[0] : code.split('').reverse().join(''));
     await expect(page.getByText('nope', { exact: true })).toBeVisible({ timeout: 4000 });
-    await page.screenshot({ path: `${SHOT}/polish-attendance-nope-390.png` });
+    await page.screenshot({ path: `${SHOT}/attendance-nope-390.png` });
     await page.waitForTimeout(1200);
     await page.getByLabel('code character 1').fill(code);
     await expect(page.getByText("you're")).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(1800);
-    await page.screenshot({ path: `${SHOT}/polish-attendance-success-390.png` });
+    await page.screenshot({ path: `${SHOT}/attendance-success-390.png` });
     await page.context().close();
     const proj = await projector(browser, 'attendance');
     await proj.waitForTimeout(2500);
-    await proj.screenshot({ path: `${SHOT}/polish-attendance-projector-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/attendance-projector-1080.png` });
     await proj.context().close();
+    // leave the projector as we found it: an open check-in holds the big screen for later specs (quick session)
+    await api('POST', '/api/attendance/admin/close', { activityId: id });
+    await api('POST', '/api/admin/screen/pin', { sceneId: null });
   });
 
   test('leaderboard: phone card, then the projector reveal', async ({ browser }) => {
@@ -168,21 +175,21 @@ test.describe.serial('polish', () => {
     await me.goto('/leaderboard');
     await expect(me.getByText('you are')).toBeVisible();
     await me.waitForTimeout(1800);
-    await me.screenshot({ path: `${SHOT}/polish-leaderboard-390.png` });
+    await me.screenshot({ path: `${SHOT}/leaderboard-390.png` });
     await api('POST', '/api/leaderboard/admin/freeze', { topN: 5, stepMs: 1500, suspenseMs: 2500, hideTop: true });
     await expect(me.getByText('your points still count')).toBeVisible({ timeout: 5000 });
-    await me.screenshot({ path: `${SHOT}/polish-leaderboard-frozen-390.png` });
+    await me.screenshot({ path: `${SHOT}/leaderboard-frozen-390.png` });
     const proj = await projector(browser, 'leaderboard');
     await proj.waitForTimeout(1500);
-    await proj.screenshot({ path: `${SHOT}/polish-leaderboard-projector-frozen-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/leaderboard-projector-frozen-1080.png` });
     await api('POST', '/api/leaderboard/admin/reveal', {});
     await proj.waitForTimeout(4500);
-    await proj.screenshot({ path: `${SHOT}/polish-leaderboard-projector-reveal-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/leaderboard-projector-reveal-1080.png` });
     await expect(proj.getByText('drum roll...')).toBeVisible({ timeout: 12_000 });
-    await proj.screenshot({ path: `${SHOT}/polish-leaderboard-projector-drumroll-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/leaderboard-projector-drumroll-1080.png` });
     await expect(proj.getByText('your champion')).toBeVisible({ timeout: 12_000 });
     await proj.waitForTimeout(1500);
-    await proj.screenshot({ path: `${SHOT}/polish-leaderboard-projector-champion-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/leaderboard-projector-champion-1080.png` });
     await proj.context().close();
     for (const p of pages) await p.context().close();
   });
@@ -192,7 +199,7 @@ test.describe.serial('polish', () => {
     await page.goto('/arcade');
     await expect(page.getByText('insert coin').first()).toBeVisible();
     await page.waitForTimeout(1200);
-    await page.screenshot({ path: `${SHOT}/polish-arcade-hub-390.png` });
+    await page.screenshot({ path: `${SHOT}/arcade-hub-390.png` });
 
     await page.goto('/arcade/reaction');
     await page.getByRole('button', { name: 'insert coin' }).click();
@@ -200,24 +207,24 @@ test.describe.serial('polish', () => {
     const now = page.locator('button', { hasText: 'NOW!' });
     await now.waitFor({ timeout: 8000 });
     await page.waitForTimeout(400);
-    await page.screenshot({ path: `${SHOT}/polish-arcade-lagspike-green-390.png` });
+    await page.screenshot({ path: `${SHOT}/arcade-lagspike-green-390.png` });
     await now.dispatchEvent('pointerdown');
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${SHOT}/polish-arcade-lagspike-ms-390.png` });
+    await page.screenshot({ path: `${SHOT}/arcade-lagspike-ms-390.png` });
     await page.getByRole('button', { name: 'quit' }).click();
 
     await page.goto('/arcade/hexbin');
     await page.getByRole('button', { name: 'insert coin' }).click();
     await expect(page.getByText(/^to (binary|decimal|hex)$/)).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(600);
-    await page.screenshot({ path: `${SHOT}/polish-arcade-baserush-390.png` });
+    await page.screenshot({ path: `${SHOT}/arcade-baserush-390.png` });
     await page.getByRole('button', { name: 'quit' }).click();
 
     await page.goto('/arcade/memory');
     await page.getByRole('button', { name: 'insert coin' }).click();
     await expect(page.getByText('watch...')).toBeVisible({ timeout: 5000 });
     await page.waitForTimeout(1200);
-    await page.screenshot({ path: `${SHOT}/polish-arcade-echo-390.png` });
+    await page.screenshot({ path: `${SHOT}/arcade-echo-390.png` });
     await page.getByRole('button', { name: 'quit' }).click();
     await page.context().close();
 
@@ -226,7 +233,7 @@ test.describe.serial('polish', () => {
     await small.getByRole('button', { name: 'insert coin' }).click();
     await expect(small.getByText(/^to (binary|decimal|hex)$/)).toBeVisible({ timeout: 5000 });
     await small.waitForTimeout(600);
-    await small.screenshot({ path: `${SHOT}/polish-arcade-baserush-360.png` });
+    await small.screenshot({ path: `${SHOT}/arcade-baserush-360.png` });
     await small.context().close();
   });
 
@@ -242,12 +249,16 @@ test.describe.serial('polish', () => {
     }
     await expect(page.getByText('x4')).toBeVisible();
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${SHOT}/polish-reactions-390.png` });
+    await page.screenshot({ path: `${SHOT}/reactions-390.png` });
     const proj = await projector(browser, 'schedule');
     for (let i = 0; i < 6; i++) await pad.dispatchEvent('pointerdown');
     await proj.waitForTimeout(2500);
-    await proj.screenshot({ path: `${SHOT}/polish-reactions-projector-1080.png` });
+    await proj.screenshot({ path: `${SHOT}/reactions-projector-1080.png` });
     await proj.context().close();
     await page.context().close();
+    // leave the big screen free for the specs after this one: no pin, no open check-in (any activity)
+    await api('POST', '/api/admin/screen/pin', { sceneId: null });
+    const open = await api<{ open: { activityId: string }[] }>('GET', '/api/attendance/screen');
+    for (const o of open.open) await api('POST', '/api/attendance/admin/close', { activityId: o.activityId });
   });
 });

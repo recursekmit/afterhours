@@ -1,9 +1,22 @@
 /* Hunt: passport, torn clue card, scratch hints, finish, console, projector. */
-.passport { display: grid; gap: var(--s-3); }
+/* the passport is an inked map: stops along a dotted path, footprints between, a wax seal at each stop found */
+.passport { display: grid; gap: var(--s-3); overflow: hidden; }
+.passport > .compass { position: absolute; left: 50%; top: 10px; margin-left: -24px; width: 48px; height: 48px; z-index: 0 !important; fill: none; stroke: var(--ink); stroke-width: 0.8; opacity: 0.16; pointer-events: none; }
 .count { font-family: var(--font-display); font-size: var(--step-2); }
-.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-3); justify-items: center; }
-.slot { width: 70px; height: 70px; display: grid; place-items: center; border: var(--line) dashed color-mix(in srgb, var(--ink) 45%, transparent); border-radius: var(--cut-round); }
-.slotNum { font-family: var(--font-display); color: color-mix(in srgb, var(--ink) 40%, transparent); }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-5) var(--s-3); justify-items: center; }
+.slot { width: 62px; height: 62px; display: grid; place-items: center; border: var(--line) dashed color-mix(in srgb, var(--ink) 45%, transparent); border-radius: var(--cut-round); }
+.slotNum { font-family: var(--font-display); color: color-mix(in srgb, var(--ink) 55%, transparent); }
+/* the path to the next stop: dotted ink, footprints once you have walked it */
+.slot[data-path]::after { content: ''; position: absolute; pointer-events: none; z-index: -1; }
+.slot[data-path='r']::after,
+.slot[data-path='l']::after { top: 50%; width: calc(50% + var(--s-3) + 10px); height: 2px; margin-top: -1px; background: radial-gradient(circle, color-mix(in srgb, var(--ink) 55%, transparent) 1.2px, transparent 1.6px) 0 50% / 7px 2px repeat-x; }
+.slot[data-path='r']::after { left: 100%; }
+.slot[data-path='l']::after { right: 100%; }
+.slot[data-path='d']::after { left: 50%; top: 100%; width: 2px; height: var(--s-5); margin-left: -1px; background: radial-gradient(circle, color-mix(in srgb, var(--ink) 55%, transparent) 1.2px, transparent 1.6px) 50% 0 / 2px 7px repeat-y; }
+.slot[data-walked][data-path='r']::after,
+.slot[data-walked][data-path='l']::after { height: 12px; margin-top: -6px; background: var(--footprints-h) 0 50% / 16px 12px repeat-x; opacity: 0.75; }
+.slot[data-walked][data-path='l']::after { transform: scaleX(-1); }
+.slot[data-walked][data-path='d']::after { width: 12px; margin-left: -6px; background: var(--footprints-v) 50% 0 / 12px 16px repeat-y; opacity: 0.75; }
 .clueCard {
   position: relative;
   display: grid;
@@ -12,7 +25,7 @@
   background: var(--paper-3);
   border: var(--outline);
   box-shadow: var(--shadow-lg);
-  transform: rotate(-1.2deg);
+  
   clip-path: polygon(0 0, 100% 0, 100% 92%, 94% 97%, 87% 93%, 79% 99%, 70% 94%, 61% 98%, 52% 93%, 43% 99%, 34% 94%, 25% 98%, 16% 93%, 8% 98%, 0 94%);
   background-image: repeating-linear-gradient(transparent 0 29px, color-mix(in srgb, var(--sky) 45%, transparent) 29px 31px);
 }
@@ -44,11 +57,11 @@
 .solvedTitle { font-size: var(--step-2); line-height: 1.05; }
 .reveal { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
 .finish { display: grid; justify-items: center; gap: var(--s-2); text-align: center; }
-.rank { font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--tangerine); text-shadow: 5px 5px 0 var(--ink); transform: rotate(-4deg); }
+.rank { font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--accent-text); text-shadow: var(--engrave);  }
 .time { font-family: var(--font-display); font-size: var(--step-3); }
 .bonus { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--font-hand); font-weight: 700; }
 .bonus b { font-family: var(--font-display); }
-.three { font-family: var(--font-display); font-size: 120px; line-height: 1; text-align: center; color: var(--tangerine); text-shadow: 6px 6px 0 var(--ink); }
+.three { font-family: var(--font-display); font-size: 120px; line-height: 1; text-align: center; color: var(--accent-text); text-shadow: var(--engrave); }
 .startCard { display: grid; gap: var(--s-4); }
 .startText { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
 .closed { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
@@ -74,10 +87,10 @@
 
 /* projector */
 .scene { display: grid; grid-template-columns: 1.2fr 1fr; gap: calc(var(--u) * 4); padding: calc(var(--u) * 4) calc(var(--u) * 6); align-items: center; }
-.sceneTitle { font-size: calc(var(--u) * 5); line-height: 1; transform: rotate(-2deg); transform-origin: left; text-shadow: 4px 5px 0 var(--ink); }
+.sceneTitle { font-size: calc(var(--u) * 5); line-height: 1;  transform-origin: left; text-shadow: var(--engrave); }
 .map { display: flex; flex-wrap: wrap; gap: calc(var(--u) * 2); margin-top: calc(var(--u) * 3); }
-.mapStop { position: relative; width: calc(var(--u) * 9); height: calc(var(--u) * 9); display: grid; place-items: center; background: var(--paper-3); color: var(--ink); border: 5px solid var(--ink); border-radius: var(--cut-round); font-family: var(--font-display); font-size: calc(var(--u) * 2.6); box-shadow: 6px 7px 0 var(--ink); }
-.mapStop:nth-child(odd) { transform: rotate(-6deg); }
+.mapStop { position: relative; width: calc(var(--u) * 9); height: calc(var(--u) * 9); display: grid; place-items: center; background: var(--paper-3); color: var(--ink); border: 5px solid var(--ink); border-radius: var(--cut-round); font-family: var(--font-display); font-size: calc(var(--u) * 2.6); box-shadow: var(--shadow-lg); }
+.mapStop:nth-child(odd) {  }
 .dots { position: absolute; bottom: calc(var(--u) * -2.2); left: 50%; translate: -50% 0; font-family: var(--font-hand); font-weight: 800; font-size: calc(var(--u) * 1.6); background: var(--pink); border: 3px solid var(--ink); border-radius: var(--cut-3); padding: 0 calc(var(--u) * 0.6); white-space: nowrap; }
 .stats { display: flex; gap: calc(var(--u) * 4); font-family: var(--font-display); font-size: calc(var(--u) * 3); margin-top: calc(var(--u) * 3); }
 .stats span { display: grid; }
@@ -113,7 +126,7 @@
 /* slip stop */
 .slipBox { display: grid; gap: var(--s-3); }
 .slipWhich { display: flex; gap: var(--s-2); align-items: center; font-family: var(--font-hand); font-weight: 800; }
-.slipNo { font-family: var(--font-display); background: var(--ink); color: var(--paper); padding: 2px 10px; border-radius: var(--cut-3); transform: rotate(-3deg); }
+.slipNo { font-family: var(--font-display); background: var(--ink); color: var(--paper); padding: 2px 10px; border-radius: var(--cut-3);  }
 .slipCam { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-3); align-items: center; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-2); padding: var(--s-3) var(--s-4); font-family: var(--font-hand); font-weight: 600; }
 .slipResult { display: grid; gap: 4px; }
 .slipOutcome { font-family: var(--font-display); font-weight: 400; font-size: var(--step-1); }
@@ -142,12 +155,10 @@
 /* polish: splat, scratch foil, finish peels */
 .slot { position: relative; }
 .slotFilled { border-color: transparent; }
-.splat { position: absolute; inset: -10px; width: calc(100% + 20px); height: calc(100% + 20px); fill: var(--ink); opacity: 0.85; animation: splat 380ms var(--ease-pop) both; pointer-events: none; }
-@keyframes splat { from { transform: scale(0.2); opacity: 0; } to { transform: scale(1); opacity: 0.85; } }
 .scratch { position: relative; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
 .foil { position: absolute; inset: 0; background: repeating-linear-gradient(45deg, var(--paper-2) 0 8px, var(--sun) 8px 16px); pointer-events: none; }
 .scratchText { position: relative; display: inline-flex; gap: var(--s-2); align-items: center; background: var(--paper-3); padding: 2px 10px; border-radius: var(--cut-3); border: var(--line-thin) solid var(--ink); }
 .peels { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 52px; }
-@media (prefers-reduced-motion: reduce) { .splat { animation: none; } }
+
 .tooLong { display: inline-block; font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); background: var(--pink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 1px 8px; }
 .slipMsg { font-family: var(--font-hand); font-weight: 700; }

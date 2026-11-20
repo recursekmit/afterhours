@@ -1,27 +1,52 @@
 .stage {
   --u: min(1vw, 1.7778vh);
+  --frame-in: calc(var(--u) * 1.1);
   position: relative;
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
-  background: var(--dusk);
-  color: var(--paper);
+  color: var(--cream);
+  /* the scene's home ticket: its ground, a candle-lit centre, the grain */
+  background-color: var(--paper-2);
+  background-image: radial-gradient(90% 80% at 50% 40%, rgb(255 196 110 / 0.07), transparent 70%), var(--grain);
+  background-size: 100% 100%, 180px 180px;
+  transition: background-color var(--dur-slow) var(--ease-out);
 }
-.stage::before { content: ''; position: absolute; inset: 0; background: var(--halftone); pointer-events: none; opacity: 0.8; }
+/* the ticket's engraved border: a gold rule, a gap, a hairline, with four-point stars in the corners */
+.stage::before {
+  content: '';
+  position: absolute;
+  z-index: 5;
+  inset: var(--frame-in);
+  border: 2px solid var(--gold);
+  box-shadow: inset 0 0 0 6px transparent, inset 0 0 0 7px var(--rule);
+  pointer-events: none;
+}
+.stage::after {
+  content: '';
+  position: absolute;
+  z-index: 5;
+  inset: calc(var(--frame-in) - var(--u) * 0.9);
+  background:
+    var(--star-gold) left top / calc(var(--u) * 2.2) no-repeat,
+    var(--star-gold) right top / calc(var(--u) * 2.2) no-repeat,
+    var(--star-gold) left bottom / calc(var(--u) * 2.2) no-repeat,
+    var(--star-gold) right bottom / calc(var(--u) * 2.2) no-repeat;
+  pointer-events: none;
+}
 .scene { position: absolute; inset: 0; display: grid; }
-.pager { position: absolute; z-index: 3; left: calc(var(--u) * 2.4); bottom: calc(var(--u) * 2); display: flex; gap: calc(var(--u) * 0.8); align-items: center; list-style: none; margin: 0; padding: 0; }
-.pip { width: calc(var(--u) * 1.4); height: calc(var(--u) * 1.4); border: 3px solid var(--paper); border-radius: 30%; transform: rotate(8deg); transition: transform var(--dur) var(--ease-pop), background var(--dur); }
-.pipOn { background: var(--tangerine); transform: rotate(-8deg) scale(1.4); }
+.pager { position: absolute; z-index: 6; left: calc(var(--u) * 3.2); bottom: calc(var(--u) * 2.6); display: flex; gap: calc(var(--u) * 0.8); align-items: center; list-style: none; margin: 0; padding: 0; }
+.pip { width: calc(var(--u) * 1.1); height: calc(var(--u) * 1.1); border: 2px solid var(--gold); transform: rotate(45deg); transition: transform var(--dur) var(--ease-pop), background var(--dur); }
+.pipOn { background: var(--gold); transform: rotate(45deg) scale(1.4); }
 .pinned { margin-left: calc(var(--u) * 0.6); }
 
 .join { display: grid; grid-template-columns: 1.15fr 1fr; align-items: center; padding: calc(var(--u) * 4) calc(var(--u) * 6); gap: calc(var(--u) * 4); position: relative; }
-.join::before { content: ''; position: absolute; right: calc(var(--u) * -9); top: calc(var(--u) * -12); width: calc(var(--u) * 52); height: calc(var(--u) * 52); background: var(--grape); border: 4px solid var(--paper); border-radius: var(--cut-round); transform: rotate(14deg); }
-.join::after { content: ''; position: absolute; left: calc(var(--u) * -8); bottom: calc(var(--u) * -14); width: calc(var(--u) * 50); height: calc(var(--u) * 26); background: var(--tangerine); border: 4px solid var(--paper); border-radius: var(--cut-2); transform: rotate(-8deg); }
+.join::before { content: ''; position: absolute; inset: 0; background: url('../../assets/tickets/wave-field-sm.webp') 0% 70% / cover no-repeat; opacity: 0.22; -webkit-mask-image: linear-gradient(90deg, #000, transparent 75%); mask-image: linear-gradient(90deg, #000, transparent 75%); pointer-events: none; }
 .joinLeft { position: relative; z-index: 1; display: grid; gap: calc(var(--u) * 2.2); justify-items: start; }
-.joinHead { position: relative; font-size: calc(var(--u) * 4.6); line-height: 1; transform: rotate(-2deg); transform-origin: left; text-shadow: 4px 5px 0 var(--ink); }
+.joinHead { position: relative; font-size: calc(var(--u) * 4.6); line-height: 1;  transform-origin: left; text-shadow: var(--engrave); }
 .joinScribble { position: absolute; left: 0; bottom: calc(var(--u) * -1.8); height: calc(var(--u) * 1.2) !important; }
-.joinHand { font-family: var(--font-hand); font-weight: 700; font-size: calc(var(--u) * 1.9); max-width: 30ch; line-height: 1.25; background: var(--ink); border: 3px solid var(--paper); border-radius: var(--cut-2); padding: calc(var(--u) * 1) calc(var(--u) * 1.6); transform: rotate(1deg); }
-.joinCount { display: flex; align-items: center; gap: calc(var(--u) * 1); font-family: var(--font-display); font-size: calc(var(--u) * 2.6); text-shadow: 3px 3px 0 var(--ink); }
+.joinHand { font-family: var(--font-hand); font-weight: 700; font-size: calc(var(--u) * 1.9); max-width: 30ch; line-height: 1.25; color: var(--iron-gall); background-color: var(--parchment); background-image: var(--foxing); border: 3px double var(--gold); border-radius: 2px; padding: calc(var(--u) * 1) calc(var(--u) * 1.6); }
+.joinCount { display: flex; align-items: center; gap: calc(var(--u) * 1); font-family: var(--font-display); font-size: calc(var(--u) * 2.6); text-shadow: var(--engrave); }
 .joinRight { position: relative; z-index: 1; display: grid; place-items: center; }
 .qrCard { display: grid; justify-items: center; gap: calc(var(--u) * 1.2); padding: calc(var(--u) * 2.2); }
 .qrCard svg { border: 4px solid var(--ink); border-radius: 8px; }
@@ -29,4 +54,4 @@
 .starA { position: absolute; top: calc(var(--u) * -3); right: calc(var(--u) * 1); transform: rotate(12deg); }
 .arrow { position: absolute; left: calc(var(--u) * -5); bottom: calc(var(--u) * 6); transform: rotate(-20deg); }
 /* Recurse corner bug on every scene (the join scene has its own lockup) */
-.bug { position: absolute; z-index: 4; right: calc(var(--u) * 2.4); bottom: calc(var(--u) * 1.8); opacity: 0.9; pointer-events: none; }
+.bug { position: absolute; z-index: 6; right: calc(var(--u) * 3); bottom: calc(var(--u) * 2.4); opacity: 0.9; pointer-events: none; }

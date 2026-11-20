@@ -66,7 +66,7 @@ export function PollOverlay() {
             <motion.div
               className={s.takeoverCard}
               initial={reduce ? { opacity: 0 } : { y: 700, rotate: 14, scale: 0.7 }}
-              animate={{ y: 0, rotate: -1, scale: 1, opacity: 1 }}
+              animate={{ y: 0, rotate: 0, scale: 1, opacity: 1 }}
               exit={reduce ? { opacity: 0 } : { y: 600, rotate: -8 }}
               transition={{ type: 'spring', stiffness: 240, damping: 14, mass: 0.9 }}
             >

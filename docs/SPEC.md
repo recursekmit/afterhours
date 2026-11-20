@@ -20,26 +20,59 @@ The owner's words: "really interactive, really fun, not some static one, very fu
 
 Every screen must react to the person using it. A screen that only displays text and a button is a failed screen.
 
-- **Motion everywhere it means something:** springy presses, cards that tilt and drag, numbers that count up, bars that race, stickers that peel and slap on.
+- **Motion everywhere it means something:** springy presses, numbers that count up, bars that race, pins pressed onto the page, seals that crack, letters that unfold, pages that flip.
 - **Sound and haptics:** short synthesised WebAudio blips (no audio files to download), `navigator.vibrate` on Android. One global mute toggle, remembered. Never play sound before the first user gesture.
-- **Rewards:** confetti and a sticker on every win. A personal **sticker book** fills as people check in, vote, find hunt stops and beat Morse rounds.
+- **Rewards:** spell-sparks and an enamel pin (a sticker) on every win. A personal **sticker book** (a leather tome) fills as people check in, vote, find hunt stops and beat Morse rounds.
 - **Presence:** people see that others are here: live counters ("143 voting"), floating emoji reactions that also rain on the projector, a leaderboard that reshuffles with animation.
 - **Voice:** copy is written like a club member talking to a friend. Short, cheeky, lowercase is fine. No corporate phrasing, no "Welcome to the platform".
 
-### Visual direction: "zine at dusk"
+### Visual direction: "a candlelit night at an old academy of magic and machines"
 
-A loud, hand-assembled, photocopied-club-poster look. Think cut paper, sticker sheets, marker scribbles, arcade tokens.
+The owner's words: "kind of Harry Potter aesthetic, not exactly Harry Potter." Read as an **original wizarding-academy, dark-academia look**, built on the owner's four engraved tickets (`design/tickets/`, the art the Morse slips are printed on). It is our own world, never someone else's (see the IP rule below).
 
-- Cream paper base with heavy ink outlines and hard offset shadows; loud flat colour blocks (tangerine, electric lime, hot pink, grape, sky) used in big confident shapes, not gradients.
-- Chunky display type for headings, a readable grotesque for body, a handwriting face for scribbled asides. **Fonts are bundled in the repo** (woff2, open licence) so the app works offline and never calls a font CDN.
-- Hand-drawn SVG doodles (stars, arrows, squiggles, a mascot is welcome), slight rotations, tape and sticker edges, halftone or grain texture.
-- A dark "after hours" variant for the projector view.
+**The four tickets.** Antique-gold and cream etched line art on deep, slightly grained grounds; double-rule gold borders with corner flourishes and four-point stars; notched ticket corners; plaque cartouches and square frames.
 
-**Hard bans** — the owner has rejected these on a previous project as looking "AI made": frosted glass panels, purple-to-blue gradients, letter-spaced all-caps micro labels, glowing status dots, gradient pill buttons, middle-dot separators, generic dashboard cards with soft shadows, emoji used as the only decoration, stock icon-library look. Also banned: anything cartoonish in a clip-art way.
+| ticket | ground | home of |
+| --- | --- | --- |
+| armillary sphere | maroon | Morse, slips (and the PIN gates' backdrop) |
+| great wave and moon | navy | hunt, trails, home, wallet, sign-in (the base palette) |
+| ginkgo, books and lantern | forest-black, cream line art | polls, quiz, schedule, check-in |
+| ruins and wisteria | plum | arcade, drops, recap, sticker book, leaderboard |
 
-Design tokens live in one file (`web/src/styles/tokens.css`). Feature code uses tokens and the shared UI kit; it never invents colours, fonts or shadows.
+The attendee shell sets `data-palette` on `<body>` from the route; the projector sets it per scene; the four houses map onto the same four tickets visually.
 
-Accessibility floor: 4.5:1 text contrast, 44px touch targets, `prefers-reduced-motion` respected (motion reduced, not removed), every game playable without sound.
+**Grounds and surfaces.**
+- *Night ground:* the page itself, the palette's deep colour with a faint gold grain and a candle-lit vignette. Headers, frames, plaques, nav and the projector are **gold on dark**.
+- *Aged parchment:* the reading surface. Default cards (`<Card>`, tone `paper`), sheets, letters, the sticker-book leaves and the passport map carry `data-ground="parchment"`: warm cream, foxed edges, a faint fibre, an engraved gold-brown frame. Inside it the tokens flip to **iron-gall ink on cream** (14:1), the six accents become pale washes (iron-gall text on each is AA+), and buttons become dark plaques with gold letters (or struck gold for the call to action). Long text lives on parchment, never as long gold-on-dark runs.
+- *Night plaques* (tone `ink`) and the tinted ticket cards (tones `tangerine` maroon, `sky` navy, `lime` forest, `grape` plum, `pink` rose, `sun` bronze) carry gold/cream text on the night ground.
+
+**Type** (all SIL OFL 1.1, bundled as woff2 in `web/src/assets/fonts`, licences beside them, no font CDN):
+- *Cinzel* (engraved capitals): display, headings, buttons, numerals.
+- *EB Garamond* (old-style book face): body text, weight 500 on a 17px root, so body text is comfortably readable at 16px and above.
+- *IM Fell English* italic: hand-set asides, labels and hints. No blackletter, ever, and never for body copy.
+
+**Ornament** (`kit/Ornament.tsx`, `kit/WaxSeal.tsx`, `kit/Hourglass.tsx`): four-point stars on card corners, the star rule under every title, the notched cartouche (wordmark, plaques), the gold double rule (cards, the projector frame, icons, the share image).
+
+**Motifs, mapped to features (the fun stays, restyled):**
+- *Celebrations:* gold spell-sparks (four-point stars), winking glints and drifting candle embers instead of confetti; a soft candle-flicker glow on highlight cards.
+- *Trail stamps:* wax seals pressed onto the passport, which is an **inked parchment map**: stops along a dotted path, footprints between the stops you have walked, a compass rose.
+- *Stickers:* **enamel pins** (struck-gold rim, enamel colour, glassy shine); the sticker book is a **leather tome** with parchment leaves that flip and a ribbon marker; pins still to find are ink impressions.
+- *Alerts:* an announcement arrives as a **sealed letter**: it drops in, the wax seal cracks, the letter unfolds. On the projector it unrolls as a proclamation.
+- *Morse:* the telegraph key is a **brass instrument** on a polished wooden base; the armillary is its palette.
+- *Polls and quiz:* the quiz is an enchanted exam, timed by a **sand hourglass**.
+- *Wallet and stalls:* mocktails are drawn as **potion bottles**, points as **gold coins**; your rank is pressed in red wax. The UI keeps the plain words "points" and "mocktails" so nobody is confused at the counter; flavour lives in visuals and small copy.
+- *Leaderboard:* your rank is an **illuminated scroll** on gilt rods (vermilion numeral); the projector reveal is a proclamation.
+- *Flash drops:* a shooting star (the old lightning-bolt glyph is redrawn; see the IP rule).
+
+**Original, not Harry Potter (hard rule).** No Harry Potter names, terms, logos, fonts or iconography anywhere in the app, copy, notifications or assets: no Hogwarts, the four house names, Quidditch, Galleons, Muggle, Marauder's Map, Sorting Hat, Hedwig or owl post; no lightning-bolt scar or bolt motif; no HP logo typeface or lookalikes; no crests or characters. Generic motifs are fine: candles, parchment, wax seals, potion bottles, quills, keys, books, stars, hourglasses, brass instruments. The club's own identity stays prominent: "after hours", the Recurse logo (white on the night ground, black on paper prints) and the Recurse robot.
+
+**Hard bans** (still): frosted glass panels, purple-to-blue gradients, glowing status dots, gradient pill buttons, middle-dot separators, generic dashboard cards with soft shadows, emoji as the only decoration, stock icon-library look, clip-art cartoons. Cinzel capitals are for headings, buttons and numerals; small labels use the IM Fell italic, not letter-spaced caps.
+
+**PWA and print.** Icons, maskable icons and the iOS launch images are the Recurse icon on the wave navy inside the gold double rule (`node scripts/make-icons.mjs`); the boot screen and `theme_color` are the same navy. The recap share image (1080x1920) is an engraved ticket on the ruins plum.
+
+Design tokens live in one file (`web/src/styles/tokens.css`), including the parchment scope, the enamel, wax, brass and wood colours. Feature code uses tokens and the shared UI kit; it never invents colours, fonts or shadows.
+
+Accessibility floor: 4.5:1 text contrast (3:1 for large display type) on both grounds, 44px touch targets, a visible focus state (a bright gold double ring on the night ground, a deep gold one on parchment), `prefers-reduced-motion` respected (motion reduced, not removed: sparks drift instead of bursting, the candle flicker and seal crack hold still), every game playable without sound.
 
 ## 3. Stack
 

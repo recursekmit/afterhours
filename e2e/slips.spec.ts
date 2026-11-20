@@ -187,7 +187,7 @@ test.describe.serial('morse slips', () => {
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(400);
     await sheet.screenshot({ path: `${SHOTS}/slips-sheet-a4.png` });
-    await page.screenshot({ path: `${SHOTS}/slips-sheet-screen.png` });
+    await page.screenshot({ path: `${SHOTS}/slips-sheet-1100.png` });
     await ctx.close();
   });
 });

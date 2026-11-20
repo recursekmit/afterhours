@@ -142,7 +142,7 @@ test.describe.serial('stalls', () => {
     // 1st: the typed code
     await shop.getByLabel('or type their code').fill((await typed.textContent())!.replace(' ', ''));
     await shop.getByRole('button', { name: 'go' }).click();
-    await expect(shop.getByRole('heading', { name: 'sipper1' })).toBeVisible();
+    await expect(shop.getByRole('heading', { name: 'anika' })).toBeVisible();
     await expect(shop.getByLabel('2 free mocktails left', { exact: true })).toBeVisible();
     await shop.getByRole('button', { name: 'add mocktail' }).click();
     await expect(shop.locator('[class*=verdict][role=status]')).toContainText('1 free drink');
@@ -167,7 +167,7 @@ test.describe.serial('stalls', () => {
     const qr = (await (await phone.request.get('/api/stalls/qr')).json()) as { url: string; token: string };
     expect(qr.url).toBe(`${baseURL}/stall/r/${qr.token}`);
     await shop.goto(`/stall/r/${qr.token}`);
-    await expect(shop.getByRole('heading', { name: 'sipper1' })).toBeVisible();
+    await expect(shop.getByRole('heading', { name: 'anika' })).toBeVisible();
     await expect(shop).toHaveURL(/\/stall$/);
     await expect(shop.getByLabel('1 free mocktail left', { exact: true })).toBeVisible();
     await shop.getByRole('button', { name: 'add mocktail' }).click();

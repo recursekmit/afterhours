@@ -1,4 +1,4 @@
-/* Quick session. Tokens only: no colours, fonts or shadows of its own, so a theme change reaches it. */
+/* Quick session, in the engraved-ticket theme. Tokens only: no colours, fonts or shadows of its own. */
 
 .gallery {
   list-style: none;
@@ -26,9 +26,10 @@
 .tileSees { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-0); color: var(--ink); }
 
 .steps { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--s-3); flex-wrap: wrap; font-family: var(--font-hand); font-weight: 800; }
-.steps li { display: inline-flex; gap: var(--s-2); align-items: center; padding: 4px 12px 4px 4px; border: var(--line-thin) solid var(--ink); border-radius: var(--cut-round); background: var(--paper-3); color: var(--ink-soft); }
+.steps li { display: inline-flex; gap: var(--s-2); align-items: center; padding: 4px 12px 4px 4px; border: var(--line-thin) solid var(--frame, var(--ink)); border-radius: var(--cut-round); background: var(--paper-3); color: var(--ink-soft); }
 .steps li span { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: var(--cut-round); background: var(--paper-2); border: var(--line-thin) solid var(--ink); font-family: var(--font-display); }
-.stepOn { background: var(--sun) !important; color: var(--ink) !important; box-shadow: var(--shadow-sm); }
+.stepOn { background: var(--gold) !important; color: var(--on-gold) !important; box-shadow: var(--shadow-sm); }
+.stepOn span { background: transparent !important; border-color: currentColor !important; }
 .stepDone { color: var(--ink) !important; }
 
 .composer { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--s-5); align-items: start; }
@@ -57,7 +58,7 @@
 .liveKind { font-family: var(--font-hand); font-weight: 800; }
 .liveClock { margin-left: auto; font-family: var(--font-hand); font-weight: 800; display: inline-flex; gap: 6px; align-items: baseline; }
 .liveTitle { font-size: var(--step-2); line-height: 1.1; overflow-wrap: anywhere; }
-.bigCode { font-family: var(--font-display); font-size: var(--step-6); letter-spacing: 0.12em; text-align: center; background: var(--paper-3); color: var(--ink); border: var(--outline); border-radius: var(--cut-2); padding: var(--s-3); box-shadow: var(--shadow-sm); overflow-wrap: anywhere; }
+.bigCode { font-family: var(--font-display); font-size: var(--step-6); letter-spacing: 0.12em; text-align: center; background: var(--paper-3); color: var(--ink); border: var(--line) solid var(--frame, var(--ink)); border-radius: var(--cut-2); padding: var(--s-3); box-shadow: var(--shadow-sm); overflow-wrap: anywhere; }
 .stats { display: flex; gap: var(--s-5); flex-wrap: wrap; }
 .controls { display: flex; gap: var(--s-3); flex-wrap: wrap; }
 .controlsCompact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
@@ -65,7 +66,7 @@
 .bars li { display: grid; grid-template-columns: minmax(70px, 30%) minmax(0, 1fr) 2.5ch; gap: var(--s-2); align-items: center; font-weight: 700; }
 .barLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .barTrack { display: block; height: 18px; background: var(--paper-3); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); overflow: hidden; }
-.barFill { display: block; height: 100%; background: var(--ink); transition: width var(--dur) var(--ease-out); }
+.barFill { display: block; height: 100%; background: var(--gold); transition: width var(--dur) var(--ease-out); }
 .barMark .barFill { background: var(--good); }
 .barMark .barLabel::after { content: ' (right)'; font-family: var(--font-hand); }
 .barValue { font-family: var(--font-display); text-align: right; }
@@ -74,7 +75,7 @@
 
 /* presets and history */
 .presets { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
-.presetRow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; gap: var(--s-3); align-items: center; padding: var(--s-2) var(--s-3); background: var(--paper-3); color: var(--ink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); }
+.presetRow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; gap: var(--s-3); align-items: center; padding: var(--s-2) var(--s-3); background: var(--paper-3); color: var(--ink); border: var(--line-thin) solid var(--frame, var(--ink)); border-radius: var(--cut-3); }
 .presetName { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .presetKind { font-family: var(--font-hand); font-weight: 700; color: var(--ink-soft); white-space: nowrap; }
 
@@ -88,11 +89,14 @@
   gap: var(--s-4);
   align-content: start;
   padding: calc(var(--s-4) + env(safe-area-inset-top)) var(--gutter) calc(var(--s-7) + env(safe-area-inset-bottom));
-  background: var(--page-bg, var(--paper));
+  /* the night ground, candle-lit, like every phone screen */
+  background-color: var(--page-bg, var(--paper));
+  background-image: radial-gradient(120% 60% at 50% 0%, rgb(255 196 110 / 0.08), transparent 65%), var(--grain);
+  background-size: 100% 100%, 180px 180px;
   color: var(--text, var(--ink));
 }
 .speakerHead { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.speakerTitle { font-size: var(--step-3); transform: rotate(-1deg); transform-origin: left; }
+.speakerTitle { font-size: var(--step-3); text-shadow: var(--engrave); }
 .speakerBack { font-family: var(--font-hand); font-weight: 800; color: inherit; min-height: var(--tap); display: inline-flex; align-items: center; }
 .speakerList { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
 .speakerBtn { display: inline-flex; align-items: center; gap: var(--s-3); text-align: left; font-size: var(--step-1); }

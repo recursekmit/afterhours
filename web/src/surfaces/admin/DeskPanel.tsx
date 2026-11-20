@@ -149,7 +149,7 @@ export function DeskPanel() {
             ))
           )}
           {data && data.read === 'qr' && data.matches.length > 1 && data.pickId === null && (
-            <p className={s.note}>more than one roll ends {data.qr?.suffix}: their phone will ask for the full roll.</p>
+            <p className={s.note}>more than one person on the list shares {data.qr?.suffix}: their phone shows a "who are you?" picker.</p>
           )}
         </div>
       </div>

@@ -4,7 +4,7 @@
   2. A phone signs in by scanning a rendered student-ID QR through Chromium's fake camera
      (a y4m file, as in trails-camera.spec.ts), confirms "that's you?", builds a profile, lands on home.
      No BarcodeDetector in desktop Chromium, so this runs the lazy jsQR fallback.
-  3. Typed fallback (roll + last 4 phone digits), a colliding card that asks for the full roll,
+  3. Typed fallback (roll + last 4 phone digits), a shared card number that shows the "who are you?" picker,
      a card not on the list, a second phone refused, the desk unbinding it, camera denied.
   4. Screenshots of every step into docs/screens.
 */
@@ -135,7 +135,8 @@ test.describe.serial('student-ID login', () => {
       const confirm = page.getByTestId('id-confirm');
       await expect(confirm).toBeVisible({ timeout: 20_000 });
       await expect(confirm).toContainText("hi Kavya! that's you?");
-      await expect(confirm).toContainText('26BD1A0581');
+      await expect(confirm).toContainText('1st, CSE-A');
+      await expect(confirm).not.toContainText('BD1A');
       await settle(page);
       await page.screenshot({ path: `${SHOTS}/idlogin-thats-you-390.png` });
       await page.getByRole('button', { name: "yes, that's me" }).click();
@@ -158,16 +159,32 @@ test.describe.serial('student-ID login', () => {
     }
   });
 
-  test('phone: a colliding card asks for the full roll', async () => {
+  test('phone: a shared last four shows the "who are you?" picker, a bound person disabled', async ({ playwright }) => {
+    // Asha (25BD1A0563) is already in on another phone: typed fallback from a throwaway client
+    const other = await playwright.request.newContext({ baseURL: BASE });
+    expect((await other.post('/api/auth/roll/signin', { data: { roll: '25BD1A0563', phone4: '0063' } })).ok()).toBeTruthy();
+    await other.dispose();
     await withCamera('rao', CARD_RAO, async (page) => {
       await page.goto('/');
       await page.getByTestId('scan-id').click();
-      await expect(page.getByTestId('id-need-roll')).toBeVisible({ timeout: 20_000 });
-      await page.getByLabel('your full roll number').fill('26bd1ao563');
+      const picker = page.getByTestId('id-picker');
+      await expect(picker).toBeVisible({ timeout: 20_000 });
+      await expect(picker.getByRole('heading', { name: 'who are you?' })).toBeVisible();
+      const asha = picker.getByRole('button', { name: /Asha Rao/ });
+      const anil = picker.getByRole('button', { name: /Anil Rao/ });
+      await expect(asha).toBeDisabled();
+      await expect(asha).toContainText('already signed in on another phone, ask the desk');
+      await expect(anil).toBeEnabled();
+      await expect(anil).toContainText('1st, CSE-C');
+      await expect(picker).not.toContainText('BD1A'); // never a roll
+      await expect(picker).not.toContainText('9000000');
       await settle(page);
-      await page.screenshot({ path: `${SHOTS}/idlogin-need-roll-390.png` });
-      await page.getByRole('button', { name: "that's my roll" }).click();
+      await page.screenshot({ path: `${SHOTS}/idlogin-picker-390.png` });
+      await anil.click();
       await expect(page.getByTestId('id-confirm')).toContainText("hi Anil! that's you?");
+      await page.getByRole('button', { name: "yes, that's me" }).click();
+      await expect(page.getByRole('heading', { name: 'who are you?' })).toBeVisible();
+      await expect(page.getByLabel('roll number')).toHaveValue('26BD1A0563');
     });
   });
 

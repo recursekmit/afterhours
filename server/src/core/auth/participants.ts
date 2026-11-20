@@ -112,15 +112,17 @@ export interface RosterEntry {
   id: number;
   roll: string;
   name: string;
+  year: string | null;
+  section: string | null;
   phone: string | null;
   kitId: string;
 }
 
 export function roster(ctx: AppContext): RosterEntry[] {
-  return all<{ id: number; roll: string; name: string; phone: string | null; kit_id: string }>(
+  return all<{ id: number; roll: string; name: string; year: string | null; section: string | null; phone: string | null; kit_id: string }>(
     ctx.db,
-    'SELECT id, roll, name, phone, kit_id FROM participants ORDER BY id',
-  ).map((r) => ({ id: r.id, roll: r.roll, name: r.name, phone: r.phone, kitId: r.kit_id }));
+    'SELECT id, roll, name, year, section, phone, kit_id FROM participants ORDER BY name COLLATE NOCASE, id',
+  ).map((r) => ({ id: r.id, roll: r.roll, name: r.name, year: r.year, section: r.section, phone: r.phone, kitId: r.kit_id }));
 }
 
 export function findByRoll(ctx: AppContext, roll: string): RosterEntry | null {

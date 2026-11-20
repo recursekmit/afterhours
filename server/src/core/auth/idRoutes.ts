@@ -2,8 +2,8 @@
   Student-ID login routes (spec 4.1).
 
   Phone:
-    POST /api/auth/id/resolve   { payload, roll? }          who is this card? (no side effects)
-    POST /api/auth/id/signin    { payload, roll?, phone4? } bind this phone and sign in
+    POST /api/auth/id/resolve   { payload, pick? }          who is this card? one person, or a picker (no side effects)
+    POST /api/auth/id/signin    { payload, pick?, phone4? } bind this phone and sign in
     POST /api/auth/roll/signin  { roll, phone4 }            typed fallback: full roll + last 4 phone digits
   Console:
     GET    /api/admin/participants                 roster, sign-in state, points, settings
@@ -39,7 +39,6 @@ import {
   phoneLast4,
   resolveIdQr,
   rollKey,
-  rollSuffix,
 } from '@afterhours/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -99,7 +98,11 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
   const rollFailLimiter = new RateLimiter({ limit: login.kitFails, windowMs: login.kitWindowMs, now: ctx.now });
   // Per network: generous, a whole college shares one NAT address.
   const ipFailLimiter = new RateLimiter({ limit: login.kitFails * 6, windowMs: login.kitWindowMs, now: ctx.now });
+  // Name-returning lookups: 2x the per-minute sign-in limit per 10 minutes per network.
+  // Plenty for a hall of 70 behind one NAT; days to walk every possible card number.
+  const nameLimiter = new RateLimiter({ limit: login.ipPerMin * 2, windowMs: 10 * 60_000, now: ctx.now });
   const sweep = setInterval(() => {
+    nameLimiter.sweep();
     resolveLimiter.sweep();
     rollFailLimiter.sweep();
     ipFailLimiter.sweep();
@@ -122,26 +125,25 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
     return { elsewhere: Boolean(k?.device_hash) && !here, here };
   }
 
-  /** The registered person a scanned card (plus, if asked, their full roll) points at. */
-  function resolveScan(body: { payload: string; roll?: string | undefined }): RosterEntry {
+  /**
+   * Who a scanned card (plus, from the picker, the person tapped) is. Names
+   * play no part: the card's first segment is the roll's last four, that is all.
+   * Returns the person, or the candidates when several share the last four.
+   */
+  function resolveScan(body: { payload: string; pick?: number | undefined }): { who: RosterEntry } | { many: RosterEntry[] } {
     const qr = parseIdQr(body.payload);
     if (!qr) throw new HttpError(400, 'bad_qr', "That QR isn't a college ID. Scan the QR on your student ID card, or type your roll number instead.");
-    const list = roster(ctx);
-    if (body.roll) {
-      // Answering "which one are you?": it has to be a roll this card could be.
-      const fits = qr.roll ? rollKey(qr.roll) === rollKey(body.roll) : rollSuffix(body.roll) === rollKey(qr.suffix);
-      if (!fits) throw new HttpError(400, 'bad_request', `That roll number doesn't end in ${qr.roll ? qr.roll.slice(-4) : qr.suffix}, like the one on your card.`);
-      const key = rollKey(body.roll);
-      const who = list.find((p) => rollKey(p.roll) === key);
-      if (!who) throw notRegistered();
-      return who;
+    const res = resolveIdQr(qr, roster(ctx));
+    const cands = res.kind === 'one' ? [res.who] : res.kind === 'many' ? res.candidates : [];
+    if (body.pick !== undefined) {
+      // A pick must be one of this card's own candidates: anything else is a tampered request.
+      const who = cands.find((p) => p.id === body.pick);
+      if (!who) throw new HttpError(400, 'bad_pick', "That isn't one of the people on this card. Scan again.");
+      return { who };
     }
-    const res = resolveIdQr(qr, list);
     if (res.kind === 'none') throw notRegistered();
-    if (res.kind === 'ambiguous') {
-      throw new HttpError(409, 'need_roll', `More than one roll on our list ends in ${qr.suffix}. Type your full roll number so we get the right you.`);
-    }
-    return res.who;
+    if (res.kind === 'many') return { many: res.candidates };
+    return { who: res.who };
   }
 
   /* -------------------------------------------------------------- phone */
@@ -149,16 +151,35 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
   app.post('/api/auth/id/resolve', async (req): Promise<IdResolveResponse> => {
     resolveLimiter.enforce(`ip:${req.ip}`, 'Lots of scans from this network. Give it a few seconds.');
     const body = parse(IdResolveRequestSchema, req.body);
-    const who = resolveScan(body);
+    // Every lookup that could hand back names costs a token, misses included, so nobody can walk the suffixes.
+    nameLimiter.enforce(`ip:${req.ip}`, 'Lots of ID lookups from this network. Wait a few minutes, or come to the entry desk.');
+    const r = resolveScan(body);
+    if ('many' in r) {
+      return {
+        kind: 'pick',
+        choices: r.many.map((p) => ({ id: p.id, name: p.name, year: p.year, section: p.section, bound: boundElsewhere(req, p).elsewhere })),
+      };
+    }
+    const { who } = r;
     const { elsewhere, here } = boundElsewhere(req, who);
     if (elsewhere) throw idBound();
-    return { firstName: friendlyFirstName(who.name), roll: who.roll, needPhone: getIdLoginSettings(ctx).strictPhone && !here, thisPhone: here };
+    return {
+      kind: 'one',
+      id: who.id,
+      firstName: friendlyFirstName(who.name),
+      year: who.year,
+      section: who.section,
+      needPhone: getIdLoginSettings(ctx).strictPhone && !here,
+      thisPhone: here,
+    };
   });
 
   app.post('/api/auth/id/signin', async (req, reply): Promise<MeResponse> => {
     ipLimiter.enforce(`ip:${req.ip}`, 'Lots of sign-ins from this network. Give it a few seconds.');
     const body = parse(IdSignInRequestSchema, req.body);
-    const who = resolveScan(body);
+    const r = resolveScan(body);
+    if ('many' in r) throw new HttpError(409, 'need_pick', 'More than one person on the list shares this card number. Pick yourself from the list.');
+    const { who } = r;
     const { elsewhere, here } = boundElsewhere(req, who);
     if (elsewhere) throw idBound();
     if (getIdLoginSettings(ctx).strictPhone && !here) {

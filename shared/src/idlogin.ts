@@ -164,68 +164,25 @@ export function parseIdQr(raw: string): IdQr | null {
 
 export interface RosterCandidate {
   roll: string;
-  name: string;
 }
 
-export type Resolution<T extends RosterCandidate> =
-  | { kind: 'one'; who: T; by: 'roll' | 'only' | 'year' | 'surname' }
-  | { kind: 'ambiguous'; candidates: T[] }
-  | { kind: 'none' };
-
-const letters = (s: string) => s.toUpperCase().replace(/[^A-Z]/g, '');
-
-/** Does a surname from the card match a registered name? Case-insensitive, word or (4+ letters) substring. */
-export function surnameMatches(surname: string, name: string): boolean {
-  const sur = surname.split(/\s+/).map(letters).filter((w) => w.length >= 2);
-  if (sur.length === 0) return false;
-  const words = name.toUpperCase().split(/[^A-Z]+/).filter(Boolean);
-  const joined = letters(name);
-  return sur.some((w) => words.includes(w) || (w.length >= 4 && joined.includes(w)));
-}
+export type Resolution<T extends RosterCandidate> = { kind: 'one'; who: T } | { kind: 'many'; candidates: T[] } | { kind: 'none' };
 
 /**
- * Which registered person a scanned card is. Rules, in order:
+ * Who a scanned card could be. Names, surnames and the date segment are NOT
+ * used: registrations often carry only a first or shortened name, which would
+ * not match the card's official one. Simple and predictable:
  *   a full roll in the QR -> that roll, exactly;
- *   the 4-character suffix finds the candidates;
- *   1. the batch year from the date segment, if it picks exactly one;
- *   2. the surname segment against the registered name, if it picks exactly one;
- *   3. otherwise ambiguous: the phone asks for the full roll.
- * A single candidate is still checked: if the card's year and surname both
- * disagree with it (or one disagrees and the other says nothing), it is
- * probably someone else with the same last four, so we ask for the roll.
+ *   otherwise the first segment is the roll's last four:
+ *     one registered participant with it -> them ("that's you?");
+ *     two or more                        -> the phone shows a "who are you?" picker;
+ *     none                               -> not on the list.
  */
 export function resolveIdQr<T extends RosterCandidate>(qr: IdQr, roster: readonly T[]): Resolution<T> {
-  if (qr.roll) {
-    const key = rollKey(qr.roll);
-    const who = roster.find((p) => rollKey(p.roll) === key);
-    return who ? { kind: 'one', who, by: 'roll' } : { kind: 'none' };
-  }
-  const suffix = rollKey(qr.suffix);
-  const cands = roster.filter((p) => rollSuffix(p.roll) === suffix);
+  const cands = qr.roll ? roster.filter((p) => rollKey(p.roll) === rollKey(qr.roll ?? '')) : roster.filter((p) => rollSuffix(p.roll) === rollKey(qr.suffix));
   if (cands.length === 0) return { kind: 'none' };
-
-  const yearOk = (p: T): boolean | null => (qr.batch ? rollKey(p.roll).startsWith(qr.batch) : null);
-  const nameOk = (p: T): boolean | null => (qr.surname ? surnameMatches(qr.surname, p.name) : null);
-
-  if (cands.length === 1) {
-    const who = cands[0] as T;
-    const y = yearOk(who);
-    const n = nameOk(who);
-    const contradicted = (y === false && n !== true) || (n === false && y !== true);
-    return contradicted ? { kind: 'ambiguous', candidates: cands } : { kind: 'one', who, by: 'only' };
-  }
-
-  const byYear = cands.filter((p) => yearOk(p) === true);
-  const byName = cands.filter((p) => nameOk(p) === true);
-  if (byYear.length === 1) {
-    const who = byYear[0] as T;
-    // The year says one person, the surname clearly says another: do not guess.
-    const clash = nameOk(who) === false && byName.length > 0;
-    if (clash) return { kind: 'ambiguous', candidates: cands };
-    return { kind: 'one', who, by: 'year' };
-  }
-  if (byName.length === 1) return { kind: 'one', who: byName[0] as T, by: 'surname' };
-  return { kind: 'ambiguous', candidates: cands };
+  if (cands.length === 1) return { kind: 'one', who: cands[0] as T };
+  return { kind: 'many', candidates: cands };
 }
 
 /* ---------------------------------------------------------- roster CSV */
@@ -270,27 +227,44 @@ const Phone4Schema = z
     return d;
   });
 
-/** Phone: a scanned ID card. `roll` answers a "which one are you?"; `phone4` is for the stricter mode. */
+/** Phone: a scanned ID card. `pick` is the participant tapped in the "who are you?" picker. */
 export const IdResolveRequestSchema = z.object({
   payload: z.string().min(1).max(300),
-  roll: RollInputSchema.optional(),
+  pick: z.number().int().positive().optional(),
 });
 export type IdResolveRequest = z.input<typeof IdResolveRequestSchema>;
 
-export const IdResolveResponseSchema = z.object({
-  /** First name only, for "hi Kashvi! that's you?". */
-  firstName: z.string(),
-  roll: z.string(),
-  /** The console asks for the last 4 phone digits after a scan. */
-  needPhone: z.boolean(),
-  /** This phone is already the one this ID is bound to. */
-  thisPhone: z.boolean(),
+/** One person in the picker: only what tells people apart. Never a roll, phone or email. */
+export const IdPickChoiceSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  year: z.string().nullable(),
+  section: z.string().nullable(),
+  /** Already signed in on another phone: listed, but not pickable. */
+  bound: z.boolean(),
 });
+export type IdPickChoice = z.infer<typeof IdPickChoiceSchema>;
+
+export const IdResolveResponseSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('one'),
+    id: z.number().int(),
+    /** First name only, for "hi Kashvi! that's you?". */
+    firstName: z.string(),
+    year: z.string().nullable(),
+    section: z.string().nullable(),
+    /** The console asks for the last 4 phone digits after a scan. */
+    needPhone: z.boolean(),
+    /** This phone is already the one this ID is bound to. */
+    thisPhone: z.boolean(),
+  }),
+  z.object({ kind: z.literal('pick'), choices: z.array(IdPickChoiceSchema) }),
+]);
 export type IdResolveResponse = z.infer<typeof IdResolveResponseSchema>;
 
 export const IdSignInRequestSchema = z.object({
   payload: z.string().min(1).max(300),
-  roll: RollInputSchema.optional(),
+  pick: z.number().int().positive().optional(),
   phone4: Phone4Schema.optional(),
 });
 export type IdSignInRequest = z.input<typeof IdSignInRequestSchema>;

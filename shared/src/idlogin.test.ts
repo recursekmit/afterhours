@@ -11,7 +11,6 @@ import {
   resolveIdQr,
   rollKey,
   rollSuffix,
-  surnameMatches,
 } from './idlogin';
 
 describe('roll normalisation', () => {
@@ -103,47 +102,25 @@ describe('resolving a scan against the roster', () => {
     const q = parseIdQr(payload);
     if (!q) throw new Error('no parse');
     const r = resolveIdQr(q, R);
-    return r.kind === 'one' ? `${r.who.roll}/${r.by}` : r.kind;
+    return r.kind === 'one' ? r.who.roll : r.kind === 'many' ? `many:${r.candidates.map((c) => c.roll).join(',')}` : r.kind;
   };
-  it('one person with that suffix: signs in', () => {
-    expect(resolve('055W-12600-C-KAPOOR-CSE-260908')).toBe('26BD1A055W/only');
-    expect(resolve('055w 12600 c kapoor cse 260908')).toBe('26BD1A055W/only');
-    expect(resolve('O55W-12600-C-KAPOOR-CSE-260908')).toBe('26BD1A055W/only');
+  it('one person with that suffix: straight to them, whatever the name or date says', () => {
+    expect(resolve('055W-12600-C-KAPOOR-CSE-260908')).toBe('26BD1A055W');
+    expect(resolve('055w 12600 c kapoor cse 260908')).toBe('26BD1A055W');
+    expect(resolve('O55W-12600-C-KAPOOR-CSE-260908')).toBe('26BD1A055W');
+    expect(resolve('055W-12600-C-SOMEONEELSE-CSE-200101')).toBe('26BD1A055W'); // names and dates are not used
   });
   it('nobody with that suffix: not registered', () => {
     expect(resolve('0999-12600-C-KAPOOR-CSE-260908')).toBe('none');
   });
-  it('a collision is settled by the batch year first', () => {
-    expect(resolve('0527-12600-C-WHOEVER-CSE-250908')).toBe('25BD1A0527/year');
-    expect(resolve('0527-12600-C-WHOEVER-CSE-260908')).toBe('26BD1A0527/year');
-  });
-  it('then by surname when the year does not decide', () => {
-    expect(resolve('0527-12600-C-DATTA-CSE')).toBe('26BD1A0527/surname');
-    expect(resolve('0527-12600-C-verma-CSE-240908')).toBe('25BD1A0527/surname'); // year 24 matches nobody
-  });
-  it('otherwise asks for the full roll', () => {
-    expect(resolve('0563-12600-C-RAO-CSE')).toBe('ambiguous'); // both are Rao, no year
-    expect(resolve('0563-12600-C-RAO-CSE-240908')).toBe('ambiguous');
-    expect(resolve('0527-12600-C')).toBe('ambiguous');
-  });
-  it('does not trust a year that the surname clearly contradicts', () => {
-    // year says 25BD1A0527 (Verma), surname says Datta (26BD1A0527)
-    expect(resolve('0527-12600-C-DATTA-CSE-250908')).toBe('ambiguous');
-  });
-  it('a lone candidate contradicted by both hints is probably someone else', () => {
-    expect(resolve('055W-12600-C-SHARMA-CSE-250908')).toBe('ambiguous');
-    expect(resolve('055W-12600-C-KAPOOR-CSE-250908')).toBe('26BD1A055W/only'); // surname vouches
-    expect(resolve('055W-12600-C-SHARMA-CSE-260908')).toBe('26BD1A055W/only'); // year vouches
+  it('two or more share it: everyone of them, for the picker; neither year nor surname narrows it', () => {
+    expect(resolve('0527-12600-C-DATTA-CSE-250908')).toBe('many:25BD1A0527,26BD1A0527');
+    expect(resolve('0527-12600-C-VERMA-CSE-260908')).toBe('many:25BD1A0527,26BD1A0527');
+    expect(resolve('0563-12600-C')).toBe('many:25BD1A0563,26BD1A0563');
   });
   it('a full roll in the QR is exact', () => {
-    expect(resolve('26BD1A0563-C-RAO')).toBe('26BD1A0563/roll');
+    expect(resolve('26BD1A0563-C-RAO')).toBe('26BD1A0563');
     expect(resolve('24BD1A0563-C-RAO')).toBe('none');
-  });
-  it('surname match is word based and case-insensitive', () => {
-    expect(surnameMatches('eshwar', 'S Eshwar')).toBe(true);
-    expect(surnameMatches('RAO', 'Chetan Rao')).toBe(true);
-    expect(surnameMatches('RA', 'Chetan Rao')).toBe(false);
-    expect(surnameMatches('KAPOOR', 'Divyakapoor')).toBe(true);
   });
 });
 
@@ -153,7 +130,8 @@ describe('request schemas', () => {
     expect(RollSignInRequestSchema.safeParse({ roll: '26BD1A055W', phone4: '321' }).success).toBe(false);
     expect(RollSignInRequestSchema.safeParse({ roll: '!!', phone4: '3210' }).success).toBe(false);
   });
-  it('id sign-in carries an optional roll and phone', () => {
+  it('id sign-in carries an optional pick and phone', () => {
+    expect(IdSignInRequestSchema.parse({ payload: 'x', pick: 3, phone4: '1 234' })).toEqual({ payload: 'x', pick: 3, phone4: '1234' });
     expect(IdSignInRequestSchema.parse({ payload: '055W-1-C-X-CSE-250908' })).toEqual({ payload: '055W-1-C-X-CSE-250908' });
   });
   it('participant input nulls empty optionals', () => {

@@ -83,3 +83,27 @@
 .spin { width: 22px; height: 22px; border: var(--line) solid var(--ink); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+/* "who are you?" picker: big tappable cards, name + year and section only */
+.picks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.pickCard {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 72px;
+  padding: var(--s-3) var(--s-4);
+  text-align: left;
+  color: inherit;
+  background: var(--paper-3);
+  border: var(--outline);
+  border-radius: var(--cut-2);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-pop), box-shadow var(--dur-fast) var(--ease-out);
+}
+.pickCard:hover:not(:disabled) { transform: translateY(-2px); }
+.pickCard:active:not(:disabled) { transform: translate(2px, 3px); box-shadow: var(--shadow-pressed); }
+.pickCard:focus-visible { outline: var(--line-fat) solid var(--gold-bright, var(--sun)); outline-offset: 3px; }
+.pickCard:disabled { cursor: not-allowed; opacity: 0.6; box-shadow: none; }
+.pickName { font-family: var(--font-display); font-size: var(--step-1); line-height: 1.1; }
+.pickMeta { font-family: var(--font-hand); font-weight: 700; color: var(--ink-soft); }
+.pickBound { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); color: var(--bad-text, var(--ink)); }

@@ -31,7 +31,7 @@ describe('student-ID login', () => {
   afterEach(async () => t.close());
 
   const phone = () => new JarClass();
-  const resolve = (jar: Jar, payload: string, roll?: string) => req(t.app, jar, 'POST', '/api/auth/id/resolve', { payload, ...(roll ? { roll } : {}) });
+  const resolve = (jar: Jar, payload: string, pick?: number) => req(t.app, jar, 'POST', '/api/auth/id/resolve', { payload, ...(pick !== undefined ? { pick } : {}) });
   const idSignIn = (jar: Jar, body: J) => req(t.app, jar, 'POST', '/api/auth/id/signin', body);
   const rollSignIn = (jar: Jar, roll: string, phone4: string) => req(t.app, jar, 'POST', '/api/auth/roll/signin', { roll, phone4 });
   const list = async () => (await req(t.app, admin, 'GET', '/api/admin/participants')).json() as J;
@@ -42,7 +42,7 @@ describe('student-ID login', () => {
       const jar = phone();
       const r = await resolve(jar, DIVYA_QR);
       expect(r.statusCode, r.body).toBe(200);
-      expect(r.json()).toEqual({ firstName: 'Divya', roll: '26BD1A660W', needPhone: false, thisPhone: false });
+      expect(r.json()).toEqual({ kind: 'one', id: expect.any(Number), firstName: 'Divya', year: '1st', section: 'CSM-A', needPhone: false, thisPhone: false });
       // resolving changes nothing
       expect((await byRoll('26BD1A660W')).attendee).toBeNull();
       const s = await idSignIn(jar, { payload: DIVYA_QR });
@@ -88,21 +88,77 @@ describe('student-ID login', () => {
       expect(t.ctx.points.total(row.attendee.id)).toBe(10); // points stay, sign-in pays once
     });
 
-    it('colliding last four: the year decides, then the surname, else the phone asks for the full roll', async () => {
-      expect((await resolve(phone(), '0527-1-A-X-CSE-250801')).json()).toMatchObject({ roll: '25BD1A0527', firstName: 'Asha' });
-      expect((await resolve(phone(), '0527-1-A-X-CSE-260801')).json()).toMatchObject({ roll: '26BD1A0527' });
-      expect((await resolve(phone(), '0527-1-B-DATTA-CSE')).json()).toMatchObject({ roll: '26BD1A0527' });
-      const amb = await resolve(phone(), '0563-1-C-RAO-CSE');
-      expect(amb.statusCode).toBe(409);
-      expect((amb.json() as J).error.code).toBe('need_roll');
-      // answering with the full roll (O for zero is fine)
+    it('a shared last four shows a picker: names, year and section only, never a roll, phone or email', async () => {
+      // even with a surname and a date that would point at one of them: names and dates are not used
+      const r = await resolve(phone(), '0527-1-B-DATTA-CSE-260801');
+      expect(r.statusCode, r.body).toBe(200);
+      const body = r.json() as J;
+      expect(body.kind).toBe('pick');
+      expect(body.choices).toEqual([
+        { id: expect.any(Number), name: 'Asha Verma', year: '2nd', section: 'CSE-A', bound: false },
+        { id: expect.any(Number), name: 'Bhavya Datta', year: '1st', section: 'CSE-B', bound: false },
+      ]);
+      expect(r.body).not.toMatch(/BD1A|9000000|example\.com/);
+      // signing in without a pick is refused: the phone must show the picker
+      expect((await idSignIn(phone(), { payload: '0527-1-B-DATTA-CSE' })).json()).toMatchObject({ error: { code: 'need_pick' } });
+      // tapping yourself: the normal confirm, then bind
       const jar = phone();
-      expect((await resolve(jar, '0563-1-C-RAO-CSE', '26bd1ao563')).json()).toMatchObject({ roll: '26BD1A0563', firstName: 'Chandana' });
-      expect((await idSignIn(jar, { payload: '0563-1-C-RAO-CSE', roll: '26BD1A0563' })).statusCode).toBe(200);
-      // a roll that does not end like the card is refused
-      expect((await resolve(phone(), '0563-1-C-RAO-CSE', '26BD1A0527')).statusCode).toBe(400);
-      // a roll that ends right but is not registered: not on the list
-      expect((await resolve(phone(), '0563-1-C-RAO-CSE', '24BD1A0563')).json()).toMatchObject({ error: { code: 'not_registered' } });
+      const bhavya = body.choices[1].id;
+      const one1 = (await resolve(jar, '0527-1-B-DATTA-CSE', bhavya)).json() as J;
+      expect(one1).toMatchObject({ kind: 'one', id: bhavya, firstName: 'Bhavya', year: '1st', section: 'CSE-B' });
+      expect(JSON.stringify(one1)).not.toMatch(/BD1A/);
+      const s = await idSignIn(jar, { payload: '0527-1-B-DATTA-CSE', pick: bhavya });
+      expect(s.statusCode, s.body).toBe(200);
+      expect((s.json() as J).attendee).toMatchObject({ name: 'Bhavya Datta', roll: '26BD1A0527' });
+    });
+
+    it('the picker shows a bound person disabled, and the server refuses picking them', async () => {
+      const first = (await resolve(phone(), '0563-1-C')).json() as J;
+      const chetan = first.choices.find((c: J) => c.name === 'Chetan Rao').id;
+      expect((await idSignIn(phone(), { payload: '0563-1-C', pick: chetan })).statusCode).toBe(200);
+      const again = (await resolve(phone(), '0563-1-C')).json() as J;
+      expect(again.choices.find((c: J) => c.id === chetan).bound).toBe(true);
+      expect(again.choices.find((c: J) => c.name === 'Chandana Rao').bound).toBe(false);
+      const picked = await resolve(phone(), '0563-1-C', chetan);
+      expect(picked.statusCode).toBe(409);
+      expect((picked.json() as J).error.code).toBe('id_bound');
+      expect((await idSignIn(phone(), { payload: '0563-1-C', pick: chetan })).json()).toMatchObject({ error: { code: 'id_bound' } });
+    });
+
+    it('a tampered pick of someone whose last four does not match the card is refused', async () => {
+      const divya = (await byRoll('26BD1A660W')).id;
+      for (const pick of [divya, 99999]) {
+        const r = await resolve(phone(), '0563-1-C', pick);
+        expect(r.statusCode).toBe(400);
+        expect((r.json() as J).error.code).toBe('bad_pick');
+        expect((await idSignIn(phone(), { payload: '0563-1-C', pick })).statusCode).toBe(400);
+      }
+      expect((await byRoll('26BD1A660W')).bound).toBe(false);
+    });
+
+    it('name lookups are rate limited per network, misses included', async () => {
+      // LOGIN_IP_PER_MIN=5: scans 5/min, name lookups 10 per 10 minutes. Calls 13 s apart, so only the name limit bites.
+      const small = await makeApp({ env: { LOGIN_IP_PER_MIN: '5' } });
+      try {
+        const a = await adminJar(small.app);
+        await req(small.app, a, 'POST', '/api/admin/participants/import', { csv: ROSTER });
+        const codes: number[] = [];
+        const bodies: string[] = [];
+        for (let i = 0; i < 16; i++) {
+          small.clock.advance(13_000);
+          const r = await req(small.app, new JarClass(), 'POST', '/api/auth/id/resolve', { payload: i % 2 ? '0527-1-C' : `09${String(10 + i)}-1-C` });
+          codes.push(r.statusCode);
+          bodies.push(r.body);
+        }
+        const first429 = codes.indexOf(429);
+        expect(first429).toBeGreaterThanOrEqual(10);
+        expect(codes.slice(0, 10).every((c) => c === 200 || c === 404)).toBe(true);
+        expect(bodies[first429]).toMatch(/ID lookups/);
+        small.clock.advance(10 * 60_000);
+        expect((await req(small.app, new JarClass(), 'POST', '/api/auth/id/resolve', { payload: DIVYA_QR })).statusCode).toBe(200);
+      } finally {
+        await small.close();
+      }
     });
 
     it('not on the list, junk and a kit QR get kind, distinct errors', async () => {
@@ -245,7 +301,7 @@ describe('student-ID login', () => {
       const scan = await look('0527-1-B-DATTA-CSE');
       expect(scan.read).toBe('qr');
       expect(scan.matches.map((m: J) => m.roll).sort()).toEqual(['25BD1A0527', '26BD1A0527']);
-      expect(scan.matches.find((m: J) => m.id === scan.pickId).roll).toBe('26BD1A0527');
+      expect(scan.pickId).toBeNull(); // two share it: the phone shows its picker
       expect((await look('26bd1a66ow')).matches.map((m: J) => m.roll)).toEqual(['26BD1A660W']);
       expect((await look('0563')).matches).toHaveLength(2);
       expect((await look('kapoor')).matches.map((m: J) => m.roll)).toEqual(['26BD1A660W']);

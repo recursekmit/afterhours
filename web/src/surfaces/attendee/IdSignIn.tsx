@@ -1,11 +1,11 @@
 /*
   Student-ID sign-in (spec 4.1), the first and biggest way in.
     scan your student ID -> "hi Kashvi! that's you?" -> yes -> profile
-  Kind detours: more than one roll ends like this card (type your full roll),
-  not on the list (show this at the desk), already on another phone, camera
-  denied or no QR (type roll + last 4 phone digits).
+  Kind detours: several people share this card's last four (a "who are you?"
+  picker), not on the list (show this at the desk), already on another phone,
+  camera denied or no QR (type roll + last 4 phone digits).
 */
-import { type IdResolveResponse, IdResolveResponseSchema } from '@afterhours/shared';
+import { type IdPickChoice, type IdResolveResponse, IdResolveResponseSchema } from '@afterhours/shared';
 import { type FormEvent, useState } from 'react';
 import { api, isApiError } from '../../core/api';
 import { useIdSignIn } from '../../core/queries';
@@ -19,8 +19,8 @@ type Step =
   | { k: 'start' }
   | { k: 'scan' }
   | { k: 'checking' }
-  | { k: 'needRoll'; payload: string; message: string }
-  | { k: 'confirm'; payload: string; roll?: string; who: IdResolveResponse }
+  | { k: 'pick'; payload: string; choices: IdPickChoice[] }
+  | { k: 'confirm'; payload: string; pick?: number; who: Extract<IdResolveResponse, { kind: 'one' }> }
   | { k: 'typed' }
   | { k: 'problem'; code: Problem; message: string; card?: string };
 
@@ -46,15 +46,21 @@ export function IdSignIn({ onStepChange }: { onStepChange?: (busy: boolean) => v
     return { k: 'problem', code: 'other', message: err instanceof Error ? err.message : 'Something went wrong. Try again.' };
   }
 
-  async function resolve(payload: string, roll?: string): Promise<Step> {
-    try {
-      const who = await api.post('/api/auth/id/resolve', { payload, ...(roll ? { roll } : {}) }, IdResolveResponseSchema);
-      return { k: 'confirm', payload, ...(roll ? { roll } : {}), who };
-    } catch (err) {
-      if (isApiError(err, 'need_roll')) return { k: 'needRoll', payload, message: err.message };
-      throw err;
-    }
+  async function resolve(payload: string, pick?: number): Promise<Step> {
+    const r = await api.post('/api/auth/id/resolve', { payload, ...(pick !== undefined ? { pick } : {}) }, IdResolveResponseSchema);
+    if (r.kind === 'pick') return { k: 'pick', payload, choices: r.choices };
+    return { k: 'confirm', payload, ...(pick !== undefined ? { pick } : {}), who: r };
   }
+
+  const onPick = async (payload: string, id: number) => {
+    setStep({ k: 'checking' });
+    try {
+      setStep(await resolve(payload, id));
+    } catch (err) {
+      fail();
+      setStep(problemFrom(err, payload));
+    }
+  };
 
   const onScan = async (payload: string) => {
     setStep({ k: 'checking' });
@@ -102,8 +108,8 @@ export function IdSignIn({ onStepChange }: { onStepChange?: (busy: boolean) => v
         </Card>
       );
 
-    case 'needRoll':
-      return <NeedRoll step={step} onBack={() => setStep({ k: 'scan' })} resolve={resolve} onDone={setStep} onProblem={(e) => setStep(problemFrom(e, step.payload))} />;
+    case 'pick':
+      return <Picker step={step} onBack={() => setStep({ k: 'scan' })} onPick={(id) => void onPick(step.payload, id)} />;
 
     case 'confirm':
       return (
@@ -113,7 +119,7 @@ export function IdSignIn({ onStepChange }: { onStepChange?: (busy: boolean) => v
           onNo={() => setStep({ k: 'scan' })}
           onYes={(phone4, setError) =>
             signIn.mutate(
-              { kind: 'scan', req: { payload: step.payload, ...(step.roll ? { roll: step.roll } : {}), ...(phone4 ? { phone4 } : {}) } },
+              { kind: 'scan', req: { payload: step.payload, ...(step.pick !== undefined ? { pick: step.pick } : {}), ...(phone4 ? { phone4 } : {}) } },
               {
                 onSuccess: () => celebrate({ y: 0.6 }),
                 onError: (err) => {
@@ -184,7 +190,7 @@ function Confirm({
           <Mascot size={72} mood="wow" />
           <div>
             <h2 className={s.helloTitle}>hi {who.firstName}! that's you?</h2>
-            <p className={s.roll}>{who.roll}</p>
+            {(who.year || who.section) && <p className={s.roll}>{[who.year, who.section].filter(Boolean).join(', ')}</p>}
           </div>
         </div>
         {who.needPhone && (
@@ -216,63 +222,26 @@ function Confirm({
   );
 }
 
-function NeedRoll({
-  step,
-  onBack,
-  resolve,
-  onDone,
-  onProblem,
-}: {
-  step: Extract<Step, { k: 'needRoll' }>;
-  onBack: () => void;
-  resolve: (payload: string, roll?: string) => Promise<Step>;
-  onDone: (s: Step) => void;
-  onProblem: (e: unknown) => void;
-}) {
-  const [roll, setRoll] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (roll.trim().length < 6) {
-      setError('Your full roll number, like 26BD1A0501.');
-      return;
-    }
-    setBusy(true);
-    try {
-      onDone(await resolve(step.payload, roll));
-    } catch (err) {
-      sfx.fail();
-      if (isApiError(err) && (err.code === 'bad_request' || err.code === 'rate_limited')) setError(err.message);
-      else onProblem(err);
-    } finally {
-      setBusy(false);
-    }
-  };
+function Picker({ step, onPick, onBack }: { step: Extract<Step, { k: 'pick' }>; onPick: (id: number) => void; onBack: () => void }) {
   return (
-    <form onSubmit={(e) => void submit(e)} noValidate>
-      <Card tone="sky" tape tapeColor="sun" className={s.card} data-testid="id-need-roll">
-        <h2 className={s.title}>which one are you?</h2>
-        <p className={s.body}>{step.message}</p>
-        <TextField
-          label="your full roll number"
-          value={roll}
-          onChange={(e) => setRoll(e.target.value)}
-          placeholder="26BD1A0501"
-          autoCapitalize="characters"
-          autoComplete="off"
-          spellCheck={false}
-          error={error}
-          style={{ textTransform: 'uppercase', letterSpacing: '0.06em' }}
-        />
-        <Button type="submit" tone="lime" size="lg" block loading={busy} icon="arrow">
-          that's my roll
-        </Button>
-        <Button tone="paper" size="sm" ghost onClick={onBack}>
-          scan again
-        </Button>
-      </Card>
-    </form>
+    <Card tone="paper" tape tapeColor="sun" className={s.card} data-testid="id-picker">
+      <h2 className={s.title}>who are you?</h2>
+      <p className={s.body}>more than one person on the list shares this card number. tap yourself.</p>
+      <ul className={s.picks}>
+        {step.choices.map((c) => (
+          <li key={c.id}>
+            <button type="button" className={s.pickCard} disabled={c.bound} onClick={() => onPick(c.id)} data-testid={'pick-' + String(c.id)}>
+              <span className={s.pickName}>{c.name}</span>
+              <span className={s.pickMeta}>{[c.year, c.section].filter(Boolean).join(', ') || 'no class on file'}</span>
+              {c.bound && <span className={s.pickBound}>already signed in on another phone, ask the desk</span>}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Button tone="paper" size="sm" ghost onClick={onBack}>
+        none of these, scan again
+      </Button>
+    </Card>
   );
 }
 

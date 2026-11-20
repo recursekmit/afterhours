@@ -19,7 +19,6 @@
   padding: 5px 9px 4px;
   border: var(--line) solid currentColor;
   border-radius: var(--cut-3);
-  transform: );
   white-space: nowrap;
   background: var(--paper-3);
 }

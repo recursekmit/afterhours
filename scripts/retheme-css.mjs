@@ -72,7 +72,7 @@ function fix(rule) {
   let r = rule;
   // transforms: drop small rotate() tokens
   r = r.replace(/transform:\s*([^;}]*)(;?)/g, (whole, val, semi) => {
-    const kept = val.replace(/rotate\(([^)]*)\)/g, (t, a) => (a.includes('var(') || smallAngle(a) ? '' : t)).replace(/\s+/g, ' ').trim();
+    const kept = val.replace(/rotate\(((?:[^()]|\([^()]*\))*)\)/g, (t, a) => (a.includes('var(') || smallAngle(a) ? '' : t)).replace(/\s+/g, ' ').trim();
     if (!kept || kept === 'none') return '';
     return `transform: ${kept}${semi}`;
   });

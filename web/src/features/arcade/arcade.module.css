@@ -7,8 +7,8 @@
 
 /* ---- hub: three cabinets ---- */
 .cabinets { display: grid; gap: var(--s-5); padding-top: var(--s-2); }
-.cabinet { position: relative; display: grid; gap: var(--s-3); padding: var(--s-4); color: var(--ink); text-decoration: none; border: var(--line-fat) solid var(--ink); border-radius: var(--cut-1); box-shadow: var(--shadow-lg); touch-action: manipulation; transform: ); animation: bob 3.4s ease-in-out infinite; animation-delay: var(--d, 0s); }
-.cabinet:active { animation: none; transform: ) scale(0.96); box-shadow: var(--shadow-sm); }
+.cabinet { position: relative; display: grid; gap: var(--s-3); padding: var(--s-4); color: var(--ink); text-decoration: none; border: var(--line-fat) solid var(--ink); border-radius: var(--cut-1); box-shadow: var(--shadow-lg); touch-action: manipulation; animation: bob 3.4s ease-in-out infinite; animation-delay: var(--d, 0s); }
+.cabinet:active { animation: none; transform: scale(0.96); box-shadow: var(--shadow-sm); }
 @keyframes bob { 0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); } 50% { transform: rotate(calc(var(--r, 0deg) * -0.6)) translateY(-5px); } }
 .closed { opacity: 0.55; pointer-events: none; animation: none; }
 .tone-pink { background: var(--pink); }

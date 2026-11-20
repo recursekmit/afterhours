@@ -111,7 +111,7 @@ export function Handover({ scan, onCancel, onDone, onExpired }: { scan: ScanResp
             <b>{scan.balance}</b> points to spend
           </p>
         </div>
-        <div className={s.free} aria-label={`${scan.allowance.left} free mocktails left`}>
+        <div className={s.free} aria-label={`${scan.allowance.left} free mocktail${scan.allowance.left === 1 ? '' : 's'} left`}>
           <span className={s.freeNum}>{scan.allowance.left}</span>
           <span className={s.freeLabel}>free mocktail{scan.allowance.left === 1 ? '' : 's'} left</span>
           <Glasses total={scan.allowance.total} left={scan.allowance.left} size={30} />

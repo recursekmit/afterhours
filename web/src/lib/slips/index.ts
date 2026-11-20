@@ -22,7 +22,8 @@
     <ResultCard scan source />, <MorseInk morse />              display bits
 
   Helpers
-    designFromPrintItem(item, size?)   GET /api/hunt/admin/slip-print item -> SlipDesign
+    designFromPrintItem(item, size?, as?)   GET /api/hunt/admin/slip-print item -> SlipDesign (ticket by default)
+    TICKET_ART, TicketSlipArt                       the four engraved ticket designs
     readingFromMorse(morse), readingFromWord(word)   -> StripReading (typed readings)
     readingKey(scan)                   what to send: { text?, morse } (docs/SLIPS.md)
     plus everything in shared/src/morse-slip.ts (types, encodeWord, normaliseMorse,
@@ -37,7 +38,9 @@ export * from '@afterhours/shared/morse-slip';
 export { SlipScanner, SlipScanLauncher, ResultCard, MorseInk, type SlipScannerProps, type ScanSource } from './SlipScanner';
 export { MorseKeypad, readingFromMorse, readingFromWord } from './MorseKeypad';
 export { SlipSvg, SlipArt, type SlipSvgProps } from './renderSlip';
-export { SlipSheet, SlipPage, designFromPrintItem, paginate, type SlipPrintItem, type SlipSheetProps } from './SlipSheet';
+export { SlipSheet, SlipPage, designFromPrintItem, paginate, type PrintAs, type SlipPrintItem, type SlipSheetProps } from './SlipSheet';
+export { TICKET_ART, TICKET_CREAM, type TicketArt } from './tickets';
+export { TicketSlipArt, ticketOutline } from './TicketSlip';
 export { processFrame, type FrameResult, type FrameStatus, type BandResult, type ScanOptions, type ViewSide } from './scanner/pipeline';
 export { SlipStabiliser } from './scanner/stabilise';
 export { SlipEngine, type EngineMode, type EngineStats } from './scanner/engine';

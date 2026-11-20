@@ -9,7 +9,7 @@
 */
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { type SlipDesign, type SlipLayout, layoutSlip } from '@afterhours/shared/morse-slip';
+import { KIT_SLIP_SIZE, SLIP_SIZES, SLIP_TICKETS, type SlipDesign, type SlipLayout, type SlipTicket, layoutSlip } from '@afterhours/shared/morse-slip';
 import logo from '../../assets/brand/recurse-logo-black.png';
 import { Button } from '../../kit';
 import { SlipArt } from './renderSlip';
@@ -29,14 +29,23 @@ export interface SlipPrintItem {
   edges: Partial<Record<'bottom' | 'right' | 'top' | 'left', { word: string; morse: string } | null>>;
 }
 
-/** Print-endpoint item -> SlipDesign (the word if there is one, else the raw Morse). */
-export function designFromPrintItem(item: SlipPrintItem, size?: { widthMm: number; heightMm: number }): SlipDesign {
+/** How a set prints: one of the four tickets, all four in turn, or the plain 85 x 55 card. */
+export type PrintAs = SlipTicket | 'mixed' | 'card';
+
+/**
+ * Print-endpoint item -> SlipDesign (the word if there is one, else the raw Morse).
+ * Kit slips print as tickets by default (176 x 80); 'mixed' cycles the four designs by slip number.
+ */
+export function designFromPrintItem(item: SlipPrintItem, size?: { widthMm: number; heightMm: number }, as: PrintAs = 'mixed'): SlipDesign {
   const strips: SlipDesign['strips'] = {};
   for (const edge of ['bottom', 'right', 'top', 'left'] as const) {
     const e = item.edges[edge];
     if (e) strips[edge] = e.word?.trim() ? e.word : e.morse;
   }
-  return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, ...size };
+  if (as === 'card') return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, ...(size ?? SLIP_SIZES.card) };
+  const ticket = as === 'mixed' ? (SLIP_TICKETS[(Math.max(1, item.slipNo) - 1) % SLIP_TICKETS.length] as SlipTicket) : as;
+  const dims = size ?? SLIP_SIZES[KIT_SLIP_SIZE];
+  return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, widthMm: dims.widthMm, heightMm: dims.heightMm, ticket };
 }
 
 interface Placed {
@@ -92,17 +101,17 @@ export function SlipPage({ placed, title, page, pages }: { placed: Placed[]; tit
     >
       <rect width={PAGE_W} height={PAGE_H} fill="#fff" />
       <image href={logo} x={MARGIN} y={MARGIN - 1} height={7} width={24} preserveAspectRatio="xMinYMid meet" />
-      <text x={MARGIN + 27} y={MARGIN + 4.2} fontFamily="'Bowlby One', 'Arial Black', sans-serif" fontSize={4.2}>
-        after hours, morse slips
+      <text x={MARGIN + 27} y={MARGIN + 4.2} fontFamily="'Cinzel', 'Times New Roman', serif" fontWeight={700} fontSize={4.2}>
+        AFTER HOURS, MORSE SLIPS
       </text>
-      <text x={MARGIN + 27} y={MARGIN + 9} fontFamily="'Shantell Sans', cursive" fontWeight={700} fontSize={3}>
-        {title ? `${title}, ` : ''}page {page} of {pages}. print at 100 %, cut on the marks
+      <text x={MARGIN + 27} y={MARGIN + 9} fontFamily="'IM Fell English', Georgia, serif" fontStyle="italic" fontSize={3.2}>
+        {title ? `${title}, ` : ''}page {page} of {pages}. print at 100 %, cut on the marks{placed[0]?.layout.ticket ? ' and round the notched corners' : ''}
       </text>
       {placed.map((p, i) => (
         <g key={i}>
           <CropMarks x={p.x} y={p.y} w={p.layout.widthMm} h={p.layout.heightMm} />
           <g transform={`translate(${p.x} ${p.y})`}>
-            <SlipArt layout={p.layout} />
+            <SlipArt layout={p.layout} cutLine={Boolean(p.layout.ticket)} />
           </g>
         </g>
       ))}
@@ -139,7 +148,8 @@ export function SlipSheet({ slips, title = '', onClose }: SlipSheetProps) {
         <div>
           <h2 className={s.sheetTitle}>{slips.length} morse slips</h2>
           <p className={s.sheetNote}>
-            A4, {cols * rows} per page. print at 100 % (actual size), black ink on plain white paper, then cut on the marks.
+            A4, {cols * rows} per page. print at 100 % (actual size), then cut on the marks.{' '}
+            {layouts[0]?.ticket ? 'tickets print in colour on matte paper (no gloss: glare hides the dots); trim the notched corners on the dashed line.' : 'black ink on plain white paper.'}
             {problems.length > 0 && <b className={s.sheetWarn}> {problems.length} strip(s) left blank: {problems.join(' ')}</b>}
           </p>
         </div>

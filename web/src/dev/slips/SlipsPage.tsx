@@ -15,6 +15,10 @@ import {
   type FrameResult,
   type ScanSource,
   SLIP_SIZES,
+  SLIP_SQUARES,
+  SLIP_TICKETS,
+  type SlipSquare,
+  type SlipTicket,
   type SlipDesign,
   type SlipEdge,
   type SlipScan,
@@ -62,6 +66,10 @@ function Bench() {
   const [num, setNum] = useState(params.get('n') ?? '7');
   const [kit, setKit] = useState(params.get('kit') ?? '');
   const size = (params.get('size') as SlipSize | null) ?? 'card';
+  // ?ticket=armillary|wave|ginkgo|ruins prints as an engraved ticket; a ticket size without one picks armillary
+  const ticketParam = params.get('ticket');
+  const ticket: SlipTicket | undefined = SLIP_TICKETS.includes(ticketParam as SlipTicket) ? (ticketParam as SlipTicket) : size === 'ticket' ? 'armillary' : undefined;
+  const square = (params.get('square') as SlipSquare | null) ?? 'logo';
   const [scanning, setScanning] = useState(params.get('scan') === '1');
   const [sheet, setSheet] = useState(params.get('sheet') === '1');
   const [live, setLive] = useState<Live | null>(null);
@@ -69,13 +77,22 @@ function Bench() {
 
   const dims = SLIP_SIZES[size] ?? SLIP_SIZES.card;
   const design: SlipDesign = useMemo(
-    () => ({ strips: words, number: num.trim() === '' ? undefined : /^\d+$/.test(num) ? Number(num) : num, kitId: kit || undefined, widthMm: dims.widthMm, heightMm: dims.heightMm }),
-    [words, num, kit, dims],
+    () => ({
+      strips: words,
+      number: num.trim() === '' ? undefined : /^\d+$/.test(num) ? Number(num) : num,
+      kitId: kit || undefined,
+      widthMm: dims.widthMm,
+      heightMm: dims.heightMm,
+      ticket,
+      square,
+      qr: square === 'qr' ? `${window.location.origin}/trails` : undefined,
+    }),
+    [words, num, kit, dims, ticket, square],
   );
   const layout = useMemo(() => layoutSlip(design), [design]);
   const sheetSlips = useMemo<SlipDesign[]>(
-    () => [design, { ...design, number: (Number(num) || 0) + 1 }, ...TEST_SET.map((strips, i) => ({ strips, number: 90 + i, widthMm: dims.widthMm, heightMm: dims.heightMm }))],
-    [design, num, dims],
+    () => [design, { ...design, number: (Number(num) || 0) + 1 }, ...TEST_SET.map((strips, i) => ({ strips, number: 90 + i, widthMm: dims.widthMm, heightMm: dims.heightMm, ticket: ticket ? SLIP_TICKETS[i % SLIP_TICKETS.length] : undefined }))],
+    [design, num, dims, ticket],
   );
 
   const setWord = (edge: SlipEdge, v: string) => {
@@ -119,6 +136,32 @@ function Bench() {
             label="slip size"
           />
           <p className={s.note}>{dims.label}</p>
+          <Tabs
+            value={ticket ?? 'plain'}
+            onChange={(v) => {
+              const next = new URLSearchParams(params);
+              if (v === 'plain') next.delete('ticket');
+              else {
+                next.set('ticket', v);
+                if (size !== 'ticket') next.set('size', 'ticket');
+              }
+              setParams(next, { replace: true });
+            }}
+            items={[{ id: 'plain', label: 'plain' }, ...SLIP_TICKETS.map((t) => ({ id: t, label: t }))]}
+            label="design"
+          />
+          {ticket && (
+            <Tabs
+              value={square}
+              onChange={(v) => {
+                const next = new URLSearchParams(params);
+                next.set('square', v);
+                setParams(next, { replace: true });
+              }}
+              items={SLIP_SQUARES.map((q) => ({ id: q, label: q === 'logo' ? 'recurse mark' : q === 'qr' ? 'small qr' : 'turn-me glyph' }))}
+              label="square frame"
+            />
+          )}
           {EDGES.map(({ edge, label, turn }) => {
             const strip = layout.strips.find((x) => x.edge === edge);
             const err = layout.errors.find((e) => e.startsWith(`${edge}:`));

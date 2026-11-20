@@ -20,7 +20,7 @@ import {
 } from '@afterhours/shared/features/hunt';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { type SlipDesign, SlipSheet, designFromPrintItem, edgeCapacity, encodeWord } from '../../lib/slips';
+import { KIT_SLIP_SIZE, type PrintAs, SLIP_SIZES, SLIP_TICKETS, type SlipDesign, SlipSheet, TICKET_ART, designFromPrintItem, edgeCapacity, encodeWord } from '../../lib/slips';
 import { api } from '../../core/api';
 import { Button, IconButton, Sheet, TextField, useToast } from '../../kit';
 import { Section, Stamp, ui } from '../common/ui';
@@ -58,7 +58,8 @@ export function edgeFit(orientation: SlipOrientation, word: string | null): { un
   if (!word || orientation === 'extra') return null;
   try {
     const units = encodeWord(word).units;
-    const capacity = edgeCapacity(orientation);
+    // kit slips print as tickets (176 x 80) by default
+    const capacity = edgeCapacity(orientation, SLIP_SIZES[KIT_SLIP_SIZE].widthMm, SLIP_SIZES[KIT_SLIP_SIZE].heightMm);
     return units > capacity ? { units, capacity } : null;
   } catch {
     return null;
@@ -204,10 +205,11 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
   const [pool, setPool] = useState('');
   const [edit, setEdit] = useState<{ setId: number; mode: SlipSetMode; slip: Parameters<typeof SlipForm>[0]['slip'] } | null>(null);
   const [printing, setPrinting] = useState<{ title: string; slips: SlipDesign[] } | null>(null);
+  const [printAs, setPrintAs] = useState<PrintAs>('mixed');
   const printSet = async (setId: number) => {
     try {
       const sheet = await api.get(`/api/hunt/admin/slip-print?set=${setId}`, SlipPrintSheetSchema);
-      setPrinting({ title: sheet.mode === 'per_kit' ? `${sheet.title} (one per kit)` : sheet.title, slips: sheet.slips.map((i) => designFromPrintItem(i)) });
+      setPrinting({ title: sheet.mode === 'per_kit' ? `${sheet.title} (one per kit)` : sheet.title, slips: sheet.slips.map((i) => designFromPrintItem(i, undefined, printAs)) });
     } catch (e) {
       toast((e as Error).message, { kind: 'bad' });
     }
@@ -227,6 +229,18 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
   return (
     <Section title="slips" tilt={-0.2}>
       <p className={ui.hand}>the edge at the bottom of the camera view is the one read. each edge can send people somewhere different. unknown readings always get the same "try turning it" reply.</p>
+      <label className={ui.label}>
+        print slips as
+        <select className={ui.select} value={printAs} onChange={(e) => setPrintAs(e.target.value as PrintAs)} data-testid="slip-print-as">
+          <option value="mixed">tickets, all four designs in turn (176 x 80)</option>
+          {SLIP_TICKETS.map((t) => (
+            <option key={t} value={t}>
+              ticket: {TICKET_ART[t].label}
+            </option>
+          ))}
+          <option value="card">plain card, black on white (85 x 55)</option>
+        </select>
+      </label>
       {sets.data?.sets.map((st) => (
         <div key={st.id} className={s.slipSet}>
           <div className={ui.between}>

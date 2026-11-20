@@ -205,11 +205,28 @@ export const SLIP_SPEC = {
 } as const;
 
 export const SLIP_SIZES = {
+  /** The after hours ticket (2.2 : 1): the default for kit slips. Short edges still carry 3+ letters. */
+  ticket: { widthMm: 176, heightMm: 80, label: 'ticket, 176 x 80 (the after hours ticket)' },
   card: { widthMm: 85, heightMm: 55, label: 'business card, 85 x 55' },
   square: { widthMm: 66, heightMm: 66, label: 'square, 66 x 66 (longer side words)' },
   big: { widthMm: 105, heightMm: 74, label: 'A7, 105 x 74 (stick-on, long words)' },
 } as const;
 export type SlipSize = keyof typeof SLIP_SIZES;
+/** What kit slips print as unless the console picks otherwise. */
+export const KIT_SLIP_SIZE: SlipSize = 'ticket';
+
+/**
+ * The four engraved ticket designs (design/tickets). A ticket slip keeps the exact scanner geometry:
+ * cream quiet margin, dark ink frame, a cream ribbon carrying the finders and the four Morse bands,
+ * and the engraved art only inside the middle panel.
+ */
+export const SLIP_TICKETS = ['armillary', 'wave', 'ginkgo', 'ruins'] as const;
+export type SlipTicket = (typeof SLIP_TICKETS)[number];
+/** What the ticket's square frame shows. */
+export const SLIP_SQUARES = ['logo', 'qr', 'glyph'] as const;
+export type SlipSquare = (typeof SLIP_SQUARES)[number];
+/** Concave notch at each cut corner of a ticket slip, mm. Stays clear of the frame (margin 2.5 mm). */
+export const TICKET_NOTCH_MM = 3;
 
 export interface SlipDesign {
   /** A word or raw Morse per edge. Missing or empty = blank edge. */
@@ -220,6 +237,11 @@ export interface SlipDesign {
   number?: number | string;
   /** Printed small next to the number. */
   kitId?: string;
+  /** Print as one of the engraved tickets. Missing = the plain black-on-white slip. */
+  ticket?: SlipTicket;
+  /** The ticket's square frame: the Recurse mark (default), a small QR of `qr`, or the "turn me" glyph. */
+  square?: SlipSquare;
+  qr?: string;
 }
 
 export const SlipDesignSchema = z.object({
@@ -228,6 +250,9 @@ export const SlipDesignSchema = z.object({
   heightMm: z.number().min(40).max(200).optional(),
   number: z.union([z.number().int(), z.string().max(12)]).optional(),
   kitId: z.string().max(16).optional(),
+  ticket: z.enum(SLIP_TICKETS).optional(),
+  square: z.enum(SLIP_SQUARES).optional(),
+  qr: z.string().max(200).optional(),
 });
 
 export interface Rect {
@@ -278,6 +303,10 @@ export interface SlipLayout {
   decor: { area: Rect; logo: Rect; number: Rect; doodle: Rect };
   number: string | null;
   kitId: string | null;
+  /** engraved ticket design, or null for the plain slip */
+  ticket: SlipTicket | null;
+  square: SlipSquare;
+  qr: string | null;
   /** human notes for the generator UI ("left word is long: dots are 1.1 mm") */
   warnings: string[];
   /** strips that could not be laid out (too long for the edge) */
@@ -319,7 +348,7 @@ function localBand(lw: number, lh: number): Rect {
 }
 
 /** Longest strip (in units) an edge can carry at the minimum dot size. */
-export function edgeCapacity(edge: SlipEdge, widthMm = SLIP_SPEC.defaultWidthMm, heightMm = SLIP_SPEC.defaultHeightMm): number {
+export function edgeCapacity(edge: SlipEdge, widthMm: number = SLIP_SPEC.defaultWidthMm, heightMm: number = SLIP_SPEC.defaultHeightMm): number {
   const lw = edge === 'bottom' || edge === 'top' ? widthMm : heightMm;
   return Math.floor(localBand(lw, 0).w / SLIP_SPEC.minUnitMm);
 }
@@ -421,6 +450,9 @@ export function layoutSlip(design: SlipDesign): SlipLayout {
     decor: { area, logo, number, doodle },
     number: num,
     kitId: design.kitId?.trim() || null,
+    ticket: design.ticket ?? null,
+    square: design.square ?? (design.qr ? 'qr' : 'logo'),
+    qr: design.qr?.trim() || null,
     warnings,
     errors,
   };

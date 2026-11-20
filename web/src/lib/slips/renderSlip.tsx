@@ -13,6 +13,7 @@
 import type { CSSProperties } from 'react';
 import { type SlipLayout, type SymbolShape } from '@afterhours/shared/morse-slip';
 import logo from '../../assets/brand/recurse-logo-black.png';
+import { TicketSlipArt } from './TicketSlip';
 
 const INK = '#000';
 const PAPER = '#fff';
@@ -24,7 +25,12 @@ function Sym({ s }: { s: SymbolShape }) {
 }
 
 /** The slip contents in mm, origin top-left. */
-export function SlipArt({ layout: L, cutLine = false }: { layout: SlipLayout; cutLine?: boolean }) {
+export function SlipArt({ layout: L, cutLine = false, screen = false }: { layout: SlipLayout; cutLine?: boolean; screen?: boolean }) {
+  if (L.ticket) return <TicketSlipArt layout={L} cutLine={cutLine} screen={screen} />;
+  return <PlainSlipArt layout={L} cutLine={cutLine} />;
+}
+
+function PlainSlipArt({ layout: L, cutLine = false }: { layout: SlipLayout; cutLine?: boolean }) {
   const { outer: o, inner: n } = L.frame;
   const { logo: lg, number: nb, doodle: dd, area } = L.decor;
   const cx = dd.x + dd.w / 2;
@@ -86,13 +92,15 @@ export interface SlipSvgProps {
   /** CSS width; default is the real printed size in mm */
   displayWidth?: string | number;
   cutLine?: boolean;
+  /** use the small screen art for ticket slips (print uses the full-resolution art) */
+  screen?: boolean;
   className?: string;
   style?: CSSProperties;
   title?: string;
 }
 
 /** A whole slip, at real size unless displayWidth is given. */
-export function SlipSvg({ layout, displayWidth, cutLine, className, style, title }: SlipSvgProps) {
+export function SlipSvg({ layout, displayWidth, cutLine, screen, className, style, title }: SlipSvgProps) {
   const w = displayWidth ?? `${layout.widthMm}mm`;
   return (
     <svg
@@ -106,7 +114,7 @@ export function SlipSvg({ layout, displayWidth, cutLine, className, style, title
       aria-label={title ?? `Morse slip ${layout.number ?? ''}: ${layout.strips.map((s) => `${s.edge} ${s.text ?? s.morse}`).join(', ')}`}
       data-testid="slip-svg"
     >
-      <SlipArt layout={layout} cutLine={cutLine} />
+      <SlipArt layout={layout} cutLine={cutLine} screen={screen} />
     </svg>
   );
 }

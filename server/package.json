@@ -8,6 +8,7 @@
     "build": "node scripts/build.mjs",
     "start": "node dist/index.js",
     "seed": "tsx src/seed.ts",
+    "import-participants": "tsx src/import-participants.ts",
     "vapid": "node scripts/vapid.mjs",
     "typecheck": "tsc -p tsconfig.json"
   },

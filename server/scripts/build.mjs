@@ -13,7 +13,7 @@ const external = Object.keys(pkg.dependencies).filter((d) => !d.startsWith('@aft
 rmSync(join(root, 'dist'), { recursive: true, force: true });
 
 await build({
-  entryPoints: [join(root, 'src/index.ts'), join(root, 'src/seed.ts')],
+  entryPoints: [join(root, 'src/index.ts'), join(root, 'src/seed.ts'), join(root, 'src/import-participants.ts')],
   outdir: join(root, 'dist'),
   bundle: true,
   platform: 'node',

@@ -9,7 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { lazy, useEffect, useState } from 'react';
 import { defineFeature } from '../../core/feature';
 import { useLiveEvent } from '../../core/live';
-import { Doodle } from '../../kit';
+import { WaxSeal } from '../../kit';
 import s from './alerts.module.css';
 import { BannerOverlay, PushCard } from './Attendee';
 
@@ -28,12 +28,13 @@ function AnnouncementTape() {
         <motion.div
           key={b.id}
           className={s.tape}
-          initial={reduce ? { opacity: 0 } : { x: '-110%', rotate: -6 }}
-          animate={{ x: 0, rotate: -1.5, opacity: 1 }}
-          exit={reduce ? { opacity: 0 } : { x: '110%', rotate: 3 }}
-          transition={{ type: 'spring', stiffness: 160, damping: 20 }}
+          style={{ transformOrigin: '50% 0%' }}
+          initial={reduce ? { opacity: 0 } : { scaleY: 0.05, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
+          exit={reduce ? { opacity: 0 } : { scaleY: 0.05, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 160, damping: 24 }}
         >
-          <Doodle name="megaphone" size={64} fill="var(--pink)" />
+          <WaxSeal glyph="megaphone" size={84} seed={b.id} />
           <span className={s.tapeTitle}>{b.title}</span>
           <span className={s.tapeBody}>{b.body}</span>
         </motion.div>

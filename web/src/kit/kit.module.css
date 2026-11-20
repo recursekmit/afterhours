@@ -364,3 +364,16 @@
   .mascotEyes, .loadingDots i, .btnSpin { animation-duration: 3s; }
   .btn, .card-press, .tab, .input { transition-duration: 1ms; }
 }
+
+/* candlelight: highlight cards on the night ground (gold-leaf tone, lifted) breathe a soft flicker.
+   box-shadow, not filter: a filter would trap fixed-position children. */
+.card.tone-sun:not([data-ground]), .card-lift:not([data-ground]) { animation: candle 3.6s ease-in-out infinite; }
+@keyframes candle {
+  0%, 100% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 18px rgb(255 190 100 / 0.14); }
+  37% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 26px rgb(255 190 100 / 0.26); }
+  52% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 14px rgb(255 190 100 / 0.1); }
+  74% { box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 22px rgb(255 190 100 / 0.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card.tone-sun:not([data-ground]), .card-lift:not([data-ground]) { animation: none; box-shadow: 0 10px 22px rgb(0 0 0 / 0.4), 0 0 18px rgb(255 190 100 / 0.18); }
+}

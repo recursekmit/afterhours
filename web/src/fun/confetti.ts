@@ -1,7 +1,7 @@
 /*
-  confetti: gold four-point stars, sparks and flakes of gold leaf, on one
-  shared canvas that exists only while pieces are flying.
-  prefers-reduced-motion: fewer pieces that drift down gently (reduced, not removed).
+  confetti, now spell-sparks: gold four-point stars that burst and fall, bright glints that wink out,
+  and candle embers that drift up and fade. One shared canvas that exists only while pieces are alive.
+  prefers-reduced-motion: fewer pieces that drift gently (reduced, not removed).
 */
 import { haptics } from './haptics';
 import { sfx } from './sfx';
@@ -18,7 +18,7 @@ export interface ConfettiOptions {
   colors?: string[];
 }
 
-type Kind = 'scrap' | 'squiggle' | 'star' | 'dot';
+type Kind = 'star' | 'glint' | 'ember';
 interface Piece {
   x: number;
   y: number;
@@ -31,6 +31,9 @@ interface Piece {
   size: number;
   color: string;
   kind: Kind;
+  /** frames lived, and how many it gets */
+  age: number;
+  life: number;
 }
 
 let canvas: HTMLCanvasElement | null = null;
@@ -39,14 +42,12 @@ let raf = 0;
 
 const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function palette(): { colors: string[]; ink: string } {
+function palette(): { colors: string[] } {
   const cs = getComputedStyle(document.documentElement);
   const v = (n: string, fb: string) => cs.getPropertyValue(n).trim() || fb;
-  return {
-    colors: [v('--gold', '#e3c48a'), v('--gold-bright', '#f5dfac'), v('--cream', '#f3e8cc'), v('--ink-soft', '#c9b48a')],
-    ink: v('--paper-2', '#0b1124'),
-  };
+  return { colors: [v('--gold', '#e3c48a'), v('--gold-bright', '#f5dfac'), v('--cream', '#f3e8cc')] };
 }
+const EMBERS = ['#ffb55c', '#ff8a3d', '#ffd27a'];
 
 function ensureCanvas() {
   if (canvas) return canvas;
@@ -89,59 +90,67 @@ function frame() {
   if (!canvas) return;
   const c = canvas.getContext('2d');
   if (!c) return;
-  const { ink } = palette();
   const w = window.innerWidth;
   const h = window.innerHeight;
   const slow = reduced();
   c.clearRect(0, 0, w, h);
-  c.lineJoin = 'round';
-  c.lineCap = 'round';
+  c.globalCompositeOperation = 'lighter';
   for (const p of pieces) {
-    p.vy += slow ? 0.05 : 0.32;
-    p.vx *= 0.985;
-    p.vy *= 0.985;
+    p.age++;
+    if (p.kind === 'ember' && !slow) {
+      // embers: a short burst, then they rise and sway like sparks off a candle
+      p.vy = p.vy * 0.94 - 0.035;
+      p.vx = p.vx * 0.94 + Math.sin((p.age + p.flip * 40) / 14) * 0.05;
+    } else {
+      p.vy += slow ? 0.05 : 0.26;
+      p.vx *= 0.985;
+      p.vy *= 0.985;
+    }
     p.x += p.vx;
     p.y += p.vy;
     p.rot += p.vr;
     p.flip += p.vf;
+    const t = p.age / p.life;
+    const fade = t < 0.7 ? 1 : Math.max(0, 1 - (t - 0.7) / 0.3);
+    const s = p.size;
     c.save();
     c.translate(p.x, p.y);
-    c.rotate(p.rot);
-    c.scale(1, Math.cos(p.flip));
-    c.fillStyle = p.color;
-    c.strokeStyle = ink;
-    c.lineWidth = 1.6;
-    const s = p.size;
-    if (p.kind === 'scrap') {
-      c.beginPath();
-      c.moveTo(-s, -s * 0.55);
-      c.lineTo(s * 0.9, -s * 0.6);
-      c.lineTo(s, s * 0.5);
-      c.lineTo(-s * 0.85, s * 0.6);
-      c.closePath();
+    c.globalAlpha = fade;
+    if (p.kind === 'star') {
+      c.rotate(p.rot);
+      c.scale(1, 0.6 + 0.4 * Math.abs(Math.cos(p.flip)));
+      // a soft halo, then the star
+      c.globalAlpha = fade * 0.22;
+      c.fillStyle = p.color;
+      drawStar(c, s * 1.9);
       c.fill();
-      c.stroke();
-    } else if (p.kind === 'star') {
+      c.globalAlpha = fade;
       drawStar(c, s);
       c.fill();
-      c.stroke();
-    } else if (p.kind === 'dot') {
+    } else if (p.kind === 'glint') {
+      const twinkle = 0.5 + 0.5 * Math.sin(p.flip * 3);
+      c.globalAlpha = fade * twinkle;
+      c.fillStyle = p.color;
       c.beginPath();
-      c.arc(0, 0, s * 0.6, 0, Math.PI * 2);
+      c.arc(0, 0, s * 0.35, 0, Math.PI * 2);
       c.fill();
-      c.stroke();
+      c.fillRect(-s * 1.1, -0.5, s * 2.2, 1);
+      c.fillRect(-0.5, -s * 1.1, 1, s * 2.2);
     } else {
-      c.strokeStyle = p.color;
-      c.lineWidth = 3.2;
+      const flicker = 0.75 + 0.25 * Math.sin(p.flip * 5);
+      c.globalAlpha = fade * flicker * 0.3;
+      c.fillStyle = p.color;
       c.beginPath();
-      c.moveTo(-s * 1.4, 0);
-      c.bezierCurveTo(-s * 0.7, -s, -s * 0.2, s, s * 0.3, 0);
-      c.bezierCurveTo(s * 0.7, -s * 0.8, s * 1.1, s * 0.6, s * 1.5, 0);
-      c.stroke();
+      c.arc(0, 0, s * 0.9, 0, Math.PI * 2);
+      c.fill();
+      c.globalAlpha = fade * flicker;
+      c.beginPath();
+      c.arc(0, 0, s * 0.32, 0, Math.PI * 2);
+      c.fill();
     }
     c.restore();
   }
-  pieces = pieces.filter((p) => p.y < h + 60 && p.x > -80 && p.x < w + 80);
+  pieces = pieces.filter((p) => p.age < p.life && p.y < h + 60 && p.y > -200 && p.x > -80 && p.x < w + 80);
   if (pieces.length) raf = requestAnimationFrame(frame);
   else stop();
 }
@@ -168,8 +177,9 @@ export function confetti(opts: ConfettiOptions = {}): void {
   const oy = (opts.y ?? 0.45) * window.innerHeight;
   const spread = ((opts.spread ?? 110) * Math.PI) / 180;
   const power = opts.power ?? 1;
-  const kinds: Kind[] = ['star', 'star', 'star', 'dot', 'dot', 'scrap'];
+  const kinds: Kind[] = ['star', 'star', 'star', 'glint', 'glint', 'ember', 'ember'];
   for (let i = 0; i < count; i++) {
+    const kind = kinds[Math.floor(Math.random() * kinds.length)] ?? 'star';
     const a = -Math.PI / 2 + (Math.random() - 0.5) * spread;
     const v = slow ? 1 + Math.random() * 2 : (7 + Math.random() * 9) * power;
     pieces.push({
@@ -182,15 +192,17 @@ export function confetti(opts: ConfettiOptions = {}): void {
       flip: Math.random() * Math.PI,
       vf: slow ? 0.02 : 0.08 + Math.random() * 0.18,
       size: 5 + Math.random() * 6,
-      color: colors[i % colors.length] ?? '#ff6a1f',
-      kind: kinds[Math.floor(Math.random() * kinds.length)] ?? 'scrap',
+      color: kind === 'ember' && !opts.colors ? (EMBERS[i % EMBERS.length] ?? '#ffb55c') : (colors[i % colors.length] ?? '#e3c48a'),
+      kind,
+      age: 0,
+      life: (kind === 'ember' ? 110 : kind === 'glint' ? 70 : 150) * (slow ? 2.2 : 1) + Math.random() * 40,
     });
   }
   if (pieces.length > 600) pieces.splice(0, pieces.length - 600);
   if (!raf) raf = requestAnimationFrame(frame);
 }
 
-/** The full win moment: confetti from both sides + fanfare + celebratory buzz. */
+/** The full win moment: spell-sparks and embers from both sides + fanfare + celebratory buzz. */
 export function celebrate(opts: { x?: number; y?: number; sound?: boolean } = {}): void {
   confetti({ x: opts.x ?? 0.2, y: opts.y ?? 0.75, spread: 70, count: 70, power: 1.15 });
   confetti({ x: opts.x !== undefined ? opts.x : 0.8, y: opts.y ?? 0.75, spread: 70, count: 70, power: 1.15 });

@@ -14,5 +14,6 @@ export { Sheet, Modal, type SheetProps } from './Sheet';
 export { Sticker, type StickerProps } from './Sticker';
 export { EmptyState, LoadingState, ErrorState } from './States';
 export { Tabs, type TabItem } from './Tabs';
+export { WaxSeal } from './WaxSeal';
 export { ToastProvider, useToast, type ToastOptions } from './Toast';
 export { ByRecurse, MadeByRecurse, RecurseIcon, RecurseLogo } from './Brand';

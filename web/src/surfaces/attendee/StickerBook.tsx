@@ -115,7 +115,7 @@ export function StickerBook() {
           const got = p.defs.filter((d) => unlocked[d.id]).length;
           const done = got === p.defs.length;
           return (
-            <button key={p.id} type="button" className={`${s.tab} ${i === page ? s.tabOn : ''}`} style={{ background: i === page ? `var(--${info.color})` : undefined }} aria-current={i === page ? 'page' : undefined} onClick={() => flip(i)}>
+            <button key={p.id} type="button" className={`${s.tab} ${i === page ? s.tabOn : ''}`} aria-current={i === page ? 'page' : undefined} onClick={() => flip(i)}>
               <Doodle name={info.glyph} size={18} />
               {info.title}
               <span className={s.tabCount}>{done ? <Doodle name="check" size={14} /> : `${got}/${p.defs.length}`}</span>
@@ -130,6 +130,7 @@ export function StickerBook() {
             <motion.section
               key={cur.id}
               className={s.page}
+              data-ground="parchment"
               style={{ transformOrigin: dir > 0 ? 'left center' : 'right center' }}
               initial={reduce ? { opacity: 0 } : { rotateY: dir * 70, opacity: 0 }}
               animate={{ rotateY: 0, opacity: 1 }}

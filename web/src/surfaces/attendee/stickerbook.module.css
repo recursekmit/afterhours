@@ -1,4 +1,5 @@
-/* The sticker book zine: tabs, flippable ruled pages, die-cut stickers, silhouettes, the slap sheet. Tokens only. */
+/* The sticker book as an old tome: tooled-leather cover, parchment leaves that flip, enamel pins pressed into the page,
+   ink silhouettes for the ones still to find. Tokens only. */
 .book { display: grid; gap: var(--s-4); padding: calc(var(--s-6) + env(safe-area-inset-top)) var(--gutter) 0; }
 .head { display: grid; gap: 6px; justify-items: start; }
 .title { font-size: var(--step-5); line-height: 0.95;  transform-origin: left; text-shadow: var(--engrave); }
@@ -6,45 +7,51 @@
 .fine { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); color: var(--ink-soft); }
 
 .tabs { display: flex; flex-wrap: wrap; gap: var(--s-2); }
-.tab { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; font-family: var(--font-display); font-size: var(--step--1); color: var(--ink); background: var(--paper-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform var(--dur-fast) var(--ease-pop); }
+.tab { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; font-family: var(--font-display); font-size: var(--step--1); color: var(--ink); background: var(--paper-3); border: var(--line) solid var(--frame); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform var(--dur-fast) var(--ease-pop); }
 .tab:nth-child(odd) {  }
 .tab:nth-child(even) {  }
-.tabOn { transform: translateY(-3px) !important; box-shadow: var(--shadow); }
-.tabCount { font-family: var(--font-hand); font-weight: 800; padding: 0 6px; background: var(--paper); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); display: inline-grid; place-items: center; min-width: 26px; }
+.tabOn { transform: translateY(-3px) !important; box-shadow: var(--shadow); background: var(--gold) !important; color: var(--on-gold); }
+.tabCount { font-family: var(--font-hand); font-weight: 800; padding: 0 6px; background: transparent; border: var(--line-thin) solid currentColor; border-radius: var(--cut-3); display: inline-grid; place-items: center; min-width: 26px; }
 
 .spine { perspective: 1200px; }
 .page {
   position: relative;
   display: grid;
   gap: var(--s-4);
-  padding: var(--s-5) var(--s-3) var(--s-4) calc(var(--s-3) + 14px);
+  padding: var(--s-5) var(--s-3) var(--s-4) calc(var(--s-3) + 18px);
   background-color: var(--paper-3);
-  background-image: repeating-linear-gradient(transparent 0 31px, color-mix(in srgb, var(--sky) 55%, transparent) 31px 33px);
-  border: var(--line-fat) solid var(--ink);
-  border-radius: var(--cut-2);
-  box-shadow: var(--shadow-lg);
+  /* the gutter: the page curves into the spine on the left */
+  background-image: linear-gradient(90deg, rgb(70 40 10 / 0.38), rgb(70 40 10 / 0.1) 22px, transparent 46px), var(--foxing), var(--fibre);
+  background-size: 100% 100%, 100% 100%, 240px 240px;
+  /* tooled leather cover around the leaf */
+  border: 9px solid var(--leather);
+  border-radius: 4px 10px 10px 4px;
+  box-shadow: inset 0 0 0 1px var(--frame), inset 0 0 28px rgb(120 78 26 / 0.25), 0 0 0 1px rgb(244 216 146 / 0.45), 0 16px 34px rgb(0 0 0 / 0.55);
   touch-action: pan-y;
   backface-visibility: hidden;
 }
-/* binding holes down the left edge */
-.page::before { content: ''; position: absolute; left: 8px; top: 18px; bottom: 18px; width: 12px; background-image: radial-gradient(circle, var(--ink) 0 4px, transparent 4.5px); background-size: 12px 40px; background-repeat: repeat-y; opacity: 0.85; }
+/* gold tooling on the leather */
+.page::before { content: ''; position: absolute; inset: -6px; border: 1px solid rgb(244 216 146 / 0.55); border-radius: 3px 8px 8px 3px; pointer-events: none; }
+/* a silk ribbon marker */
+.page::after { content: ''; position: absolute; top: -9px; right: 34px; width: 12px; height: 46px; background: var(--wax); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); pointer-events: none; }
 
 .pageHead { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-2) var(--s-3); align-items: center; }
-.pageGlyph { display: grid; place-items: center; width: 52px; height: 52px; border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm);  }
+.pageGlyph { display: grid; place-items: center; width: 52px; height: 52px; border: var(--line) solid var(--frame); border-radius: 50%; box-shadow: var(--shadow-sm); }
 .pageTitles { display: grid; gap: 2px; }
 .pageTitle { font-size: var(--step-3); line-height: 0.95;  transform-origin: left; }
 .pageMeter { grid-column: 1 / -1; display: grid; gap: 4px; }
 
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4) var(--s-2); justify-items: center; }
 .slot { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; width: 100%; min-height: 44px; padding: 4px; background: none; border: 0; cursor: pointer; touch-action: manipulation; color: var(--ink); }
-.dieCut { display: grid; padding: 5px; background: var(--paper); border: var(--line-thin) dashed var(--ink-soft); border-radius: var(--cut-round); filter: drop-shadow(3px 4px 0 var(--ink)); transform-style: preserve-3d; }
-.silhouette { display: grid; filter: brightness(0.25) contrast(1.4); opacity: 0.55; }
+.dieCut { display: grid; padding: 5px; transform-style: preserve-3d; }
+/* not found yet: an ink impression of the pin on the page */
+.silhouette { display: grid; filter: brightness(0.2) sepia(1) contrast(1.2); opacity: 0.4; }
 .slotTitle { font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); line-height: 1.1; text-align: center; background: var(--sun); border: var(--line-thin) solid var(--ink); padding: 1px 8px; border-radius: var(--cut-3);  }
 .slotHint { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); line-height: 1.15; color: var(--ink-soft); text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .badge { position: absolute; top: 0; right: 0; font-family: var(--font-hand); font-weight: 800; font-size: 0.72rem; color: var(--ink); background: var(--pink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 0 6px;  }
 
 .pager { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
-.turn { display: grid; place-items: center; width: var(--tap); height: var(--tap); background: var(--paper); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; }
+.turn { display: grid; place-items: center; width: var(--tap); height: var(--tap); color: var(--ink); background: rgb(255 250 235 / 0.4); border: var(--line) solid var(--frame); border-radius: var(--cut-3); box-shadow: var(--shadow-sm); cursor: pointer; }
 .turn:disabled { opacity: 0.35; cursor: default; }
 
 .detail { display: grid; justify-items: center; gap: var(--s-3); text-align: center; padding: var(--s-3) 0; }

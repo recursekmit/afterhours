@@ -209,9 +209,10 @@ function Outcome({ drop, mine, tally }: { drop: PublicDrop; mine: MyClaim | null
         </p>
       ) : mine?.outcome === 'out' ? (
         <p className={s.big}>out of tries</p>
-      ) : drop.status === 'live' ? null : (
+      ) : drop.status === 'live' || drop.status === 'cancelled' ? null : (
         <p className={s.big}>{mine ? 'not this time' : 'missed it'}</p>
       )}
+      {drop.status === 'cancelled' && <p className={s.reveal}>the organisers called this one off.{won ? ' your points stay.' : ''}</p>}
       {drop.reveal && (
         <p className={s.reveal}>
           it was <b>{drop.reveal}</b>

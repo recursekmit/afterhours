@@ -9,6 +9,7 @@ import {
 } from '@afterhours/shared/features/stalls';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../core/api';
+import { useLiveEvent } from '../../core/live';
 
 export const sk = {
   wallet: ['stalls', 'wallet'] as const,
@@ -17,7 +18,12 @@ export const sk = {
   qr: ['stalls', 'qr'] as const,
 };
 
-export const useWallet = () => useQuery({ queryKey: sk.wallet, queryFn: () => api.get('/api/stalls/wallet', WalletSchema), staleTime: 10_000 });
+export function useWallet() {
+  const q = useQuery({ queryKey: sk.wallet, queryFn: () => api.get('/api/stalls/wallet', WalletSchema), staleTime: 10_000 });
+  // Earning moves the balance and the bar to the next mocktail.
+  useLiveEvent('points.awarded', () => void q.refetch());
+  return q;
+}
 export const useMenu = () => useQuery({ queryKey: sk.menu, queryFn: () => api.get('/api/stalls/menu', MenuResponseSchema), staleTime: 10_000 });
 export const useCart = () => useQuery({ queryKey: sk.cart, queryFn: () => api.get('/api/stalls/cart', CartSchema) });
 export const useQr = () => useQuery({ queryKey: sk.qr, queryFn: () => api.get('/api/stalls/qr', QrResponseSchema), staleTime: 0, gcTime: 0 });

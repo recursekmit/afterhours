@@ -127,7 +127,8 @@ export default function DropScene() {
               it was <b>{d.reveal}</b>
             </p>
           )}
-          {!open && d.kind === 'room' && <p className={s.sceneReveal}>{d.achieved ? 'the room did it! everyone gets points.' : 'so close. next one.'}</p>}
+          {!open && d.status === 'cancelled' && <p className={s.sceneReveal}>called off by the organisers.</p>}
+          {!open && d.kind === 'room' && d.status === 'closed' && <p className={s.sceneReveal}>{d.achieved ? 'the room did it! everyone gets points.' : 'so close. next one.'}</p>}
           <div className={s.sceneTally}>
             {d.kind === 'room' ? (
               <>

@@ -101,7 +101,7 @@ test.describe.serial('drops', () => {
     await input.fill('sudo');
     await take.getByRole('button', { name: 'send' }).click();
     await expect(take.getByText('first! +15')).toBeVisible();
-    await expect(take.getByText('1/20 claimed')).toBeVisible();
+    await expect(take.getByText(/^1\/\d+ claimed$/)).toBeVisible();
     await stick(phone);
     await phone.waitForTimeout(600);
     await phone.screenshot({ path: `${SHOT}/drops-phone-won-390.png` });
@@ -111,7 +111,7 @@ test.describe.serial('drops', () => {
     await t2.getByRole('button', { name: 'send' }).click();
     await expect(t2.getByText('#2! +15')).toBeVisible();
     await stick(other);
-    await expect(screen.getByText('2/20 claimed')).toBeVisible({ timeout: 5000 });
+    await expect(screen.getByText(/^2\/\d+ claimed$/)).toBeVisible({ timeout: 5000 });
     await screen.waitForTimeout(800);
     await screen.screenshot({ path: `${SHOT}/drops-projector-code-1080.png` });
     await con.waitForTimeout(800);

@@ -167,6 +167,7 @@ test.describe.serial('the morse slip: separate events, one ticket each, logouts'
     await phone('a', async (page) => {
       await page.goto(`/morse/t/${trailId}`);
       await page.getByRole('button', { name: 'start this trail' }).click();
+      await expect(page.getByText('Your kit has one Morse slip')).toBeVisible();
     });
     await phone(
       'a',
@@ -200,6 +201,7 @@ test.describe.serial('the morse slip: separate events, one ticket each, logouts'
     await phone('b', async (page) => {
       await page.goto(`/morse/t/${trailId}`);
       await page.getByRole('button', { name: 'start this trail' }).click();
+      await expect(page.getByText('Your kit has one Morse slip')).toBeVisible();
     });
     await phone(
       'b',

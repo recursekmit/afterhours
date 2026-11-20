@@ -28,6 +28,15 @@ export function findMorseSlip(ctx: FeatureContext): MorseSlipSetup | null {
   return set ? { trailId: t.id, setId: set.id, created: false } : null;
 }
 
+/**
+ * The set id of the morse ticket set: the unique slip set of the kind 'morse' trail titled "the morse slip"
+ * (80 printed tickets, one per kit), or null when it has not been created yet. For other features (cipher)
+ * that read ticket copies and claims through ./unique.
+ */
+export function getMorseTicketSet(ctx: FeatureContext): number | null {
+  return findMorseSlip(ctx)?.setId ?? null;
+}
+
 export function createMorseSlip(ctx: FeatureContext, copies = MORSE_SLIP_COPIES): MorseSlipSetup {
   const have = findMorseSlip(ctx);
   if (have) return have;

@@ -86,6 +86,8 @@ test.describe.serial('stalls', () => {
     ]);
     code = st.code;
     await page.waitForTimeout(600);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(300);
     await page.screenshot({ path: `${SHOT}/stalls-console-1280.png`, fullPage: false });
     await page.getByRole('heading', { name: STALL, exact: true }).scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);

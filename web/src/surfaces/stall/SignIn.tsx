@@ -48,7 +48,9 @@ export function SignIn({ onDone }: { onDone: (me: ShopMe) => void }) {
 
   return (
     <div className={s.gate}>
-      <Wordmark size={46} />
+      <div className={s.gateMark}>
+        <Wordmark size={46} />
+      </div>
       <div ref={scope} className={s.gateCard}>
         <Card tone="paper" tape tapeColor="lime" tilt={-1}>
           <form onSubmit={(e) => void submit(e)} className={s.gateForm} noValidate>

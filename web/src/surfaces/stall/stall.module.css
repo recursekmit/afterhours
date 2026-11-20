@@ -8,6 +8,7 @@
 
 /* sign-in */
 .gate { min-height: 100dvh; display: grid; align-content: center; justify-items: center; gap: var(--s-4); padding: var(--s-4); }
+.gateMark { padding-bottom: var(--s-5); }
 .gateCard { width: min(100%, 420px); }
 .gateForm { display: grid; gap: var(--s-4); }
 .gateHead { display: flex; gap: var(--s-3); align-items: center; }

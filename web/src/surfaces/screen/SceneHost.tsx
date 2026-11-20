@@ -36,6 +36,15 @@ function Probe({ id, useStatus, report }: { id: string; useStatus: () => SceneSt
   return null;
 }
 
+/** Each scene is printed on its feature's home ticket (docs/SPEC.md section 2). */
+function scenePalette(id: string): string {
+  if (/morse|slip/.test(id)) return 'armillary';
+  if (/hunt|trail/.test(id)) return 'wave';
+  if (/poll|schedule|attendance|checkin/.test(id)) return 'ginkgo';
+  if (/arcade|drop|recap|leaderboard|reaction/.test(id)) return 'ruins';
+  return 'wave';
+}
+
 export function SceneHost() {
   const qc = useQueryClient();
   const reduce = useReducedMotion();
@@ -67,16 +76,16 @@ export function SceneHost() {
   }, [holding, live.length, current.durationMs, current.id]);
 
   return (
-    <div className={s.stage}>
+    <div className={s.stage} data-palette={scenePalette(current.id)}>
       {registered.map((sc) => (sc.useStatus ? <Probe key={sc.id} id={sc.id} useStatus={sc.useStatus} report={report} /> : null))}
       <AnimatePresence mode="wait">
         <motion.div
           key={current.id}
           className={s.scene}
           data-scene={current.id}
-          initial={reduce ? { opacity: 0 } : { opacity: 0, x: 80, rotate: 1.2 }}
-          animate={{ opacity: 1, x: 0, rotate: 0 }}
-          exit={reduce ? { opacity: 0 } : { opacity: 0, x: -80, rotate: -1.2 }}
+          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -24 }}
           transition={{ type: 'spring', stiffness: 220, damping: 26 }}
         >
           <Suspense fallback={<LoadingState label="loading scene..." />}>
@@ -89,7 +98,7 @@ export function SceneHost() {
         {live.map((e) => (
           <li key={e.id} className={`${s.pip} ${e.id === current.id ? s.pipOn : ''}`} title={e.label} />
         ))}
-        {pinned && <Doodle name="pin" size={26} fill="var(--tangerine)" stroke="var(--paper)" className={s.pinned} title="pinned by the console" />}
+        {pinned && <Doodle name="pin" size={26} fill="var(--gold)" stroke="var(--gold-bright)" className={s.pinned} title="pinned by the console" />}
       </ol>
 
       {current.id !== JOIN_SCENE_ID && <RecurseLogo on="dark" height={44} className={s.bug} />}

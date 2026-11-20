@@ -55,7 +55,7 @@
 .sceneHidden { background: var(--dusk-2); color: var(--cream); border-color: var(--paper); }
 .sceneFirst { background: var(--sun); font-size: calc(var(--u) * 2.7); }
 .sceneNick { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.drum { font-family: var(--font-display); font-size: calc(var(--u) * 8); line-height: 1; color: var(--sun); text-shadow: var(--engrave); }
+.drum { font-family: var(--font-display); font-size: calc(var(--u) * 8); line-height: 1; color: var(--accent-text); text-shadow: var(--engrave); }
 .crown { position: absolute; top: calc(var(--u) * -3.2); left: calc(var(--u) * 4); transform: rotate(-12deg); }
 .rel { position: relative; }
 .sceneSide { display: grid; align-content: center; justify-items: start; min-height: 0; }

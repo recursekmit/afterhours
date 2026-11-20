@@ -52,7 +52,7 @@
 .dots i[data-did='true'] { background: var(--tangerine); }
 .dots i[data-live='true'] { border-style: dashed; }
 .tease { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: var(--s-2) var(--s-3); font-family: var(--font-hand); font-weight: 800; color: var(--paper); background: var(--ink); border-radius: var(--cut-2); box-shadow: var(--shadow-sm); }
-.tease b { font-family: var(--font-display); color: var(--lime); font-variant-numeric: tabular-nums; }
+.tease b { font-family: var(--font-display); color: var(--accent-text); font-variant-numeric: tabular-nums; }
 .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .line { display: flex; align-items: center; gap: var(--s-2); font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); line-height: 1.2; }
 .lineIcon { flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border: var(--line) solid var(--ink); border-radius: var(--cut-3); }
@@ -86,7 +86,7 @@
 @keyframes siren { 50% { background: var(--pink); transform: rotate(3deg) scale(1.06); } }
 .sceneClock { font-family: var(--font-display); font-size: calc(var(--u) * 5); line-height: 1; color: var(--ink); background: var(--paper); padding: 0 calc(var(--u) * 1.2); border: 4px solid var(--ink); border-radius: var(--cut-2); font-variant-numeric: tabular-nums; }
 .sceneTitle { font-size: calc(var(--u) * 5.2); line-height: 0.95;  transform-origin: left; text-shadow: var(--engrave); }
-.sceneLead { justify-self: center; font-family: var(--font-display); font-size: calc(var(--u) * 22); line-height: 1; color: var(--sun); text-shadow: var(--engrave); }
+.sceneLead { justify-self: center; font-family: var(--font-display); font-size: calc(var(--u) * 22); line-height: 1; color: var(--accent-text); text-shadow: var(--engrave); }
 .bigCode { justify-self: center; font-family: var(--font-display); font-size: calc(var(--u) * 13); letter-spacing: 0.08em; line-height: 1; color: var(--ink); background: var(--lime); padding: calc(var(--u) * 1) calc(var(--u) * 3); border: 6px solid var(--ink); border-radius: var(--cut-1); box-shadow: var(--shadow-lg);  }
 .morse { justify-self: center; display: flex; flex-wrap: wrap; gap: calc(var(--u) * 3); padding: calc(var(--u) * 2) calc(var(--u) * 3); background: var(--paper); border: 6px solid var(--ink); border-radius: var(--cut-1); box-shadow: var(--shadow-lg); }
 .morseLetter { display: inline-flex; gap: calc(var(--u) * 0.9); align-items: center; }

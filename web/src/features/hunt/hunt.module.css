@@ -57,11 +57,11 @@
 .solvedTitle { font-size: var(--step-2); line-height: 1.05; }
 .reveal { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
 .finish { display: grid; justify-items: center; gap: var(--s-2); text-align: center; }
-.rank { font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--tangerine); text-shadow: var(--engrave);  }
+.rank { font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--accent-text); text-shadow: var(--engrave);  }
 .time { font-family: var(--font-display); font-size: var(--step-3); }
 .bonus { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-family: var(--font-hand); font-weight: 700; }
 .bonus b { font-family: var(--font-display); }
-.three { font-family: var(--font-display); font-size: 120px; line-height: 1; text-align: center; color: var(--tangerine); text-shadow: var(--engrave); }
+.three { font-family: var(--font-display); font-size: 120px; line-height: 1; text-align: center; color: var(--accent-text); text-shadow: var(--engrave); }
 .startCard { display: grid; gap: var(--s-4); }
 .startText { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }
 .closed { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); }

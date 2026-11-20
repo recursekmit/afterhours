@@ -8,6 +8,8 @@ Saturday 21 November 2026, about 60-70 participants, 2 stalls. Console at `/admi
 2. **Wipe the dry run.** In each panel's danger zone, as needed: stalls ("RESET STALLS": purchases only, menus stay), drops ("reset drops"), arcade, run of show.
 3. **run of show.** Load the real schedule. Mark the highlights.
 4. **polls, hunt.** Real polls and quiz loaded; trails closed until their slot.
+   - **Kit slips are unique** (docs/SLIPS.md, "unique slips"): every printed copy has its own words, and the first scan makes it that person's. In hunt, each slip trail, "slips": the set says "unique copies". **Before printing** (and only then), if a set still says "shared", press "switch to unique copies". Then "print set": 3 tickets per A4, a kit's slips 1-3 share a serial and a page. Download the "answer key csv" and keep it private.
+   - If an organiser tested slips on their own phone, reset that trail (it frees every copy) or "release" those copies in "copies".
 5. **stalls.**
    - "free mocktails per person": 2.
    - The **mocktail bar** already exists with "mocktail" (free allowance first, then 50 points). Change its price in the pts cell if the team decides.
@@ -51,6 +53,9 @@ Saturday 21 November 2026, about 60-70 participants, 2 stalls. Console at `/admi
 | **Lost the kit card** | kits: find them by name, "reset with a new password", read it out once. |
 | **"My kit is already in use"** | The kit is bound to another phone. Reset it (above). |
 | **Camera denied or no scanner** | Every scan has a typed fallback: check-in code, trail answers and stop codes, slip words. At a stall, the attendee reads the 6-character code under their QR and the shopkeeper types it. Or the shopkeeper's own phone camera app opens the QR link straight into `/stall`. |
+| **"This slip belongs to someone else"** | They scanned a friend's slip (or a friend scanned theirs first). Each copy works only for whoever scanned it first. hunt, the slip trail, "slips", "copies": find the serial (no. 037 on the ticket) to see who holds it. |
+| **Lost a slip, or "a different copy of slip 2"** | Give them a spare kit trio (serials above the headcount). In "copies", find their nickname and **release** their old copy; the spare works on their next scan. |
+| **"N people signed in but only 80 copies"** | The copies panel warns. Raise "printed copies", print just the new serials ("print from no."), cut, hand out. |
 | **Refund or wrong item at a stall** | stalls: "hand-overs", search the kit or nickname, **void**. Points, the free mocktail and stock come back; their phone says so. Then hand over the right thing. |
 | **"It says no free mocktails left"** | They used both. A mocktail now costs its points price; the home card shows how many points to the next one. Puzzle-hour tokens are claimed at the arcade desk (arcade panel). |
 | **Shopkeeper signed out or wrong stall** | Give them the code again. "rotate" a stall's code if it leaked; everyone on the old code is signed out. |

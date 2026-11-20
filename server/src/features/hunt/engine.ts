@@ -40,7 +40,8 @@ import {
   run,
   tx,
 } from '../../core';
-import { cooldownFor, hintCost, normaliseCode, rankBonus, speedBonus, stopOrder, stopWorth } from './rules';
+import { cooldownFor, hintCost, normaliseCode, rankBonus, speedBonus, stopOrder, stopSubset, stopWorth } from './rules';
+import { claimCopy, matchCopy, myCopy, setOfSlip } from './unique';
 
 export const HUNT_SOURCE = 'hunt';
 
@@ -55,6 +56,8 @@ export interface Trail {
   orderMode: TrailOrderMode;
   hintsOn: boolean;
   cooldownOn: boolean;
+  /** Linear trails: each player gets this many stops before the finale (0 = all). */
+  subsetK: number;
   seed: string;
   openedAt: number | null;
   closedAt: number | null;
@@ -69,6 +72,7 @@ interface TrailRow {
   order_mode: TrailOrderMode;
   hints_on: number;
   cooldown_on: number;
+  subset_k: number;
   shuffle_seed: string;
   opened_at: number | null;
   closed_at: number | null;
@@ -152,6 +156,7 @@ const toTrail = (r: TrailRow): Trail => ({
   orderMode: r.order_mode,
   hintsOn: r.hints_on === 1,
   cooldownOn: r.cooldown_on === 1,
+  subsetK: r.subset_k ?? 0,
   seed: r.shuffle_seed,
   openedAt: r.opened_at,
   closedAt: r.closed_at,
@@ -182,6 +187,7 @@ export function trailSettings(t: Trail): TrailSettings {
     orderMode: t.orderMode,
     hintsOn: t.hintsOn,
     cooldownOn: t.cooldownOn,
+    subsetK: t.subsetK,
     openedAt: t.openedAt,
     closedAt: t.closedAt,
   };
@@ -220,9 +226,18 @@ function findStop(ctx: FeatureContext, where: string, ...args: (string | number)
   return r ? toStop(r) : null;
 }
 
-/** The order THIS attendee walks a linear trail's stops (graph trails have no fixed order). */
+/**
+ * The order THIS attendee walks a linear trail's stops (graph trails have no fixed order). With the
+ * K-of-M option on, only their K stops (picked from the trail's seed) and the shared finale.
+ */
 export function orderFor(trail: Trail, attendeeId: number, stopIds: readonly number[]): number[] {
-  return trail.orderMode === 'shuffled' ? stopOrder(trail.seed, attendeeId, stopIds) : [...stopIds];
+  const ids = trail.orderMode === 'graph' ? [...stopIds] : stopSubset(trail.seed, attendeeId, stopIds, trail.subsetK);
+  return trail.orderMode === 'shuffled' ? stopOrder(trail.seed, attendeeId, ids) : ids;
+}
+
+/** How many stops one player walks on a trail of `n` stops (the same for everyone). */
+export function trailTotal(trail: Trail, n: number): number {
+  return trail.orderMode !== 'graph' && trail.subsetK > 0 && n - 1 > trail.subsetK ? trail.subsetK + 1 : n;
 }
 
 /** Graph trails start at the first stop in authoring order. */
@@ -435,7 +450,7 @@ export function buildMe(ctx: FeatureContext, attendeeId: number, trailId: number
     hintsOn: trail.hintsOn,
     status: trail.status,
     title: trail.title,
-    total: stops.length,
+    total: trailTotal(trail, stops.length),
     serverNow: ctx.now(),
     crowd: cache.crowd,
   };
@@ -479,7 +494,7 @@ export function buildMe(ctx: FeatureContext, attendeeId: number, trailId: number
     const id = positionOf(trail, attendeeId, stops, new Set(progress.keys()), player);
     const stop = id === null ? undefined : byId.get(id);
     const idx = trail.orderMode === 'graph' ? progress.size : order.indexOf(id ?? -1);
-    if (stop) current = currentView(ctx, trail, stop, attendeeId, idx, stops.length, cache.here.get(stop.id) ?? 1);
+    if (stop) current = currentView(ctx, trail, stop, attendeeId, idx, trail.orderMode === 'graph' ? stops.length : order.length, cache.here.get(stop.id) ?? 1);
   }
   return {
     ...base,
@@ -514,7 +529,7 @@ function currentView(ctx: FeatureContext, trail: Trail, stop: Stop, attendeeId: 
     letters: stop.challenge === 'morse' ? word.length : null,
     // Only the on/off timings (as in a decode round): never the readable word.
     signal: stop.challenge === 'morse' && stop.onlineFallback && word ? wordToSignal(word, TRAIL_MORSE_WPM) : null,
-    slip: slip ? { slipNo: slip.slip_no, label: slip.label } : null,
+    slip: slip && stop.slipId !== null ? { slipNo: slip.slip_no, label: slip.label, unique: setOfSlip(ctx, stop.slipId)?.mode === 'unique', serial: myCopy(ctx, attendeeId, stop.slipId) } : null,
     clue: stop.clue,
     clueImage: stop.clueImage,
     hints: hints.slice(0, used),
@@ -579,7 +594,7 @@ export function buildBoard(ctx: FeatureContext, trailId: number = TREASURE_TRAIL
     trailId,
     status: trail.status,
     title: trail.title,
-    total: stopCount(ctx, trailId),
+    total: trailTotal(trail, stopCount(ctx, trailId)),
     crowd: crowdOf(ctx, trailId).crowd,
     finishers: trail.status === 'draft' ? [] : finishers(ctx, trailId),
     serverNow: ctx.now(),
@@ -834,7 +849,7 @@ export function solveStop(ctx: FeatureContext, attendeeId: number, stop: Stop, v
     const g = trail.orderMode === 'graph' ? graphNext(stop, stops, exitTo) : null;
     if (g && !g.finishes) run(ctx.db, 'UPDATE hunt_players SET current_stop_id = ? WHERE trail_id = ? AND attendee_id = ?', g.next, trail.id, attendeeId);
     let finishInfo: { rank: number; elapsedMs: number; bonus: number; rb: number; sb: number; noHints: boolean } | null = null;
-    if (g ? g.finishes : solvedCount >= stops.length) {
+    if (g ? g.finishes : solvedCount >= orderFor(trail, attendeeId, stops.map((s) => s.id)).length) {
       const startedAt = playerOf(ctx, trail.id, attendeeId)?.started_at ?? at;
       const rank = (one<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM hunt_players WHERE trail_id = ? AND finished_at IS NOT NULL', trail.id)?.n ?? 0) + 1;
       const elapsedMs = Math.max(0, at - startedAt);
@@ -875,7 +890,7 @@ export function solveStop(ctx: FeatureContext, attendeeId: number, stop: Stop, v
   if (!solvedStop) throw new Error('solved stop missing from view');
   const who = getPublicAttendee(ctx, attendeeId);
   if (who) {
-    ctx.live.publish('hunt.stamp', { trailId: trail.id, nickname: who.nickname, avatar: who.avatar, solved: outcome.solvedCount, total: stops.length, at }, 'screens');
+    ctx.live.publish('hunt.stamp', { trailId: trail.id, nickname: who.nickname, avatar: who.avatar, solved: outcome.solvedCount, total: trailTotal(trail, stops.length), at }, 'screens');
   }
   let finish: HuntMyFinish | null = null;
   if (outcome.finishInfo) {
@@ -945,6 +960,8 @@ interface ReadingRow {
 
 /** The single friendly reply for anything that is not a reading of this slip. Leaks nothing. */
 export const SLIP_UNKNOWN = 'nothing there. try turning the slip and scanning another edge.';
+/** Unique slips: a printed copy someone else claimed first. */
+export const SLIP_TAKEN = 'this slip belongs to someone else. scan your own.';
 
 /** Per-kit sets: the words this kit's readings carry, drawn once from the pool and stored. */
 export function ensureKitWords(ctx: FeatureContext, kitId: string, setId: number): Map<number, { word: string; morse: string }> {
@@ -1005,7 +1022,7 @@ export function submitSlip(ctx: FeatureContext, attendeeId: number, stopId: numb
   const trail = requireOpen(ctx, trailId);
   const player = requirePlayer(ctx, trail, attendeeId);
   const me = (): ReturnType<typeof buildMe> => buildMe(ctx, attendeeId, trailId);
-  const base = { clue: null, points: 0, stamped: null, finish: null, unlockedTrailId: null };
+  let base = { clue: null, points: 0, stamped: null, finish: null, unlockedTrailId: null, serial: null as number | null };
   if (player.finished_at !== null) return { ...base, outcome: 'decoy', message: `You've already finished ${trail.title}.`, me: me() };
   const stops = loadStops(ctx, trailId);
   const { current } = currentFor(ctx, attendeeId, trail, stops);
@@ -1017,14 +1034,36 @@ export function submitSlip(ctx: FeatureContext, attendeeId: number, stopId: numb
   if (read.text) keys.add(slipWordKey(read.text));
   keys.delete('');
   const kitId = one<{ kit_id: string }>(ctx.db, 'SELECT kit_id FROM attendees WHERE id = ?', attendeeId)?.kit_id ?? '';
-  const hit = readingKeys(ctx, current.slipId, kitId).find((k) => keys.has(k.key));
   const rt = runtime(ctx);
-  if (!hit) {
+  const slow = () => rt.scans.enforce(`slip:${attendeeId}`, 'That is a lot of scanning. Take a breath and turn the slip slowly.');
+  let r: ReadingRow | null = readingKeys(ctx, current.slipId, kitId).find((k) => keys.has(k.key))?.row ?? null;
+  if (setOfSlip(ctx, current.slipId)?.mode === 'unique') {
+    // Unique slips: the reading is looked up across every printed copy of this slip. The first person
+    // to read a copy claims it; after that it only works for them, and they cannot use another copy.
+    const hit = r ? null : matchCopy(ctx, current.slipId, keys);
+    if (hit) {
+      const c = claimCopy(ctx, attendeeId, hit.copyId);
+      if (c.kind !== 'mine') {
+        slow(); // refusals count like misses, so guessing other people's words is slow
+        const slipNo = one<{ slip_no: number }>(ctx.db, 'SELECT slip_no FROM hunt_slips WHERE id = ?', current.slipId)?.slip_no ?? 1;
+        const held = c.kind === 'other_copy' ? c.serial : myCopy(ctx, attendeeId, current.slipId);
+        return {
+          ...base,
+          outcome: 'taken',
+          serial: held,
+          message: c.kind === 'taken' ? SLIP_TAKEN : `that's a different copy of slip ${slipNo}. yours is no. ${String(c.serial).padStart(3, '0')}: scan that one.`,
+          me: me(),
+        };
+      }
+      r = one<ReadingRow>(ctx.db, 'SELECT * FROM hunt_slip_readings WHERE id = ?', hit.readingId) ?? null;
+    }
+    base = { ...base, serial: myCopy(ctx, attendeeId, current.slipId) };
+  }
+  if (!r) {
     // Same words for every miss, whatever was read: nothing about the real readings leaks.
-    rt.scans.enforce(`slip:${attendeeId}`, 'That is a lot of scanning. Take a breath and turn the slip slowly.');
+    slow();
     return { ...base, outcome: 'unknown', message: SLIP_UNKNOWN, me: me() };
   }
-  const r = hit.row;
   run(ctx.db, 'INSERT OR IGNORE INTO hunt_slip_finds (attendee_id, reading_id, at) VALUES (?, ?, ?)', attendeeId, r.id, ctx.now());
   run(ctx.db, 'UPDATE hunt_players SET last_at = ? WHERE trail_id = ? AND attendee_id = ?', ctx.now(), trailId, attendeeId);
   rt.dirty.add(trailId);

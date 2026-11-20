@@ -21,6 +21,18 @@ export function stopOrder(seed: string, attendeeId: number, stopIds: readonly nu
   return [...rest.map((r) => r.id), finale];
 }
 
+/**
+ * "Each player gets K of the M stops": the K stops before the finale THIS attendee walks, plus the
+ * finale everyone shares, in authoring order. The pick uses the same per-attendee hash as stopOrder,
+ * so it is stable, unpredictable without the seed, and spreads players over every stop. k <= 0, or a
+ * k that covers every stop, means everyone gets all of them.
+ */
+export function stopSubset(seed: string, attendeeId: number, stopIds: readonly number[], k: number): number[] {
+  if (k <= 0 || stopIds.length - 1 <= k) return [...stopIds];
+  const chosen = new Set(stopOrder(seed, attendeeId, stopIds).slice(0, k));
+  return stopIds.filter((id, i) => chosen.has(id) || i === stopIds.length - 1);
+}
+
 /** Lock after the Nth wrong typed answer on a stop (1-based): 3 s, 8 s, 20 s, 45 s, 90 s, then 2 min each time. */
 export const COOLDOWNS_MS = [3_000, 8_000, 20_000, 45_000, 90_000, 120_000] as const;
 export function cooldownFor(wrongCount: number): number {

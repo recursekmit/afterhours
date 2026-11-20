@@ -73,7 +73,7 @@ function PlainSlipArt({ layout: L, cutLine = false }: { layout: SlipLayout; cutL
         after hours
       </text>
       <text x={area.x} y={area.y + area.h * 0.62 + Math.min(4, area.h * 0.15)} fontFamily={hand} fontWeight={700} fontSize={Math.min(2.6, area.h * 0.1)} fill={INK}>
-        {L.kitId ? `kit ${L.kitId.toLowerCase()}, ` : ''}the bottom edge counts
+        {L.serial ? `no. ${L.serial}, ` : ''}{L.kitId ? `kit ${L.kitId.toLowerCase()}, ` : ''}the bottom edge counts
       </text>
       <g fill="none" stroke={INK} strokeWidth={0.55} strokeLinecap="round" strokeLinejoin="round">
         {/* a wobbly three-quarter turn with an arrow head */}

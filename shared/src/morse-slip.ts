@@ -237,6 +237,8 @@ export interface SlipDesign {
   number?: number | string;
   /** Printed small next to the number. */
   kitId?: string;
+  /** Unique slips: the printed copy's serial, shown as "no. 037" (the number then reads as "slip 2"). */
+  serial?: number;
   /** Print as one of the engraved tickets. Missing = the plain black-on-white slip. */
   ticket?: SlipTicket;
   /** The ticket's square frame: the Recurse mark (default), a small QR of `qr`, or the "turn me" glyph. */
@@ -250,6 +252,7 @@ export const SlipDesignSchema = z.object({
   heightMm: z.number().min(40).max(200).optional(),
   number: z.union([z.number().int(), z.string().max(12)]).optional(),
   kitId: z.string().max(16).optional(),
+  serial: z.number().int().min(0).max(9999).optional(),
   ticket: z.enum(SLIP_TICKETS).optional(),
   square: z.enum(SLIP_SQUARES).optional(),
   qr: z.string().max(200).optional(),
@@ -303,6 +306,8 @@ export interface SlipLayout {
   decor: { area: Rect; logo: Rect; number: Rect; doodle: Rect };
   number: string | null;
   kitId: string | null;
+  /** unique slips: the copy's serial, zero padded ("037"), or null */
+  serial: string | null;
   /** engraved ticket design, or null for the plain slip */
   ticket: SlipTicket | null;
   square: SlipSquare;
@@ -450,6 +455,7 @@ export function layoutSlip(design: SlipDesign): SlipLayout {
     decor: { area, logo, number, doodle },
     number: num,
     kitId: design.kitId?.trim() || null,
+    serial: design.serial === undefined ? null : String(design.serial).padStart(3, '0'),
     ticket: design.ticket ?? null,
     square: design.square ?? (design.qr ? 'qr' : 'logo'),
     qr: design.qr?.trim() || null,

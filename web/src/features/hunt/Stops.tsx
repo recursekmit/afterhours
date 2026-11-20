@@ -5,7 +5,8 @@
     beeps + flash + buzz (timings only; the word itself never reaches the phone).
   - SlipStop: scan a kit slip (the shared camera reader from lib/slips, lazy-loaded; it falls back
     to a Morse keypad without a camera) or type the decoded word. Outcomes: next/branch stamp and move on, clue shows text, bonus pays once, decoy and
-    unknown say "try turning it".
+    unknown say "try turning it". Unique slips: your first reading claims that printed copy ("your copy: no. 037"); a copy
+    someone else claimed, or a second copy of the same slip, is "taken": nothing happens, scan your own.
 */
 import { type HuntCurrentStop, type HuntMe, type HuntSlipResult, HuntSlipResultSchema } from '@afterhours/shared/features/hunt';
 import { MORSE_CHART, patternToUnits } from '@afterhours/shared/features/morse';
@@ -108,6 +109,11 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
       {cur.slip && (
         <p className={s.slipWhich}>
           <span className={s.slipNo}>slip {cur.slip.slipNo}</span> {cur.slip.label}
+          {cur.slip.unique && (
+            <span className={s.slipCopy} data-testid="slip-copy">
+              {cur.slip.serial !== null ? `your copy: no. ${String(cur.slip.serial).padStart(3, '0')}` : 'your own copy: the first scan makes it yours'}
+            </span>
+          )}
         </p>
       )}
       <Suspense fallback={<div className={s.slipCam}>warming up the slip reader...</div>}>
@@ -128,9 +134,28 @@ export function SlipStop({ me, cur }: { me: HuntMe; cur: HuntCurrentStop }) {
       <AnimatePresence mode="wait">
         {last && (
           <motion.div key={`${last.outcome}-${last.message}`} initial={reduce ? { opacity: 0 } : { y: 20, opacity: 0, rotate: -2 }} animate={{ y: 0, opacity: 1, rotate: -1 }} exit={{ opacity: 0 }}>
-            <Card tone={last.outcome === 'next' || last.outcome === 'branch' ? 'lime' : last.outcome === 'bonus' ? 'sun' : last.outcome === 'clue' ? 'sky' : 'paper'} tilt={-1} className={s.slipResult}>
+            <Card
+              tone={last.outcome === 'next' || last.outcome === 'branch' ? 'lime' : last.outcome === 'bonus' ? 'sun' : last.outcome === 'clue' ? 'sky' : last.outcome === 'taken' ? 'pink' : 'paper'}
+              tilt={-1}
+              className={s.slipResult}
+              data-testid={`slip-result-${last.outcome}`}
+            >
               <b className={s.slipOutcome}>
-                {last.outcome === 'next' ? 'onwards' : last.outcome === 'branch' ? 'a different path' : last.outcome === 'clue' ? 'a clue' : last.outcome === 'bonus' ? (last.points ? `+${last.points} bonus` : 'already found') : last.outcome === 'decoy' ? 'decoy!' : 'nothing there'}
+                {last.outcome === 'next'
+                  ? 'onwards'
+                  : last.outcome === 'branch'
+                    ? 'a different path'
+                    : last.outcome === 'clue'
+                      ? 'a clue'
+                      : last.outcome === 'bonus'
+                        ? last.points
+                          ? `+${last.points} bonus`
+                          : 'already found'
+                        : last.outcome === 'decoy'
+                          ? 'decoy!'
+                          : last.outcome === 'taken'
+                            ? 'not your slip'
+                            : 'nothing there'}
               </b>
               {/* a clue speaks for itself; other outcomes say what happened */}
               {last.clue ? <p className={s.slipClue}>{last.clue}</p> : <span className={s.slipMsg}>{last.message}</span>}

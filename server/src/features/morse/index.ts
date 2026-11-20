@@ -233,15 +233,34 @@ function toRound(ctx: FeatureContext, r: RoundRow): Round {
   };
 }
 
-/** Random word for this level, avoiding what this attendee had recently. */
-function pickWord(ctx: FeatureContext, attendeeId: number, mode: MorseMode, level: number): string {
+/** How far back "how often has this word gone out" looks when spreading words over the room. */
+export const WORD_SPREAD_WINDOW_MS = 15 * 60_000;
+
+/**
+ * The word for a new round, picked per attendee so neighbours never share an answer when the pool allows:
+ * 1. never a word someone else is holding in an open round at this level right now, in either mode
+ *    (an encode round shows its word on screen, so it would give away a neighbour's decode round);
+ * 2. not one of this attendee's last 8 words in this mode;
+ * 3. among what is left, the words handed out least at this level in the last 15 minutes, at random.
+ * Rules 1 and 2 relax (in that order of keeping) only when the pool is exhausted.
+ */
+export function pickWord(ctx: FeatureContext, attendeeId: number, mode: MorseMode, level: number): string {
   const pool = WORDS[level] ?? [];
+  const now = ctx.now();
   const recent = new Set(
     all<{ word: string }>(ctx.db, 'SELECT word FROM morse_rounds WHERE attendee_id = ? AND mode = ? ORDER BY issued_at DESC LIMIT 8', attendeeId, mode).map((r) => r.word),
   );
-  const fresh = pool.filter((w) => !recent.has(w));
-  const from = fresh.length > 0 ? fresh : pool;
-  return from[randomInt(from.length)] as string;
+  const held = new Set(
+    all<{ word: string }>(ctx.db, "SELECT word FROM morse_rounds WHERE status = 'open' AND expires_at > ? AND level = ? AND attendee_id != ?", now, level, attendeeId).map((r) => r.word),
+  );
+  const uses = new Map(
+    all<{ word: string; n: number }>(ctx.db, 'SELECT word, COUNT(*) AS n FROM morse_rounds WHERE level = ? AND issued_at > ? GROUP BY word', level, now - WORD_SPREAD_WINDOW_MS).map((r) => [r.word, r.n]),
+  );
+  const tiers = [pool.filter((w) => !held.has(w) && !recent.has(w)), pool.filter((w) => !held.has(w)), pool.filter((w) => !recent.has(w)), pool];
+  const from = tiers.find((l) => l.length > 0) ?? pool;
+  const least = Math.min(...from.map((w) => uses.get(w) ?? 0));
+  const best = from.filter((w) => (uses.get(w) ?? 0) === least);
+  return best[randomInt(best.length)] as string;
 }
 
 export function startRound(ctx: FeatureContext, attendeeId: number, mode: MorseMode, level: number, wantSprint: boolean): Round {

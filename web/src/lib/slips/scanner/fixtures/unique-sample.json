@@ -1,0 +1,123 @@
+{
+  "seed": "accuracy-sample",
+  "copies": [
+    {
+      "serial": 1,
+      "slip": 1,
+      "edges": {
+        "bottom": "BODA",
+        "left": "TIN",
+        "right": "LOH",
+        "top": "BAGE"
+      }
+    },
+    {
+      "serial": 9,
+      "slip": 1,
+      "edges": {
+        "bottom": "ZOHU",
+        "left": "REM",
+        "right": "JAL",
+        "top": "MULU"
+      }
+    },
+    {
+      "serial": 17,
+      "slip": 1,
+      "edges": {
+        "bottom": "SOHO",
+        "left": "RUN",
+        "right": "NIM",
+        "top": "HUJE"
+      }
+    },
+    {
+      "serial": 25,
+      "slip": 1,
+      "edges": {
+        "bottom": "READ",
+        "left": "LUA",
+        "right": "NET",
+        "top": "LOGE"
+      }
+    },
+    {
+      "serial": 33,
+      "slip": 1,
+      "edges": {
+        "bottom": "WAFA",
+        "left": "HEL",
+        "right": "FAJ",
+        "top": "TOLA"
+      }
+    },
+    {
+      "serial": 41,
+      "slip": 1,
+      "edges": {
+        "bottom": "CISC",
+        "left": "JUD",
+        "right": "SIW",
+        "top": "PEJA"
+      }
+    },
+    {
+      "serial": 49,
+      "slip": 1,
+      "edges": {
+        "bottom": "WOGU",
+        "left": "HIC",
+        "right": "MIG",
+        "top": "HEHU"
+      }
+    },
+    {
+      "serial": 57,
+      "slip": 1,
+      "edges": {
+        "bottom": "BUTO",
+        "left": "WUM",
+        "right": "WEH",
+        "top": "SUWU"
+      }
+    },
+    {
+      "serial": 65,
+      "slip": 1,
+      "edges": {
+        "bottom": "NANO",
+        "left": "RGB",
+        "right": "BUS",
+        "top": "NAVE"
+      }
+    },
+    {
+      "serial": 73,
+      "slip": 1,
+      "edges": {
+        "bottom": "MIWA",
+        "left": "BED",
+        "right": "SAM",
+        "top": "DEMO"
+      }
+    },
+    {
+      "serial": 5,
+      "slip": 4,
+      "edges": {
+        "bottom": "BEBA",
+        "right": "CIR",
+        "left": "VED"
+      }
+    },
+    {
+      "serial": 45,
+      "slip": 4,
+      "edges": {
+        "bottom": "TAPO",
+        "right": "BIS",
+        "left": "CUD"
+      }
+    }
+  ]
+}

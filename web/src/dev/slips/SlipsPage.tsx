@@ -65,6 +65,7 @@ function Bench() {
   });
   const [num, setNum] = useState(params.get('n') ?? '7');
   const [kit, setKit] = useState(params.get('kit') ?? '');
+  const serial = params.get('serial');
   const size = (params.get('size') as SlipSize | null) ?? 'card';
   // ?ticket=armillary|wave|ginkgo|ruins prints as an engraved ticket; a ticket size without one picks armillary
   const ticketParam = params.get('ticket');
@@ -81,13 +82,15 @@ function Bench() {
       strips: words,
       number: num.trim() === '' ? undefined : /^\d+$/.test(num) ? Number(num) : num,
       kitId: kit || undefined,
+      // ?serial=37 prints a unique copy's plaque ("no. 037, slip 1")
+      serial: serial ? Number(serial) : undefined,
       widthMm: dims.widthMm,
       heightMm: dims.heightMm,
       ticket,
       square,
       qr: square === 'qr' ? `${window.location.origin}/trails` : undefined,
     }),
-    [words, num, kit, dims, ticket, square],
+    [words, num, kit, serial, dims, ticket, square],
   );
   const layout = useMemo(() => layoutSlip(design), [design]);
   const sheetSlips = useMemo<SlipDesign[]>(

@@ -60,11 +60,12 @@ export function Sheet({ open, onClose, title, placement = 'bottom', dismissable 
           <motion.div
             ref={ref}
             role="dialog"
+            data-ground="parchment"
             aria-modal="true"
             aria-label={title}
             tabIndex={-1}
             className={`${s.sheet} ${center ? s['sheet-center'] : ''}`}
-            initial={reduce ? { opacity: 0 } : center ? { scale: 0.7, rotate: -4, opacity: 0 } : { y: '100%' }}
+            initial={reduce ? { opacity: 0 } : center ? { scale: 0.9, opacity: 0 } : { y: '100%' }}
             animate={center ? { scale: 1, rotate: 0, opacity: 1, y: 0 } : { y: 0, opacity: 1 }}
             exit={reduce ? { opacity: 0 } : center ? { scale: 0.8, opacity: 0 } : { y: '100%' }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}

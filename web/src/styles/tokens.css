@@ -25,6 +25,31 @@
   --gold-bright: #f5dfac;    /* highlights, focus, the lit lantern */
   --cream: #f3e8cc;          /* engraved cream line work, the ticket margins */
   --on-gold: #141b30;        /* text on a gold fill */
+  --frame: #e3c48a;          /* card frame rule (deeper gold on parchment) */
+  /* parchment: fibres + foxed edges (cards use it with data-ground="parchment") */
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .1 0 0 0 .7 -.3'/%3E%3C/filter%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.08 .7' numOctaves='2' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .35 -.14'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23a)'/%3E%3Crect width='240' height='240' filter='url(%23b)'/%3E%3C/svg%3E");
+  --foxing: radial-gradient(130% 120% at 50% 45%, transparent 52%, rgb(125 82 30 / 0.2) 82%, rgb(95 58 18 / 0.38) 100%);
+  /* enamel pins (stickers): fixed colours, the same on any ground */
+  --enamel-tangerine: #8c2638;
+  --enamel-lime: #2c5a3c;
+  --enamel-pink: #a3385a;
+  --enamel-grape: #5a3276;
+  --enamel-sky: #234a80;
+  --enamel-sun: #d9b057;
+  --enamel-paper: #e9dcb8;
+  --enamel-ink: #1a1512;
+  --enamel-iron: #2a2723;
+  --enamel-iron-rim: #7a7064;
+  --enamel-gold: #f4d892;
+  --enamel-glyph-fill: rgb(244 216 146 / 0.18);
+  --enamel-line: rgb(60 35 8 / 0.6);
+  /* wax seals (trail stamps, letters) */
+  --wax: #8e1f24;
+  --wax-dark: #5a0f14;
+  --wax-light: #c0453f;
+  --on-wax: #f6dcc0;
+  /* candle light */
+  --candle: 0 0 22px rgb(255 196 110 / 0.28), 0 0 60px rgb(255 170 80 / 0.12);
   --rule: rgb(227 196 138 / 0.5);   /* hairline rules */
   --rule-soft: rgb(227 196 138 / 0.22);
 
@@ -173,6 +198,50 @@
   --page-bg: var(--paper);
   --text: var(--ink);
   --text-soft: var(--ink-soft);
+}
+
+/*
+  Aged parchment: the reading surface. Default cards, sheets and letters carry data-ground="parchment".
+  Inside it the tokens flip back to "light ground, dark ink": iron-gall ink on cream, pale washes for the
+  six accents (iron-gall text on each is AA+, most AAA), and the gold becomes the deeper engraved gold of a
+  frame struck on paper. Every feature's var(--ink) / var(--paper-3) follows without per-feature CSS.
+*/
+[data-ground='parchment'] {
+  --paper: #e9dab3;
+  --paper-2: #dcc89b;
+  --paper-3: #f1e5c6;
+  --ink: #2a1c10;            /* iron-gall ink: 14:1 on the parchment */
+  --ink-soft: #5b4531;       /* faded ink: 7.6:1 */
+  --gold: #b48b3c;           /* engraved gold on paper (frames, fills; never body text) */
+  --gold-bright: #8a5f14;    /* focus ring on paper: darker so it reads */
+  --cream: #f6edd5;
+  --on-gold: #1e1309;
+  --frame: #8f6b2c;          /* the gold-brown frame rule around a parchment card */
+  --rule: rgb(110 76 30 / 0.5);
+  --rule-soft: rgb(110 76 30 / 0.24);
+
+  --tangerine: #eab9a8;      /* armillary maroon, as a wash */
+  --lime: #cbd6ad;           /* ginkgo leaf */
+  --pink: #edbfc0;           /* rose */
+  --grape: #d8c4df;          /* wisteria */
+  --sky: #c2cfe3;            /* wave blue */
+  --sun: #ecd291;            /* gold leaf */
+  --on-ink: var(--cream);
+  --good: var(--lime);
+  --bad: var(--pink);
+  --warn: var(--sun);
+
+  --shadow-sm: 0 0 0 3px var(--paper-3), 0 0 0 4px var(--rule-soft), 0 2px 5px rgb(60 35 10 / 0.25);
+  --shadow: 0 0 0 3px var(--paper-3), 0 0 0 4px var(--rule), 0 4px 10px rgb(60 35 10 / 0.3);
+  --shadow-lg: 0 0 0 4px var(--paper-3), 0 0 0 5px var(--rule), 0 8px 18px rgb(60 35 10 / 0.35);
+  --shadow-pressed: 0 0 0 2px var(--paper-3), 0 0 0 3px var(--rule-soft);
+  --glow: 0 0 0 transparent;
+  --engrave: 0 1px 0 rgb(255 250 235 / 0.55);
+  --halftone: radial-gradient(circle at center, rgb(90 60 25 / 0.1) 0.7px, transparent 1.2px) 0 0 / 11px 11px;
+  --halftone-light: radial-gradient(circle at center, rgb(90 60 25 / 0.08) 0.7px, transparent 1.2px) 0 0 / 11px 11px;
+  --text: var(--ink);
+  --text-soft: var(--ink-soft);
+  color: var(--ink);
 }
 
 /* Projector / dark surfaces opt in with data-surface="dusk". */

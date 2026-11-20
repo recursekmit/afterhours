@@ -48,6 +48,17 @@
   --fg: var(--on-gold);
   box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 4px rgb(20 27 48 / 0.35), var(--glow);
 }
+[data-ground='parchment'] .btn:not(.tone-lime):not(.tone-sun):not(.tone-ink):not(.btn-ghost) {
+  --bg: var(--ticket-wave);
+  --fg: var(--enamel-gold);
+  border-color: var(--frame);
+  box-shadow: inset 0 0 0 3px var(--bg), inset 0 0 0 4px rgb(244 216 146 / 0.3);
+}
+[data-ground='parchment'] .btn.tone-lime, [data-ground='parchment'] .btn.tone-sun, [data-ground='parchment'] .btn.tone-ink {
+  border-color: var(--frame);
+  box-shadow: inset 0 0 0 3px var(--gold), inset 0 0 0 4px rgb(40 25 8 / 0.4), 0 2px 0 rgb(90 55 15 / 0.35);
+}
+[data-ground='parchment'] .btn-ghost { color: var(--ink); border-color: var(--frame); }
 @media (hover: hover) {
   .btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.12); }
 }
@@ -104,6 +115,19 @@
 .card-press:active { transform: scale(0.985); filter: brightness(1.1); }
 .card > * { position: relative; z-index: 1; }
 
+/* aged parchment (tone paper): warm cream, foxed edges, a faint fibre, an engraved gold-brown frame */
+.card[data-ground='parchment'] {
+  background-color: var(--paper-3);
+  background-image: var(--foxing), var(--fibre);
+  background-size: 100% 100%, 240px 240px;
+  border-color: var(--frame);
+  box-shadow: inset 0 0 0 1px rgb(255 250 235 / 0.35), inset 0 0 26px rgb(120 78 26 / 0.22), 0 12px 26px rgb(0 0 0 / 0.5);
+}
+.card[data-ground='parchment']::before { border-color: var(--rule); }
+.card[data-ground='parchment'].card-flat { box-shadow: inset 0 0 26px rgb(120 78 26 / 0.22); }
+.card[data-ground='parchment'].card-lift { box-shadow: inset 0 0 0 1px rgb(255 250 235 / 0.35), inset 0 0 26px rgb(120 78 26 / 0.22), 0 20px 36px rgb(0 0 0 / 0.55); }
+.card-press[data-ground='parchment']:active { filter: brightness(0.97); }
+
 /* the old tape becomes an engraved star seal on the top rule */
 .tape {
   position: absolute;
@@ -112,27 +136,36 @@
   width: 26px;
   height: 14px;
   margin-left: -13px;
-  background: var(--bg, var(--paper-3));
+  background: transparent;
   z-index: 3 !important;
   pointer-events: none;
   display: grid;
   place-items: center;
-  color: var(--ink);
+  color: var(--frame, var(--ink));
 }
 .tape-left { left: 28px; margin-left: 0; }
 .tape-right { left: auto; right: 28px; margin-left: 0; }
 
-/* banner strip: a ticket stub with a perforated bottom edge */
+/* banner strip: a candlelit band over the night ground, closed by the tickets' double gold rule */
 .torn {
   position: relative;
-  background: var(--bg);
-  color: var(--fg);
+  background-color: var(--paper-2);
+  background-image: radial-gradient(70% 110% at 88% 0%, rgb(255 196 110 / 0.16), transparent 62%), var(--grain);
+  background-size: 100% 100%, 180px 180px;
+  color: var(--ink);
   padding-bottom: 14px;
-  border-top: var(--line) solid var(--ink);
-  background-image: radial-gradient(circle at 6px 100%, var(--paper) 4px, transparent 4.5px);
-  background-size: 14px 100%;
-  background-repeat: repeat-x;
-  background-position: 0 100%;
+  border-bottom: 5px double var(--frame);
+}
+.torn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  background: var(--frame);
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
 }
 
 /* ---------------------------------------------------------------- field */
@@ -147,7 +180,7 @@
   min-height: var(--tap);
   padding: 10px 14px;
   background: var(--paper-2);
-  color: var(--cream);
+  color: var(--ink);
   border: var(--line) solid var(--rule);
   border-bottom-color: var(--ink);
   border-radius: var(--cut-3);
@@ -158,6 +191,8 @@
 }
 .input::placeholder { color: var(--ink-soft); opacity: 0.7; font-style: italic; }
 .input:focus { outline: none; border-color: var(--gold-bright); box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.35), 0 0 0 3px var(--paper), 0 0 0 4px var(--gold-bright); }
+[data-ground='parchment'] .input { background: rgb(255 250 235 / 0.55); box-shadow: inset 0 1px 4px rgb(90 55 15 / 0.25); border-color: var(--rule); border-bottom-color: var(--ink); }
+[data-ground='parchment'] .input:focus { box-shadow: inset 0 1px 4px rgb(90 55 15 / 0.25), 0 0 0 3px var(--paper-3), 0 0 0 5px var(--gold-bright); }
 .input[aria-invalid='true'] { border-color: var(--ink); background: color-mix(in srgb, var(--pink) 45%, var(--paper-2)); }
 .textarea { min-height: 110px; resize: vertical; font-family: var(--font-body); }
 .hint { font-family: var(--font-hand); font-size: var(--step-0); color: var(--ink-soft); }
@@ -166,7 +201,7 @@
   justify-self: start;
   font-family: var(--font-hand);
   font-size: var(--step-0);
-  color: var(--cream);
+  color: var(--ink);
   background: var(--pink);
   border: var(--line-thin) solid var(--ink);
   padding: 2px 10px;
@@ -192,20 +227,20 @@
   max-height: 88dvh;
   overflow: auto;
   overscroll-behavior: contain;
-  background: var(--paper);
-  background-image: var(--grain);
-  background-size: 180px 180px;
-  border: var(--line) solid var(--ink);
+  background-color: var(--paper-3);
+  background-image: var(--foxing), var(--fibre);
+  background-size: 100% 100%, 240px 240px;
+  border: var(--line) solid var(--frame);
   border-bottom: 0;
   border-radius: 4px 4px 0 0;
-  box-shadow: inset 0 0 0 5px var(--paper), inset 0 0 0 6px var(--rule-soft), 0 -10px 30px rgb(0 0 0 / 0.5);
+  box-shadow: inset 0 0 0 5px var(--paper-3), inset 0 0 0 6px var(--rule), inset 0 0 30px rgb(120 78 26 / 0.25), 0 -10px 30px rgb(0 0 0 / 0.5);
   padding: var(--s-5) var(--s-4) calc(var(--s-6) + env(safe-area-inset-bottom));
   touch-action: pan-y;
 }
 .sheet-center {
-  border-bottom: var(--line) solid var(--ink);
+  border-bottom: var(--line) solid var(--frame);
   border-radius: var(--cut-1);
-  box-shadow: inset 0 0 0 5px var(--paper), inset 0 0 0 6px var(--rule-soft), 0 18px 40px rgb(0 0 0 / 0.55);
+  box-shadow: inset 0 0 0 5px var(--paper-3), inset 0 0 0 6px var(--rule), inset 0 0 30px rgb(120 78 26 / 0.25), 0 18px 40px rgb(0 0 0 / 0.55);
   padding-bottom: var(--s-5);
   max-width: 440px;
 }
@@ -272,7 +307,7 @@
   touch-action: manipulation;
 }
 .tab[aria-selected='true'] { background: transparent; color: var(--on-gold); border-color: transparent; }
-.tab > span { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; }
+.tab > span:not(.tabBg) { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; }
 .tabBg {
   position: absolute;
   inset: -1px;
@@ -280,7 +315,9 @@
   border: var(--line) solid var(--gold);
   border-radius: var(--cut-3);
   box-shadow: inset 0 0 0 2px var(--gold), inset 0 0 0 3px rgb(20 27 48 / 0.35), var(--glow);
+  z-index: 0;
 }
+[data-ground='parchment'] .tab { background: rgb(255 250 235 / 0.4); }
 
 /* -------------------------------------------------------------- numbers */
 .num { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }

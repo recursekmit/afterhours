@@ -18,8 +18,15 @@ type Draw = (fill: string) => ReactNode;
 const P = ({ d, f }: { d: string; f?: string }) => <path d={d} fill={f ?? 'none'} />;
 
 const ICONS: Record<IconName, Draw> = {
-  star: (f) => <P f={f} d="M12 2.6l2.8 6.1 6.6.8-4.9 4.5 1.4 6.6L12 17.3l-5.9 3.3 1.4-6.6-4.9-4.5 6.6-.8z" />,
-  bolt: (f) => <P f={f} d="M13.6 2.2L5 13.6h6l-1.6 8.2L19 10.2h-6.2z" />,
+  // the tickets' four-point star
+  star: (f) => <P f={f} d="M12 1.8l2.3 7.4 7.5 2.8-7.5 2.8L12 22.2l-2.3-7.4L2.2 12l7.5-2.8z" />,
+  // a shooting star (not a lightning bolt): the flash drops and "fast" glyph
+  bolt: (f) => (
+    <>
+      <P f={f} d="M15.2 2l1.7 5.1 5.1 1.7-5.1 1.7-1.7 5.1-1.7-5.1-5.1-1.7 5.1-1.7z" />
+      <path d="M9.6 13.6L2.8 20.4M7.4 12.4L3.4 16.4M11.4 16.2L7.6 20" />
+    </>
+  ),
   heart: (f) => <P f={f} d="M12 20.6C5.2 15.6 3 12.2 3 8.8 3 6 5 4.2 7.4 4.3c1.8 0 3.4 1 4.6 2.8 1.2-1.8 2.8-2.8 4.6-2.8C19 4.2 21 6 21 8.8c0 3.4-2.200 6.800-9 11.800z" />,
   eye: (f) => (
     <>
@@ -274,18 +281,20 @@ export function Doodle({ name, size = 24, fill = 'none', stroke = 'var(--ink)', 
   );
 }
 
-/** A marker-drawn underline squiggle, stretches to its container's width. */
-export function Scribble({ color = 'var(--pink)', className, style }: { color?: string; className?: string; style?: CSSProperties }) {
+/**
+ * The engraved underline: a double rule, a four-point star and a tapering tail, in the frame gold.
+ * (Was a marker squiggle; `color` is kept for the API and ignored so every title reads as one engraving.)
+ */
+export function Scribble({ className, style }: { color?: string; className?: string; style?: CSSProperties }) {
   return (
-    <svg viewBox="0 0 200 14" preserveAspectRatio="none" className={className} style={{ width: '100%', height: 10, ...style }} aria-hidden="true">
-      <path
-        d="M2 8c14-8 20 6 34-1s20-6 34 0 20 7 34 0 22-7 34-1 22 7 32 1 20-4 26 0"
-        fill="none"
-        stroke={color}
-        strokeWidth="5"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
-      />
+    <svg viewBox="0 0 200 14" preserveAspectRatio="xMinYMid meet" className={className} style={{ width: '100%', height: 12, color: 'var(--frame, var(--gold))', ...style }} aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeLinecap="round">
+        <path d="M2 5H70M2 9H70" strokeWidth="1.1" />
+        <path d="M94 7H150" strokeWidth="1.3" />
+        <path d="M150 7H186" strokeWidth="0.8" opacity="0.7" />
+      </g>
+      <path d="M82 0L83.6 5.4L89 7L83.6 8.6L82 14L80.4 8.6L75 7L80.4 5.4Z" fill="currentColor" />
+      <circle cx="192" cy="7" r="1.6" fill="currentColor" />
     </svg>
   );
 }
@@ -306,6 +315,21 @@ export function DoodleDefs() {
           <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="9" result="n" />
           <feDisplacementMap in="SourceGraphic" in2="n" scale="4.5" />
         </filter>
+        <linearGradient id="ah-pin-metal" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fbe7b0" />
+          <stop offset="0.45" stopColor="#c99a45" />
+          <stop offset="0.7" stopColor="#8a6420" />
+          <stop offset="1" stopColor="#e8c578" />
+        </linearGradient>
+        <linearGradient id="ah-pin-gloss" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.38" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id="ah-wax" cx="0.38" cy="0.32" r="0.75">
+          <stop offset="0" stopColor="#c0453f" />
+          <stop offset="0.55" stopColor="#8e1f24" />
+          <stop offset="1" stopColor="#5a0f14" />
+        </radialGradient>
         <pattern id="ah-sticker-dots" width="7" height="7" patternUnits="userSpaceOnUse">
           <circle cx="3.5" cy="3.5" r="1" fill="#fff" fillOpacity="0.35" />
         </pattern>

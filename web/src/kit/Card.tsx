@@ -40,7 +40,7 @@ export function Card({ tone = 'paper', tilt: _tilt, tape, tapeColor, halftone, p
     .filter(Boolean)
     .join(' ');
   return (
-    <div {...rest} className={cn} style={style as CSSProperties} role={press && !rest.role ? 'button' : rest.role} tabIndex={press ? 0 : rest.tabIndex}>
+    <div data-ground={tone === 'paper' ? 'parchment' : undefined} {...rest} className={cn} style={style as CSSProperties} role={press && !rest.role ? 'button' : rest.role} tabIndex={press ? 0 : rest.tabIndex}>
       {!flat && <CornerStars size={9} inset={9} />}
       {tape && <Tape side={tape === true ? 'center' : tape} color={tapeColor} />}
       {children}

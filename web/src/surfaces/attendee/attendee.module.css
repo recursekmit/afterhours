@@ -11,39 +11,23 @@
   overflow: hidden;
   isolation: isolate;
 }
-.signin::before {
-  content: '';
+/* the night sky over the sign-in: the wave ticket's engraving, faded into the ground */
+.signinArt {
   position: absolute;
   z-index: -1;
-  top: -90px;
-  right: -110px;
-  width: 300px;
-  height: 300px;
-  border-radius: var(--cut-round);
-  background: var(--pink);
-  border: var(--outline);
-  box-shadow: var(--shadow-lg);
-  transform: rotate(14deg);
-}
-.signin::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  left: -60px;
-  bottom: 70px;
-  width: 340px;
-  height: 250px;
-  background: var(--grape);
-  border: var(--outline);
-  border-radius: var(--cut-2);
-  box-shadow: var(--shadow-lg);
-  
+  inset: 0 0 auto 0;
+  height: 330px;
+  background: url('../../assets/tickets/wave-field-sm.webp') 30% 60% / cover no-repeat;
+  opacity: 0.32;
+  -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 30%, transparent 100%);
+  pointer-events: none;
 }
 .signinConfetti { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .signinConfetti > * { position: absolute; pointer-events: auto; }
-.floatA { top: 232px; right: 14px; transform: rotate(14deg); }
-.floatB { top: 28px; right: 34px; transform: rotate(-12deg); }
-.floatC { top: 560px; right: 22px; transform: rotate(10deg); }
+.floatA { top: 200px; right: 22px; }
+.floatB { top: 34px; right: 40px; }
+.floatC { top: 120px; right: 96px; }
 .floatD { bottom: 28px; left: 18px; transform: scaleX(-1); }
 .signinHead { position: relative; z-index: 1; display: grid; gap: var(--s-3); }
 .lockup { justify-self: start; padding: 4px 16px; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-3); box-shadow: var(--shadow-sm);  }

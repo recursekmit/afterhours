@@ -73,15 +73,16 @@ export function SignIn() {
 
   return (
     <div className={s.signin}>
+      <div className={s.signinArt} aria-hidden="true" />
       <div className={s.signinConfetti} aria-hidden="true">
         <Draggy className={s.floatA}>
-          <Doodle name="star" size={64} fill="var(--sun)" strokeWidth={2} />
+          <Doodle name="star" size={46} stroke="var(--gold)" fill="var(--gold)" strokeWidth={1.2} />
         </Draggy>
         <Draggy className={s.floatB}>
-          <Doodle name="bolt" size={56} fill="var(--pink)" strokeWidth={2} />
+          <Doodle name="spark" size={30} stroke="var(--gold)" fill="var(--gold-bright)" strokeWidth={1.2} />
         </Draggy>
         <Draggy className={s.floatC}>
-          <Doodle name="spark" size={44} fill="var(--lime)" strokeWidth={2} />
+          <Doodle name="star" size={26} stroke="var(--gold)" fill="var(--gold)" strokeWidth={1.2} />
         </Draggy>
       </div>
 
@@ -101,7 +102,7 @@ export function SignIn() {
       <form ref={scope} className={s.kitWrap} onSubmit={submit} noValidate>
         <Card tone="paper" tape tapeColor="pink" lift className={s.kitCard}>
           <div className={s.kitHeader}>
-            <Doodle name="ticket" size={30} fill="var(--tangerine)" />
+            <Doodle name="key" size={30} fill="var(--sun)" />
             <h2 className={s.kitTitle}>your entry kit</h2>
           </div>
           <div className={s.kitFields}>

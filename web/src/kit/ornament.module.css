@@ -1,5 +1,5 @@
 /* Engraved ornaments (kit/Ornament.tsx). Tokens only. */
-.corners { position: absolute; inset: 0; pointer-events: none; z-index: 2; color: var(--ink); }
+.corners { position: absolute; inset: 0; pointer-events: none; z-index: 2; color: var(--frame, var(--ink)); }
 .cs { position: absolute; display: block; }
 .tl { top: var(--o-inset); left: var(--o-inset); }
 .tr { top: var(--o-inset); right: var(--o-inset); }

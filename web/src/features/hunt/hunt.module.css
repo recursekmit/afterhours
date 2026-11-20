@@ -112,8 +112,9 @@
 
 /* slip stop */
 .slipBox { display: grid; gap: var(--s-3); }
-.slipWhich { display: flex; gap: var(--s-2); align-items: center; font-family: var(--font-hand); font-weight: 800; }
+.slipWhich { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; font-family: var(--font-hand); font-weight: 800; }
 .slipNo { font-family: var(--font-display); background: var(--ink); color: var(--paper); padding: 2px 10px; border-radius: var(--cut-3); transform: rotate(-3deg); }
+.slipCopy { font-family: var(--font-hand); font-weight: 800; background: var(--sun); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 1px 8px; transform: rotate(1.5deg); }
 .slipCam { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-3); align-items: center; background: var(--paper-3); border: var(--outline); border-radius: var(--cut-2); padding: var(--s-3) var(--s-4); font-family: var(--font-hand); font-weight: 600; }
 .slipResult { display: grid; gap: 4px; }
 .slipOutcome { font-family: var(--font-display); font-weight: 400; font-size: var(--step-1); }
@@ -151,3 +152,8 @@
 @media (prefers-reduced-motion: reduce) { .splat { animation: none; } }
 .tooLong { display: inline-block; font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); background: var(--pink); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); padding: 1px 8px; }
 .slipMsg { font-family: var(--font-hand); font-weight: 700; }
+/* unique slips: the copies panel (SlipCopies.tsx) */
+.copies { display: grid; gap: var(--s-2); padding: var(--s-2) var(--s-3); background: var(--paper-3); border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); }
+.copiesScroll { max-height: 420px; overflow: auto; border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); background: var(--paper); }
+.copiesScroll thead th { position: sticky; top: 0; background: var(--paper-3); z-index: 1; }
+.copyCell { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }

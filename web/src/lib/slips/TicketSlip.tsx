@@ -138,7 +138,12 @@ export function TicketSlipArt({ layout: L, cutLine = false, screen = false }: { 
             AFTER HOURS
           </text>
           <text x={pl.x + pl.w / 2} y={pl.y + pl.h * 0.78} textAnchor="middle" fontFamily={HAND} fontStyle="italic" fontSize={pl.h * 0.2} fill={gold}>
-            {[L.number ? `no. ${L.number.replace(/^#/, '')}` : null, L.kitId ? `kit ${L.kitId.toLowerCase()}` : null].filter(Boolean).join(', ') || 'recurse, kmit'}
+            {(L.serial
+              ? [`no. ${L.serial}`, L.number ? `slip ${Number(L.number.replace(/^#/, '')) || L.number.replace(/^#/, '')}` : null]
+              : [L.number ? `no. ${L.number.replace(/^#/, '')}` : null, L.kitId ? `kit ${L.kitId.toLowerCase()}` : null]
+            )
+              .filter(Boolean)
+              .join(', ') || 'recurse, kmit'}
           </text>
           {/* the square frame */}
           {L.square === 'qr' && L.qr ? (

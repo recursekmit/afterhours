@@ -26,6 +26,8 @@ const MARK = 4;
 export interface SlipPrintItem {
   slipNo: number;
   kitId?: string | null;
+  /** unique sets: the printed copy's serial ("no. 037") */
+  serial?: number | null;
   edges: Partial<Record<'bottom' | 'right' | 'top' | 'left', { word: string; morse: string } | null>>;
 }
 
@@ -42,10 +44,11 @@ export function designFromPrintItem(item: SlipPrintItem, size?: { widthMm: numbe
     const e = item.edges[edge];
     if (e) strips[edge] = e.word?.trim() ? e.word : e.morse;
   }
-  if (as === 'card') return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, ...(size ?? SLIP_SIZES.card) };
+  const serial = item.serial ?? undefined;
+  if (as === 'card') return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, serial, ...(size ?? SLIP_SIZES.card) };
   const ticket = as === 'mixed' ? (SLIP_TICKETS[(Math.max(1, item.slipNo) - 1) % SLIP_TICKETS.length] as SlipTicket) : as;
   const dims = size ?? SLIP_SIZES[KIT_SLIP_SIZE];
-  return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, widthMm: dims.widthMm, heightMm: dims.heightMm, ticket };
+  return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, serial, widthMm: dims.widthMm, heightMm: dims.heightMm, ticket };
 }
 
 interface Placed {
@@ -88,6 +91,9 @@ function CropMarks({ x, y, w, h }: { x: number; y: number; w: number; h: number 
 }
 
 export function SlipPage({ placed, title, page, pages }: { placed: Placed[]; title: string; page: number; pages: number }) {
+  // unique copies: say which serials are on this page, so a stack can be checked before it is cut
+  const serials = [...new Set(placed.map((p) => p.layout.serial).filter((x): x is string => x !== null))];
+  const copies = serials.length === 0 ? '' : serials.length === 1 ? `copy no. ${serials[0]}, ` : `copies no. ${serials[0]} to ${serials[serials.length - 1]}, `;
   return (
     <svg
       className={s.sheetPage}
@@ -105,7 +111,8 @@ export function SlipPage({ placed, title, page, pages }: { placed: Placed[]; tit
         AFTER HOURS, MORSE SLIPS
       </text>
       <text x={MARGIN + 27} y={MARGIN + 9} fontFamily="'IM Fell English', Georgia, serif" fontStyle="italic" fontSize={3.2}>
-        {title ? `${title}, ` : ''}page {page} of {pages}. print at 100 %, cut on the marks{placed[0]?.layout.ticket ? ' and round the notched corners' : ''}
+        {title ? `${title}, ` : ''}
+        {copies}page {page} of {pages}. print at 100 %, cut on the marks{placed[0]?.layout.ticket ? ' and round the notched corners' : ''}
       </text>
       {placed.map((p, i) => (
         <g key={i}>

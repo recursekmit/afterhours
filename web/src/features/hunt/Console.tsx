@@ -312,6 +312,25 @@ function Settings({ a }: { a: HuntAdmin }) {
         <input type="checkbox" checked={a.trail.cooldownOn} onChange={(e) => put({ cooldownOn: e.target.checked })} />
         wrong-answer cooldown
       </label>
+      {a.trail.orderMode !== 'graph' && a.stops.length > 2 && (
+        <label className={ui.label}>
+          each player gets
+          <select
+            className={ui.select}
+            value={a.trail.subsetK > 0 && a.trail.subsetK < a.stops.length - 1 ? a.trail.subsetK : 0}
+            disabled={a.structureLocked}
+            onChange={(e) => put({ subsetK: Number(e.target.value) })}
+            data-testid="trail-subset"
+          >
+            <option value={0}>every stop</option>
+            {Array.from({ length: a.stops.length - 2 }, (_, i) => i + 1).map((k) => (
+              <option key={k} value={k}>
+                {k} of the {a.stops.length - 1} stops, then the finale
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
     </div>
   );
 }

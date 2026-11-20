@@ -1,8 +1,9 @@
 /*
-  Console: slip sets for a trail (docs/SLIPS.md). A set is shared (same slips in every kit) or
-  per-kit (words drawn from a pool per kit). Each slip has up to four edge readings (the edge at
-  the bottom when read) plus extra decoy sequences, each with an outcome. Live counts per reading.
-  Exports what the slip printer needs (per kit for per-kit sets).
+  Console: slip sets for a trail (docs/SLIPS.md). A set is shared (same slips in every kit), per-kit
+  (words drawn from a pool per kit) or unique (N printed copies of every slip, each with its own
+  words, claimed by the first person to scan it). Each slip has up to four edge readings (the edge at
+  the bottom when read) plus extra decoy sequences, each with an outcome, the same for every copy.
+  Live counts per reading. Exports what the slip printer needs (per kit, or per copy).
 */
 import {
   type HuntAdminStop,
@@ -16,6 +17,8 @@ import {
   SlipSetListSchema,
   type SlipSetMode,
   type TrailAdminList,
+  UNIQUE_SLIP_COPIES,
+  UNIQUE_SLIP_MAX_COPIES,
   slipWordKey,
 } from '@afterhours/shared/features/hunt';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,6 +28,9 @@ import { api } from '../../core/api';
 import { Button, IconButton, Sheet, TextField, useToast } from '../../kit';
 import { Section, Stamp, ui } from '../common/ui';
 import s from './hunt.module.css';
+import { SlipCopiesPanel } from './SlipCopies';
+
+const MODE_LABEL: Record<SlipSetMode, string> = { shared: 'shared', per_kit: 'per kit', unique: 'unique copies' };
 
 interface Row {
   orientation: SlipOrientation;
@@ -133,9 +139,13 @@ function SlipForm({ setId, mode, slip, stops, trails, onDone }: { setId: number;
             </select>
           </label>
           {r.orientation === 'extra' ? (
-            <TextField label="sequence, e.g. -.-. ---" value={r.morse} onChange={(e) => set(i, { morse: e.target.value })} />
+            <TextField label={mode === 'unique' ? "sequence (empty: each copy's top strip upside down)" : 'sequence, e.g. -.-. ---'} value={r.morse} onChange={(e) => set(i, { morse: e.target.value })} />
           ) : (
-            <TextField label={mode === 'per_kit' ? 'word (empty: drawn per kit)' : 'word'} value={r.word} onChange={(e) => set(i, { word: e.target.value.toUpperCase() })} />
+            <TextField
+              label={mode === 'per_kit' ? 'word (empty: drawn per kit)' : mode === 'unique' ? 'word (empty: its own word on every copy)' : 'word'}
+              value={r.word}
+              onChange={(e) => set(i, { word: e.target.value.toUpperCase() })}
+            />
           )}
           <label className={ui.label}>
             outcome
@@ -174,7 +184,7 @@ function SlipForm({ setId, mode, slip, stops, trails, onDone }: { setId: number;
           {r.outcome === 'clue' && <TextField label="clue text" value={r.clue} maxLength={300} onChange={(e) => set(i, { clue: e.target.value })} />}
           {r.outcome === 'bonus' && <TextField label="bonus points" type="number" min={0} max={50} value={r.bonusPoints} onChange={(e) => set(i, { bonusPoints: Number(e.target.value) })} />}
           <TextField label="message (optional)" value={r.message} maxLength={200} onChange={(e) => set(i, { message: e.target.value })} />
-          <span className={s.readingMorse}>{r.word ? slipWordKey(r.word) : r.morse}</span>
+          <span className={s.readingMorse}>{r.word ? slipWordKey(r.word) : r.morse || (mode === 'unique' ? 'a word per copy' : '')}</span>
           <TooLong orientation={r.orientation} word={r.word.trim() || null} />
           <IconButton size="sm" icon="close" label="remove reading" onClick={() => setRows((l) => l.filter((_, j) => j !== i))} />
         </div>
@@ -201,29 +211,45 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
   const toast = useToast();
   const sets = useQuery({ queryKey: ['hunt', 'slips', trail], queryFn: () => api.get(`/api/hunt/admin/slip-sets?trail=${trail}`, SlipSetListSchema), refetchInterval: 6000 });
   const [title, setTitle] = useState('kit slips');
-  const [mode, setMode] = useState<SlipSetMode>('shared');
+  const [mode, setMode] = useState<SlipSetMode>('unique');
   const [pool, setPool] = useState('');
+  const [copies, setCopies] = useState(UNIQUE_SLIP_COPIES);
+  const [showCopies, setShowCopies] = useState<number | null>(null);
   const [edit, setEdit] = useState<{ setId: number; mode: SlipSetMode; slip: Parameters<typeof SlipForm>[0]['slip'] } | null>(null);
   const [printing, setPrinting] = useState<{ title: string; slips: SlipDesign[] } | null>(null);
   const [printAs, setPrintAs] = useState<PrintAs>('mixed');
-  const printSet = async (setId: number) => {
+  const printSet = async (setId: number, range?: { from: number; to: number }) => {
     try {
       const sheet = await api.get(`/api/hunt/admin/slip-print?set=${setId}`, SlipPrintSheetSchema);
-      setPrinting({ title: sheet.mode === 'per_kit' ? `${sheet.title} (one per kit)` : sheet.title, slips: sheet.slips.map((i) => designFromPrintItem(i, undefined, printAs)) });
+      // unique copies print in serial order, a kit's slips 1..3 of one serial together on a page
+      const items = range ? sheet.slips.filter((i) => i.serial !== null && i.serial >= range.from && i.serial <= range.to) : sheet.slips;
+      const what = sheet.mode === 'per_kit' ? ' (one per kit)' : sheet.mode === 'unique' ? `, unique copies${range ? ` no. ${String(range.from).padStart(3, '0')} to ${String(range.to).padStart(3, '0')}` : ''}` : '';
+      setPrinting({ title: `${sheet.title}${what}`, slips: items.map((i) => designFromPrintItem(i, undefined, printAs)) });
     } catch (e) {
       toast((e as Error).message, { kind: 'bad' });
     }
   };
   const create = useMutation({
-    mutationFn: () => api.post(`/api/hunt/admin/slip-sets?trail=${trail}`, { title, mode, pool: pool.split(/[\s,]+/).filter(Boolean) }, SlipSetListSchema),
+    mutationFn: () => api.post(`/api/hunt/admin/slip-sets?trail=${trail}`, { title, mode, pool: pool.split(/[\s,]+/).filter(Boolean), copies }, SlipSetListSchema),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['hunt', 'slips', trail] }),
+    onError: (e) => toast(e.message, { kind: 'bad' }),
+  });
+  const toUnique = useMutation({
+    mutationFn: (setId: number) => api.put(`/api/hunt/admin/slip-sets/${setId}/mode`, { mode: 'unique', copies: UNIQUE_SLIP_COPIES }, SlipSetListSchema),
+    onSuccess: (d, setId) => {
+      qc.setQueryData(['hunt', 'slips', trail], d);
+      void qc.invalidateQueries({ queryKey: ['hunt'] });
+      setShowCopies(setId);
+      toast(`switched: ${UNIQUE_SLIP_COPIES} unique copies of every slip`, { kind: 'good' });
+    },
     onError: (e) => toast(e.message, { kind: 'bad' }),
   });
   const exportSet = async (setId: number, kind: 'json' | 'csv') => {
     const sheet = await api.get(`/api/hunt/admin/slip-print?set=${setId}`, SlipPrintSheetSchema);
     if (kind === 'json') return download(`slips-${setId}.json`, JSON.stringify(sheet, null, 2), 'application/json');
-    const lines = ['kit_id,slip_no,label,bottom,right,top,left'];
-    for (const sl of sheet.slips) lines.push([sl.kitId ?? '', sl.slipNo, sl.label, sl.edges.bottom?.word ?? '', sl.edges.right?.word ?? '', sl.edges.top?.word ?? '', sl.edges.left?.word ?? ''].join(','));
+    const lines = ['kit_id,serial,slip_no,label,bottom,right,top,left'];
+    for (const sl of sheet.slips)
+      lines.push([sl.kitId ?? '', sl.serial === null ? '' : String(sl.serial).padStart(3, '0'), sl.slipNo, sl.label, sl.edges.bottom?.word ?? '', sl.edges.right?.word ?? '', sl.edges.top?.word ?? '', sl.edges.left?.word ?? ''].join(','));
     download(`slips-${setId}.csv`, lines.join('\n'), 'text/csv');
   };
   return (
@@ -245,13 +271,37 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
         <div key={st.id} className={s.slipSet}>
           <div className={ui.between}>
             <span>
-              <b>{st.title}</b> <Stamp tone={st.mode === 'per_kit' ? 'late' : 'sky'}>{st.mode === 'per_kit' ? 'per kit' : 'shared'}</Stamp>
+              <b>{st.title}</b> <Stamp tone={st.mode === 'per_kit' ? 'late' : st.mode === 'unique' ? 'live' : 'sky'}>{MODE_LABEL[st.mode]}</Stamp>
               {st.mode === 'per_kit' && <span className={ui.hand}> pool: {st.pool.length} words</span>}
+              {st.mode === 'unique' && (
+                <span className={ui.hand}>
+                  {' '}
+                  {st.copies} copies of each slip, {st.claimed} claimed. every copy has its own words; the first scan claims it.
+                </span>
+              )}
             </span>
             <span className={ui.row}>
               <Button size="sm" tone="sun" icon="print" onClick={() => void printSet(st.id)} data-testid={`print-slips-${st.id}`}>
-                print slips
+                {st.mode === 'unique' ? 'print set' : 'print slips'}
               </Button>
+              {st.mode === 'unique' && (
+                <Button size="sm" tone="sky" icon="list" onClick={() => setShowCopies((v) => (v === st.id ? null : st.id))} data-testid={`copies-${st.id}`}>
+                  {showCopies === st.id ? 'hide copies' : 'copies'}
+                </Button>
+              )}
+              {st.mode === 'shared' && (
+                <Button
+                  size="sm"
+                  tone="grape"
+                  loading={toUnique.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Switch "${st.title}" to ${UNIQUE_SLIP_COPIES} unique copies? Every edge gets its own word per copy (outcomes stay). Reprint afterwards.`)) toUnique.mutate(st.id);
+                  }}
+                  data-testid={`to-unique-${st.id}`}
+                >
+                  switch to unique copies
+                </Button>
+              )}
               <Button size="sm" tone="paper" icon="download" onClick={() => void exportSet(st.id, 'csv')}>
                 printer csv
               </Button>
@@ -279,7 +329,7 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
                     <tr key={r.id}>
                       <td>{r.orientation}</td>
                       <td className={ui.num}>
-                        {r.word ?? (r.morse ? r.morse : 'per kit')} <TooLong orientation={r.orientation} word={r.word} />
+                        {r.word ?? (r.morse ? r.morse : st.mode === 'unique' ? (r.orientation === 'extra' ? 'top strip upside down' : 'a word per copy') : 'per kit')} <TooLong orientation={r.orientation} word={r.word} />
                       </td>
                       <td>
                         <Stamp tone={r.outcome === 'decoy' ? 'done' : r.outcome === 'bonus' ? 'info' : 'sky'}>{r.outcome}</Stamp> {r.targetStopId ? stops.find((x) => x.id === r.targetStopId)?.title : r.targetTrailId ? `trail #${r.targetTrailId}` : r.clue}
@@ -293,6 +343,7 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
               </table>
             </div>
           ))}
+          {st.mode === 'unique' && showCopies === st.id && <SlipCopiesPanel setId={st.id} onPrint={(range) => void printSet(st.id, range)} />}
         </div>
       ))}
       <div className={s.slipSet}>
@@ -302,11 +353,13 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
           <label className={ui.label}>
             kind
             <select className={ui.select} value={mode} onChange={(e) => setMode(e.target.value as SlipSetMode)}>
+              <option value="unique">unique: every printed copy has its own words</option>
               <option value="shared">shared: same slips in every kit</option>
               <option value="per_kit">per kit: words drawn from a pool</option>
             </select>
           </label>
           {mode === 'per_kit' && <TextField label="word pool (spaces or commas)" value={pool} onChange={(e) => setPool(e.target.value.toUpperCase())} />}
+          {mode === 'unique' && <TextField label="copies of each slip" type="number" min={1} max={UNIQUE_SLIP_MAX_COPIES} value={copies} onChange={(e) => setCopies(Number(e.target.value))} />}
           <Button tone="lime" icon="plus" onClick={() => create.mutate()} disabled={!title.trim()}>
             create set
           </Button>

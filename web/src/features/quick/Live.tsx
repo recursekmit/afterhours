@@ -97,7 +97,16 @@ export function LiveCard({ id, compact }: { id: number; compact?: boolean }) {
           {v.code}
         </div>
       )}
-      {v.stats.length > 0 && (
+      {v.stats.length > 0 && compact && (
+        <p className={s.statsCompact}>
+          {v.stats.map((st) => (
+            <span key={st.label}>
+              {st.label} <b>{st.value}</b>
+            </span>
+          ))}
+        </p>
+      )}
+      {v.stats.length > 0 && !compact && (
         <div className={s.stats}>
           {v.stats.map((st) => (
             <Stat key={st.label} label={st.label} value={st.value} />

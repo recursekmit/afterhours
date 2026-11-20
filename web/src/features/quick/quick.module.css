@@ -106,3 +106,16 @@
 @media (max-width: 480px) {
   .twoCol { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* phone fit: nothing may push the speaker page sideways */
+.speaker { grid-template-columns: minmax(0, 1fr); overflow-x: hidden; }
+.speaker > * { min-width: 0; }
+.speakerList li { min-width: 0; }
+.speakerList button { white-space: normal; height: auto; padding-block: var(--s-3); max-width: 100%; }
+.speakerBtn { min-width: 0; overflow-wrap: anywhere; font-size: var(--step-0); }
+.speakerBack { flex: 0 0 auto; }
+.speakerTitle { min-width: 0; overflow-wrap: anywhere; }
+.statsCompact { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); font-family: var(--font-hand); font-weight: 800; }
+.statsCompact b { font-family: var(--font-display); font-size: var(--step-1); }
+.liveCard { min-width: 0; }
+.liveCard * { min-width: 0; }

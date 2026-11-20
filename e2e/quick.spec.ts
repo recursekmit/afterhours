@@ -145,6 +145,16 @@ test.describe.serial('quick session', () => {
     await sp.getByLabel('who is on stage').fill('Prof Mehta');
     await sp.waitForTimeout(300);
     await sp.screenshot({ path: `${SHOT}/quick-speaker-390.png` });
+    const noSideScroll = async (page: Page) =>
+      expect(await page.evaluate(() => [document.documentElement, document.querySelector('[data-testid="speaker-view"]')!].every((el) => el.scrollWidth <= el.clientWidth))).toBe(true);
+    await noSideScroll(sp);
+    const narrow = await console1280(browser, 360, 780);
+    await narrow.goto('/admin/quick/speaker');
+    await expect(narrow.getByRole('heading', { name: 'speaker view' })).toBeVisible();
+    await narrow.waitForTimeout(300);
+    await noSideScroll(narrow);
+    await narrow.screenshot({ path: `${SHOT}/quick-speaker-360.png` });
+    await narrow.context().close();
     await sp.getByRole('button', { name: 'fire first to type the code' }).click();
     const card = sp.getByTestId('live-card').first();
     await expect(card).toContainText('Prof Mehta: code drop');
@@ -153,10 +163,12 @@ test.describe.serial('quick session', () => {
     expect(d.drops.find((x) => x.status === 'live')).toMatchObject({ kind: 'code', title: 'Prof Mehta: code drop' });
     await expect(phone.getByRole('dialog', { name: /flash drop/ })).toBeVisible({ timeout: 8000 });
     await sp.waitForTimeout(500);
+    await noSideScroll(sp);
     await sp.screenshot({ path: `${SHOT}/quick-speaker-live-390.png` });
     // a second tap of a drop while one is live explains itself and offers the way out
     await sp.getByRole('button', { name: 'fire everyone react' }).click();
     await expect(sp.getByRole('alert')).toContainText(/already live/);
+    await noSideScroll(sp);
     await sp.screenshot({ path: `${SHOT}/quick-speaker-conflict-390.png` });
     await sp.getByRole('button', { name: 'close it and launch this' }).click();
     await expect(sp.getByTestId('live-card').first()).toContainText('everyone react');

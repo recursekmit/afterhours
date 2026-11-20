@@ -3,7 +3,7 @@
 
     <SlipScanner onScan={(scan, source) => ...} onClose={() => ...} />
 
-  - rear camera (1280 x 720 ideal) into the worker pipeline, UI stays smooth
+  - rear camera (1920 x 1080 ideal: a 176 mm ticket needs the pixels) into the worker pipeline, UI stays smooth
   - cut-paper viewfinder, live outlines of every strip it sees, the bottom one highlighted
   - a guidance line that follows what the camera sees
   - torch toggle where the phone supports it
@@ -127,7 +127,7 @@ export function SlipScanner({ onScan, onClose, after = 'result', title = 'scan a
       const mode = engine.init();
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
           audio: false,
         });
       } catch (e) {

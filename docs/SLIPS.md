@@ -53,3 +53,18 @@ The scanner runs entirely on the phone (camera frames into a canvas, no upload).
 - Slips can be **shared** (the same slips in every kit) or **per-kit** (each kit's slip words come from a pool, and the server knows which words belong to which kit).
 - Readings are matched on the normalised Morse sequence (exact), and also on the decoded text for typed fallbacks.
 - Scoring, cooldowns and "pays once" rules follow the existing trail rules.
+
+## Ticket slips (default for kit slips)
+
+Kit slips print as one of the four engraved after hours tickets (the owner's art: `design/tickets/`, cropped by `node scripts/tickets.mjs` into `web/src/assets/tickets/`): **armillary** (maroon), **wave** (navy), **ginkgo** (forest) and **ruins** (plum). A set can print all as one design, or "mixed" (slip N gets design N mod 4).
+
+- **Size:** `SLIP_SIZES.ticket`, 176 x 80 mm (2.2 : 1). The short edges carry 56 mm of band: 3+ letters at full dot size. A4 holds 3 per page with crop marks; the cut line has a concave 3 mm notch at each corner (`TICKET_NOTCH_MM`), drawn as a dashed line, clear of the frame.
+- **Geometry is unchanged:** the same `SLIP_SPEC` ratios and `layoutSlip`, so the scanner needs no ticket mode. From the cut edge in:
+  - cream quiet margin (`#f3e8cc`);
+  - the dark ink frame, in the ticket's ground colour;
+  - a cream **ribbon** with the four finder bullseyes (exact geometry, they read as the ticket's corner rosettes) and the four Morse bands, dark ink, nothing else;
+  - the engraved panel: the art (only here, never in a band or its 1.2 mm quiet gap), a gold double rule with corner stars, the art's own **plaque** ("AFTER HOURS" and "no. 07", kit id when per kit), the vertical **star divider**, and the **square frame** with the Recurse mark, a small QR (`square: 'qr'`, `qr`) or the "turn me" glyph (`square: 'glyph'`).
+- **Polarity:** dark symbols on the cream ribbon. Luminance contrast is 13.7 : 1 (`#131d37` on `#f3e8cc`) against 9.9 : 1 for gold `#e3c48a` on navy, and it is the dark-on-light the threshold, components and finder checks already expect. Gold-on-dark would need a polarity pass and would put the engraved gold line art (same colour as the symbols) next to the bands.
+- **Camera:** the scanner asks for 1920 x 1080 (was 1280 x 720), so a whole 176 mm ticket in a portrait frame still gets 4-5 px/mm.
+- **Proof:** `web/src/lib/slips/scanner/tickets.test.ts` reads the real renderer's print of each design (`fixtures/ticket-*.png`) through the synthetic camera: 4 designs x 4 turns x 12 conditions (tilt, perspective, blur, motion, noise, dim, low contrast, gradient and shadow, dark table, everything at once). Result on 20 Nov: **372 / 384 correct (96.9 %), 0 wrong**, misses only under strong perspective (no frame found, never a wrong word); the 45 degree zone gave **0 readings in 32 frames**. The fake-camera e2e (`e2e/trails-camera.spec.ts`) scans the armillary kit ticket.
+- Choose the design in the console (trails, slips, "print slips as") or on `/dev/slips` (`?size=ticket&ticket=wave&square=qr`).

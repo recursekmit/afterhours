@@ -38,7 +38,8 @@ function writeY4m(path: string, frames: { width: number; height: number; data: U
 
 function scene(opts: Partial<CameraOptions>, seed: number) {
   if (!print) throw new Error('print the slip first');
-  return cameraScene(print, { slipMm: { w: 85 + 12, h: 55 + 12 }, width: 720, height: 1280, pxPerMm: 6.2, blur: 0.8, noise: 0.012, seed, ...opts });
+  // the kit slip is an engraved ticket (176 x 80 mm, plus 6 mm of page): a 1080p portrait frame, like the scanner asks for
+  return cameraScene(print, { slipMm: { w: 176 + 12, h: 80 + 12 }, width: 1080, height: 1920, pxPerMm: 5, blur: 0.8, noise: 0.012, seed, ...opts });
 }
 
 async function api<T = unknown>(method: 'GET' | 'POST' | 'PUT', path: string, data?: unknown): Promise<T> {
@@ -90,12 +91,12 @@ test.describe.serial('trails: slip camera', () => {
     await api('PUT', `/api/hunt/admin/order?trail=${trailId}`, { ids: [ids.at(-1)!, ...ids.slice(0, -1)] });
     await api('PUT', `/api/hunt/admin/state?trail=${trailId}`, { status: 'open' });
 
-    // the exact slip the console prints, rendered at ~15 px/mm
-    const ctx = await browser.newContext({ viewport: { width: 600, height: 400 }, deviceScaleFactor: 4 });
+    // the exact slip the console prints (kit slips are tickets; slip 1 of a mixed set is the armillary), ~11 px/mm
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 500 }, deviceScaleFactor: 3 });
     const page = await ctx.newPage();
-    await page.goto(`${BASE}/dev/slips?b=lab&r=hint&t=nope&l=sun&n=1&print=1`);
+    await page.goto(`${BASE}/dev/slips?size=ticket&ticket=armillary&b=lab&r=hint&t=nope&l=sun&n=1&print=1`);
     const el = page.getByTestId('slip-print');
-    await expect(el.locator('svg')).toBeVisible();
+    await expect(el.locator('svg').first()).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(300);
     const r = await decodePng(new Uint8Array(await el.screenshot()), (d) => inflateSync(d));

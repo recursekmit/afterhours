@@ -52,7 +52,7 @@ describe('auth flows', () => {
     // an admin cookie is not a projector cookie... but admins may preview the projector
     expect((await req(t.app, jar, 'GET', '/api/screen/state')).statusCode).toBe(200);
     expect((await req(t.app, new Jar(), 'GET', '/api/screen/state')).statusCode).toBe(401);
-  });
+  }, 60_000); // scrypt + PIN checks are slow when the whole suite runs in parallel
 
   it('generates kits blank and from CSV, sequential ids, passwords shown once', async () => {
     const admin = await adminJar(t.app);

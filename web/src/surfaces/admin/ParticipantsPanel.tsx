@@ -387,7 +387,7 @@ function Table() {
                       {r.source === 'walkin' && <span className={p.tag}>walk-in</span>}
                       {r.note && <span className={p.noteTag}>{r.note}</span>}
                     </td>
-                    <td className={s.faint}>{[r.year, r.section].filter(Boolean).join(', ')}</td>
+                    <td className={`${s.faint} ${p.nowrap}`}>{[r.year, r.section].filter(Boolean).join(', ')}</td>
                     <td className={s.faint}>{maskPhone(r.phone)}</td>
                     <td>
                       <StatusBadge r={r} />

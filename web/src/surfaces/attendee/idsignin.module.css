@@ -9,18 +9,19 @@
   min-height: 132px;
   padding: var(--s-5) var(--s-4);
   text-align: left;
-  color: var(--on-sun);
-  background: var(--sun);
+  /* the primary action, struck in gold like the kit's primary buttons, with the double rule */
+  color: var(--on-gold);
+  background: var(--gold);
   border: var(--outline);
   border-radius: var(--cut-1);
-  box-shadow: var(--shadow-lg);
+  box-shadow: inset 0 0 0 4px var(--gold), inset 0 0 0 5px var(--on-gold), var(--shadow-lg);
   transform: rotate(-1deg);
   cursor: pointer;
   transition: transform var(--dur-fast) var(--ease-pop), box-shadow var(--dur-fast) var(--ease-out);
 }
 .bigScan:hover { transform: rotate(-1deg) translateY(-2px); }
-.bigScan:active { transform: rotate(-1deg) translate(3px, 4px); box-shadow: var(--shadow-pressed); }
-.bigScan:focus-visible { outline: var(--line-fat) solid var(--grape); outline-offset: 4px; }
+.bigScan:active { transform: rotate(-1deg) translate(3px, 4px); box-shadow: inset 0 0 0 4px var(--gold), inset 0 0 0 5px var(--on-gold), var(--shadow-pressed); }
+.bigScan:focus-visible { outline: var(--line-fat) solid var(--gold-bright); outline-offset: 4px; }
 .bigScanIcon {
   display: grid;
   place-items: center;
@@ -106,4 +107,4 @@
 .pickCard:disabled { cursor: not-allowed; opacity: 0.6; box-shadow: none; }
 .pickName { font-family: var(--font-display); font-size: var(--step-1); line-height: 1.1; }
 .pickMeta { font-family: var(--font-hand); font-weight: 700; color: var(--ink-soft); }
-.pickBound { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); color: var(--bad-text, var(--ink)); }
+.pickBound { font-family: var(--font-hand); font-weight: 700; font-size: var(--step--1); color: var(--wax, var(--ink)); }

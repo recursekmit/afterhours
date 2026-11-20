@@ -101,7 +101,7 @@ test.describe.serial('student-ID login', () => {
     await expect(report).toContainText('kept "Kavya Iyer", also given by "K Iyer"');
     await expect(report).toContainText('probable test entry');
     await expect(page.getByTestId('participant-26BD1A0581')).toContainText('roll also given by');
-    await settle(page);
+    await settle(page, 5000); // let the confetti and the toast clear
     await page.screenshot({ path: `${SHOTS}/idlogin-console-participants.png`, fullPage: true });
     await ctx.close();
   });

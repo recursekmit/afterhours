@@ -262,3 +262,4 @@
     background-color: var(--paper);
   }
 }
+.idWrap { position: relative; z-index: 1; scroll-margin-top: var(--s-4); }

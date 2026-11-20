@@ -41,3 +41,4 @@
 .vNo { background: var(--pink); }
 .pick { outline: var(--line-fat) solid var(--grape); outline-offset: 3px; }
 @media (max-width: 900px) { .desk { grid-template-columns: 1fr; } }
+.nowrap { white-space: nowrap; }

@@ -1,6 +1,7 @@
 /*
-  Sign-in. Kit ID is prefilled from ?kit=AH-042 (the QR on the card).
-  The password is never in the URL.
+  Sign-in. First and biggest: scan your student ID (IdSignIn). Then the entry
+  kit, for walk-ins and spares: kit ID prefilled from ?kit=AH-042 (the QR on
+  the card). The password is never in the URL.
 */
 import { normaliseKitId } from '@afterhours/shared';
 import { useAnimate, useReducedMotion } from 'motion/react';
@@ -28,6 +29,7 @@ export function SignIn() {
   const reduce = useReducedMotion();
   const pwRef = useRef<HTMLInputElement>(null);
   const kitRef = useRef<HTMLInputElement>(null);
+  const idRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Came from the QR: the kit ID is done, so the cursor goes to the password.
@@ -102,7 +104,15 @@ export function SignIn() {
         </div>
       </header>
 
-      <IdSignIn onStepChange={setIdBusy} />
+      <div ref={idRef} className={s.idWrap}>
+        <IdSignIn
+          onStepChange={(busy) => {
+            setIdBusy(busy);
+            // the camera and every next step sit under the big title: bring them into view
+            if (busy) requestAnimationFrame(() => idRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }));
+          }}
+        />
+      </div>
 
       <form ref={scope} className={s.kitWrap} onSubmit={submit} noValidate hidden={idBusy && !rawKit}>
         <Card tone="paper" tape tapeColor="pink" lift className={s.kitCard}>

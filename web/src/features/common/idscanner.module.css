@@ -5,8 +5,8 @@
   width: 100%;
   max-width: 420px;
   justify-self: center;
-  aspect-ratio: 3 / 4;
-  background: var(--ink);
+  aspect-ratio: 1;
+  background: var(--night, var(--ink));
   border: var(--outline);
   border-radius: var(--cut-1);
   box-shadow: var(--shadow);
@@ -15,19 +15,19 @@
 .video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .frame {
   position: absolute;
-  left: 14%;
-  right: 14%;
-  top: 20%;
+  left: 16%;
+  right: 16%;
+  top: 12%;
   aspect-ratio: 1;
   border-radius: var(--cut-3);
-  box-shadow: 0 0 0 999px color-mix(in srgb, var(--ink) 45%, transparent);
+  box-shadow: 0 0 0 999px color-mix(in srgb, var(--night, var(--ink)) 55%, transparent);
 }
-.cornerA, .cornerB, .cornerC, .cornerD { position: absolute; width: 34px; height: 34px; border: var(--line-fat) solid var(--sun); }
+.cornerA, .cornerB, .cornerC, .cornerD { position: absolute; width: 34px; height: 34px; border: var(--line-fat) solid var(--gold-bright, var(--sun)); }
 .cornerA { top: -2px; left: -2px; border-right: 0; border-bottom: 0; border-top-left-radius: 10px; }
 .cornerB { top: -2px; right: -2px; border-left: 0; border-bottom: 0; border-top-right-radius: 10px; }
 .cornerC { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-bottom-left-radius: 10px; }
 .cornerD { bottom: -2px; right: -2px; border-left: 0; border-top: 0; border-bottom-right-radius: 10px; }
-.sweep { position: absolute; left: 6%; right: 6%; height: var(--line-fat); background: var(--lime); border-radius: 4px; animation: sweep 1.8s var(--ease-out) infinite alternate; }
+.sweep { position: absolute; left: 6%; right: 6%; height: var(--line-fat); background: var(--gold-bright, var(--lime)); border-radius: 4px; opacity: 0.8; animation: sweep 1.8s var(--ease-out) infinite alternate; }
 @keyframes sweep { from { top: 8%; } to { top: 90%; } }
 @media (prefers-reduced-motion: reduce) { .sweep { animation: none; top: 50%; } }
 .hint {

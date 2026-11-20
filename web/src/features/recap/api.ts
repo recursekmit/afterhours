@@ -52,6 +52,7 @@ export const SlapTotalSchema = z.object({ total: z.number().int() });
 export const recapApi = {
   seen: (cards: number) => api.post('/api/recap/me/seen', { cards }, OkSchema),
   shared: () => api.post('/api/recap/me/shared', {}, OkSchema),
+  slap: (count: number) => api.post('/api/recap/me/slaps', { count }, SlapTotalSchema),
   open: (open: boolean) => api.post('/api/recap/admin/open', { open }, RecapStatusSchema),
   attendees: (q: string) => api.get(`/api/recap/admin/attendees?q=${encodeURIComponent(q)}`, RecapAttendeeListSchema),
   preview: (id: number) => api.get(`/api/recap/admin/attendee/${id}`, RecapSchema),

@@ -159,6 +159,9 @@ test.describe.serial('polish', () => {
     await proj.waitForTimeout(2500);
     await proj.screenshot({ path: `${SHOT}/attendance-projector-1080.png` });
     await proj.context().close();
+    // leave the projector as we found it: an open check-in holds the big screen for later specs (quick session)
+    await api('POST', '/api/attendance/admin/close', { activityId: id });
+    await api('POST', '/api/admin/screen/pin', { sceneId: null });
   });
 
   test('leaderboard: phone card, then the projector reveal', async ({ browser }) => {
@@ -253,5 +256,6 @@ test.describe.serial('polish', () => {
     await proj.screenshot({ path: `${SHOT}/reactions-projector-1080.png` });
     await proj.context().close();
     await page.context().close();
+    await api('POST', '/api/admin/screen/pin', { sceneId: null });
   });
 });

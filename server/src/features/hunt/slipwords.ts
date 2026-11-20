@@ -77,8 +77,16 @@ function bandUnits(edge: SlipEdge, widthMm: number, heightMm: number): number {
 export function edgeUnitLimit(edge: SlipEdge): number {
   const t = SLIP_SIZES.ticket;
   const c = SLIP_SIZES.card;
-  return Math.min(bandUnits(edge, t.widthMm, t.heightMm), edgeCapacity(edge, c.widthMm, c.heightMm), edge === 'bottom' || edge === 'top' ? 45 : 34);
+  const q = SLIP_SIZES.quad;
+  // the 4-per-page kit ticket: dots at least QUAD_MIN_UNIT_MM (short edges hold 32 units, about 3 letters)
+  const quad = Math.floor((edgeCapacity(edge, q.widthMm, q.heightMm) * 0.9) / QUAD_MIN_UNIT_MM);
+  return Math.min(bandUnits(edge, t.widthMm, t.heightMm), edgeCapacity(edge, c.widthMm, c.heightMm), quad, edge === 'bottom' || edge === 'top' ? 45 : 34);
 }
+
+/** Dots on the 4-per-page ticket (SLIP_SIZES.quad) are never smaller than this (mm). */
+export const QUAD_MIN_UNIT_MM = 1.3;
+/** Ticket words are 3 or 4 letters on every edge: easy to recognise once decoded, typos easy to spot. */
+export const WORD_LEN = { min: 3, max: 4 } as const;
 
 export function edgeClass(edge: SlipEdge): EdgeClass {
   return edge === 'bottom' || edge === 'top' ? 'long' : 'short';
@@ -139,7 +147,7 @@ export function shuffle<T>(list: T[], rnd: () => number): T[] {
 
 /** Candidate words for an edge class, best first: tech words, pronounceable codes, letter+digit codes (each tier shuffled). */
 function candidates(cls: EdgeClass, rnd: () => number): string[] {
-  const tech = TECH_WORDS.filter((w) => (cls === 'short' ? w.length <= 3 : w.length >= 4));
+  const tech = TECH_WORDS.filter((w) => w.length >= WORD_LEN.min && w.length <= WORD_LEN.max && (cls === 'short' ? w.length === 3 : w.length === 4));
   const cvc: string[] = [];
   const cvcv: string[] = [];
   for (const a of CONSONANTS)
@@ -151,7 +159,6 @@ function candidates(cls: EdgeClass, rnd: () => number): string[] {
   const codes: string[] = [];
   for (const a of CONSONANTS + VOWELS)
     for (const d of DIGITS) {
-      codes.push(a + d);
       for (const b of CONSONANTS) codes.push(a + d + b);
     }
   // Short edges: CVC first, then the light CVCV words that still fit (TINE, SEMI...). Long edges: CVCV,

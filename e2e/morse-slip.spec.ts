@@ -30,6 +30,7 @@ type Edges = Record<'bottom' | 'right' | 'top' | 'left', { word: string; morse: 
 type State = Awaited<ReturnType<BrowserContext['storageState']>>;
 interface Copy {
   serial: number;
+  slipNo: number;
   ticket: string;
   edges: Edges;
 }
@@ -64,7 +65,7 @@ async function phone(who: 'a' | 'b', fn: (page: Page) => Promise<void>, cam?: { 
     const y4m = join(TMP, `copy-${cam.serial}-${cam.roll}.y4m`);
     writeY4m(
       y4m,
-      [0, 1, 2].map((k) => cameraScene(print, { slipMm: { w: 176 + 12, h: 80 + 12 }, width: 1080, height: 1920, pxPerMm: 5, blur: 0.8, noise: 0.012, rollDeg: cam.roll + 4 + k * 0.4, pitchDeg: 8, seed: 100 * cam.serial + k + cam.roll })),
+      [0, 1, 2].map((k) => cameraScene(print, { slipMm: { w: 146 + 12, h: 66 + 12 }, width: 1080, height: 1920, pxPerMm: 5.6, blur: 0.8, noise: 0.012, rollDeg: cam.roll + 4 + k * 0.4, pitchDeg: 8, seed: 100 * cam.serial + k + cam.roll })),
     );
     args.push('--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`);
   }
@@ -82,7 +83,7 @@ async function phone(who: 'a' | 'b', fn: (page: Page) => Promise<void>, cam?: { 
 
 async function scan(page: Page) {
   await page.goto(`/morse/t/${trailId}`);
-  await expect(page.getByText('Your kit has one Morse slip')).toBeVisible();
+  await expect(page.getByText('Your kit has four Morse tickets')).toBeVisible();
   await page.getByTestId('slip-scan-open').click();
 }
 
@@ -97,16 +98,19 @@ test.describe.serial('the morse slip: separate events, one ticket each, logouts'
     expect(r.created).toBe(true);
     ({ trailId, setId } = r);
     expect(await api('GET', '/api/hunt/visibility')).toEqual({ hunt: false, morse: false });
-    const sheet = await api<{ slips: { serial: number; ticket: string; edges: Edges }[] }>('GET', `/api/hunt/admin/slip-print?set=${setId}`);
-    expect(sheet.slips).toHaveLength(80);
-    for (const d of ['armillary', 'wave', 'ginkgo', 'ruins']) expect(sheet.slips.filter((s) => s.ticket === d)).toHaveLength(20);
-    for (const s of sheet.slips) copies.set(s.serial, { serial: s.serial, ticket: s.ticket, edges: s.edges });
+    const sheet = await api<{ size: string; slips: { serial: number; slipNo: number; ticket: string; edges: Edges }[] }>('GET', `/api/hunt/admin/slip-print?set=${setId}`);
+    expect(sheet.size).toBe('quad');
+    expect(sheet.slips).toHaveLength(320); // tickets I-IV x 80
+    const firsts = sheet.slips.filter((s) => s.slipNo === 1);
+    for (const d of ['armillary', 'wave', 'ginkgo', 'ruins']) expect(firsts.filter((s) => s.ticket === d)).toHaveLength(20); // the guilds
+    for (const s of sheet.slips) if (s.slipNo === 1) copies.set(s.serial, { serial: s.serial, slipNo: 1, ticket: s.ticket, edges: s.edges });
+    for (let serial = 1; serial <= 80; serial++) expect(new Set(sheet.slips.filter((s) => s.serial === serial).map((s) => s.ticket)).size).toBe(4);
 
     // copy 001 printed exactly as the console prints it: its own design, its own words
     const ctx = await browser.newContext({ viewport: { width: 900, height: 500 }, deviceScaleFactor: 3 });
     const page = await ctx.newPage();
     const c = copies.get(1)!;
-    await page.goto(`${BASE}/dev/slips?size=ticket&ticket=${c.ticket}&b=${c.edges.bottom!.word}&r=${c.edges.right!.word}&t=${c.edges.top!.word}&l=${c.edges.left!.word}&n=1&serial=1&print=1`);
+    await page.goto(`${BASE}/dev/slips?size=quad&ticket=${c.ticket}&b=${c.edges.bottom!.word}&r=${c.edges.right!.word}&t=${c.edges.top!.word}&l=${c.edges.left!.word}&n=1&serial=1&print=1`);
     const el = page.getByTestId('slip-print');
     await expect(el.locator('svg').first()).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
@@ -167,7 +171,7 @@ test.describe.serial('the morse slip: separate events, one ticket each, logouts'
     await phone('a', async (page) => {
       await page.goto(`/morse/t/${trailId}`);
       await page.getByRole('button', { name: 'start this trail' }).click();
-      await expect(page.getByText('Your kit has one Morse slip')).toBeVisible();
+      await expect(page.getByText('Your kit has four Morse tickets')).toBeVisible();
     });
     await phone(
       'a',
@@ -201,7 +205,7 @@ test.describe.serial('the morse slip: separate events, one ticket each, logouts'
     await phone('b', async (page) => {
       await page.goto(`/morse/t/${trailId}`);
       await page.getByRole('button', { name: 'start this trail' }).click();
-      await expect(page.getByText('Your kit has one Morse slip')).toBeVisible();
+      await expect(page.getByText('Your kit has four Morse tickets')).toBeVisible();
     });
     await phone(
       'b',
@@ -263,13 +267,17 @@ test.describe.serial('the morse slip: separate events, one ticket each, logouts'
     await page.getByTestId(`print-slips-${setId}`).click();
     const sheet = page.getByTestId('slip-sheet-page').first();
     await expect(sheet).toBeVisible();
-    await expect(page.getByTestId('slip-sheet-page')).toHaveCount(27);
-    // the first page's three tickets, in their copies' own designs
-    const want = [1, 2, 3].map((s) => copies.get(s)!.ticket);
-    expect(await sheet.locator('[data-ticket]').evaluateAll((els) => els.map((e) => e.getAttribute('data-ticket')))).toEqual(want);
+    // one page per participant: 80 pages, each with tickets I-IV of one serial in four designs
+    await expect(page.getByTestId('slip-sheet-page')).toHaveCount(80);
+    const designs = await sheet.locator('[data-ticket]').evaluateAll((els) => els.map((e) => e.getAttribute('data-ticket')));
+    expect(designs).toHaveLength(4);
+    expect(new Set(designs).size).toBe(4);
+    expect(designs[0]).toBe(copies.get(1)!.ticket); // ticket I: the guild
+    await expect(sheet).toContainText('no. 001,');
+    await expect(sheet).toContainText('slip IV');
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(800);
-    await sheet.screenshot({ path: `${SHOTS}/morse-slip-sheet-mixed.png` });
+    await sheet.screenshot({ path: `${SHOTS}/morse-tickets-page.png` });
     await page.keyboard.press('Escape');
 
     await page.goto('/admin/hunt');

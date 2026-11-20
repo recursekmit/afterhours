@@ -21,6 +21,10 @@ import { TICKET_ART, TICKET_CREAM } from './tickets';
 const DISPLAY = "'Cinzel', 'Trajan Pro', 'Times New Roman', serif";
 const HAND = "'IM Fell English', 'EB Garamond', Georgia, serif";
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+/** Unique copies name their slip in roman numerals on the plaque: "no. 037, slip II". */
+const roman = (n: string) => ROMAN[(Number(n) || 0) - 1] ?? n;
+
 function Sym({ s }: { s: SymbolShape }) {
   if (s.kind === 'dot') return <circle cx={s.cx} cy={s.cy} r={s.r} />;
   const r = Math.min(s.w, s.h) / 2;
@@ -139,7 +143,7 @@ export function TicketSlipArt({ layout: L, cutLine = false, screen = false }: { 
           </text>
           <text x={pl.x + pl.w / 2} y={pl.y + pl.h * 0.78} textAnchor="middle" fontFamily={HAND} fontStyle="italic" fontSize={pl.h * 0.2} fill={gold}>
             {(L.serial
-              ? [`no. ${L.serial}`, L.number ? `slip ${Number(L.number.replace(/^#/, '')) || L.number.replace(/^#/, '')}` : null]
+              ? [`no. ${L.serial}`, L.number ? `slip ${roman(L.number.replace(/^#/, ''))}` : null]
               : [L.number ? `no. ${L.number.replace(/^#/, '')}` : null, L.kitId ? `kit ${L.kitId.toLowerCase()}` : null]
             )
               .filter(Boolean)

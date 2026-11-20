@@ -225,7 +225,9 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
       const items = range ? sheet.slips.filter((i) => i.serial !== null && i.serial >= range.from && i.serial <= range.to) : sheet.slips;
       // unique: each page names its own serials, so the title stays short
       const what = sheet.mode === 'per_kit' ? ' (one per kit)' : sheet.mode === 'unique' ? ' (unique)' : '';
-      setPrinting({ title: `${sheet.title}${what}`, slips: items.map((i) => designFromPrintItem(i, undefined, printAs)) });
+      // a set's own print size (the morse tickets: four per A4 page), unless printing as plain cards
+      const size = sheet.size && sheet.size in SLIP_SIZES && printAs !== 'card' ? SLIP_SIZES[sheet.size as keyof typeof SLIP_SIZES] : undefined;
+      setPrinting({ title: `${sheet.title}${what}`, slips: items.map((i) => designFromPrintItem(i, size, printAs)) });
     } catch (e) {
       toast((e as Error).message, { kind: 'bad' });
     }

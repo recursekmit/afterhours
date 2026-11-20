@@ -483,9 +483,9 @@ describe('seed and live migration', () => {
       ['kit slip: first location', 'unique', SEED_SLIP_COPIES],
       ['the morse slip', 'unique', 80],
     ]);
-    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copies')!.n).toBe(5 * SEED_SLIP_COPIES);
+    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copies')!.n).toBe(8 * SEED_SLIP_COPIES);
     // 9 edges + 1 upside-down extra per trio, 3 edges per hunt slip, 4 edges + 1 upside-down per morse slip
-    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copy_words')!.n).toBe((9 + 1 + 3 + 5) * SEED_SLIP_COPIES);
+    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copy_words')!.n).toBe((9 + 1 + 3 + 17) * SEED_SLIP_COPIES); // the morse tickets: 16 edges + 1 upside-down per serial
     expect(one<{ n: number }>(t.ctx.db, "SELECT COUNT(*) AS n FROM hunt_slip_readings WHERE word IS NOT NULL AND orientation != 'extra'")!.n).toBe(0);
   });
 

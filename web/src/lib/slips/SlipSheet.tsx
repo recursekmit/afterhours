@@ -60,24 +60,43 @@ interface Placed {
   y: number;
 }
 
-/** Pages of placed slips (all slips on a sheet share the first slip's size). */
-export function paginate(layouts: SlipLayout[]): { pages: Placed[][]; cols: number; rows: number } {
+/** Page spacing in mm. 'tight' lets four 146 x 66 tickets (SLIP_SIZES.quad) share one A4 page. */
+export interface Spacing {
+  margin: number;
+  header: number;
+  gutter: number;
+}
+const NORMAL: Spacing = { margin: MARGIN, header: HEADER, gutter: GUTTER };
+const TIGHT: Spacing = { margin: 6, header: 9, gutter: 4 };
+
+/**
+ * Pages of placed slips (all slips on a sheet share the first slip's size). The tight spacing is used only
+ * when it fits more slips on a page (the four-per-page morse tickets); every other size prints as before.
+ */
+export function paginate(layouts: SlipLayout[]): { pages: Placed[][]; cols: number; rows: number; spacing: Spacing } {
   const W = layouts[0]?.widthMm ?? 85;
   const H = layouts[0]?.heightMm ?? 55;
-  const cols = Math.max(1, Math.floor((PAGE_W - 2 * MARGIN + GUTTER) / (W + GUTTER)));
-  const rows = Math.max(1, Math.floor((PAGE_H - 2 * MARGIN - HEADER + GUTTER) / (H + GUTTER)));
-  const gridW = cols * W + (cols - 1) * GUTTER;
-  const gridH = rows * H + (rows - 1) * GUTTER;
+  const grid = (sp: Spacing) => ({
+    cols: Math.max(1, Math.floor((PAGE_W - 2 * sp.margin + sp.gutter) / (W + sp.gutter))),
+    rows: Math.max(1, Math.floor((PAGE_H - 2 * sp.margin - sp.header + sp.gutter) / (H + sp.gutter))),
+  });
+  const n = grid(NORMAL);
+  const t = grid(TIGHT);
+  const spacing = t.cols * t.rows > n.cols * n.rows ? TIGHT : NORMAL;
+  const { cols, rows } = spacing === TIGHT ? t : n;
+  const G = spacing.gutter;
+  const gridW = cols * W + (cols - 1) * G;
+  const gridH = rows * H + (rows - 1) * G;
   const x0 = (PAGE_W - gridW) / 2;
-  const y0 = MARGIN + HEADER + (PAGE_H - 2 * MARGIN - HEADER - gridH) / 2;
+  const y0 = spacing.margin + spacing.header + (PAGE_H - 2 * spacing.margin - spacing.header - gridH) / 2;
   const per = cols * rows;
   const pages: Placed[][] = [];
   layouts.forEach((layout, i) => {
     const k = i % per;
     if (k === 0) pages.push([]);
-    (pages[pages.length - 1] as Placed[]).push({ layout, x: x0 + (k % cols) * (W + GUTTER), y: y0 + Math.floor(k / cols) * (H + GUTTER) });
+    (pages[pages.length - 1] as Placed[]).push({ layout, x: x0 + (k % cols) * (W + G), y: y0 + Math.floor(k / cols) * (H + G) });
   });
-  return { pages, cols, rows };
+  return { pages, cols, rows, spacing };
 }
 
 function CropMarks({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
@@ -93,7 +112,8 @@ function CropMarks({ x, y, w, h }: { x: number; y: number; w: number; h: number 
   return <path d={d} stroke="#000" strokeWidth={0.2} fill="none" />;
 }
 
-export function SlipPage({ placed, title, page, pages }: { placed: Placed[]; title: string; page: number; pages: number }) {
+export function SlipPage({ placed, title, page, pages, spacing = NORMAL }: { placed: Placed[]; title: string; page: number; pages: number; spacing?: Spacing }) {
+  const M = spacing.margin;
   // unique copies: say which serials are on this page, so a stack can be checked before it is cut
   const serials = [...new Set(placed.map((p) => p.layout.serial).filter((x): x is string => x !== null))];
   const copies = serials.length === 0 ? '' : serials.length === 1 ? `no. ${serials[0]}, ` : `no. ${serials[0]} to ${serials[serials.length - 1]}, `;
@@ -109,11 +129,11 @@ export function SlipPage({ placed, title, page, pages }: { placed: Placed[]; tit
       data-testid="slip-sheet-page"
     >
       <rect width={PAGE_W} height={PAGE_H} fill="#fff" />
-      <image href={logo} x={MARGIN} y={MARGIN - 1} height={7} width={24} preserveAspectRatio="xMinYMid meet" />
-      <text x={MARGIN + 27} y={MARGIN + 4.2} fontFamily="'Cinzel', 'Times New Roman', serif" fontWeight={700} fontSize={4.2}>
+      <image href={logo} x={M} y={M - 1} height={7} width={24} preserveAspectRatio="xMinYMid meet" />
+      <text x={M + 27} y={M + 4.2} fontFamily="'Cinzel', 'Times New Roman', serif" fontWeight={700} fontSize={4.2}>
         AFTER HOURS, MORSE SLIPS
       </text>
-      <text x={MARGIN + 27} y={MARGIN + 9} fontFamily="'IM Fell English', Georgia, serif" fontStyle="italic" fontSize={3.2}>
+      <text x={M + 27} y={M + 8.4} fontFamily="'IM Fell English', Georgia, serif" fontStyle="italic" fontSize={3.2}>
         {title ? `${title}, ` : ''}
         {copies}page {page} of {pages}. print at 100 %, cut on the marks{placed[0]?.layout.ticket ? ' and round the notched corners' : ''}
       </text>
@@ -137,7 +157,7 @@ export interface SlipSheetProps {
 
 export function SlipSheet({ slips, title = '', onClose }: SlipSheetProps) {
   const layouts = useMemo(() => slips.map(layoutSlip), [slips]);
-  const { pages, cols, rows } = useMemo(() => paginate(layouts), [layouts]);
+  const { pages, cols, rows, spacing } = useMemo(() => paginate(layouts), [layouts]);
   const problems = layouts.flatMap((l) => l.errors.map((e) => `slip ${l.number ?? '?'}: ${e}`));
   useEffect(() => {
     document.body.dataset.printing = 'slips';
@@ -174,7 +194,7 @@ export function SlipSheet({ slips, title = '', onClose }: SlipSheetProps) {
       </div>
       <div className={s.sheetPages}>
         {pages.map((p, i) => (
-          <SlipPage key={i} placed={p} title={title} page={i + 1} pages={pages.length} />
+          <SlipPage key={i} placed={p} title={title} page={i + 1} pages={pages.length} spacing={spacing} />
         ))}
       </div>
     </div>,

@@ -777,6 +777,8 @@ export const SlipPrintSheetSchema = z.object({
   setId: z.number().int(),
   title: z.string(),
   mode: SlipSetModeSchema,
+  /** How this set prints by default (a SLIP_SIZES key, e.g. 'quad': four tickets per A4 page); null = the kit ticket. */
+  size: z.string().nullable().default(null),
   slips: z.array(
     z.object({
       slipNo: z.number().int(),

@@ -17,7 +17,7 @@ import s from './hunt.module.css';
 
 const SWITCHES: { key: keyof HuntVisibility; title: string; what: string }[] = [
   { key: 'hunt', title: 'show treasure hunt to players', what: 'trails of kind hunt and other: the sticker and riddle hunt. off: no hunt tab, card, projector map or feed lines; the API says "not open yet".' },
-  { key: 'morse', title: 'show morse challenge to players', what: 'trails of kind morse: the morse slip (one ticket per kit), under the Morse tab. the online ladder has its own switch in the morse panel.' },
+  { key: 'morse', title: 'show morse challenge to players', what: 'trails of kind morse: the morse slip (four tickets per kit), under the Morse tab. the online ladder has its own switch in the morse panel.' },
 ];
 
 export function PlayerSwitches({ onOpenTrail }: { onOpenTrail: (id: number) => void }) {
@@ -38,7 +38,7 @@ export function PlayerSwitches({ onOpenTrail }: { onOpenTrail: (id: number) => v
     mutationFn: () => api.post('/api/hunt/admin/morse-slip', undefined, MorseSlipSetupSchema),
     onSuccess: (r) => {
       void qc.invalidateQueries({ queryKey: ['hunt'] });
-      toast(r.created ? 'the morse slip is ready: 80 unique tickets. print them from its slips tab.' : 'the morse slip already exists.', { kind: 'good' });
+      toast(r.created ? 'the morse slip is ready: 80 sets of four tickets. print them from its slips tab.' : 'the morse slip already exists.', { kind: 'good' });
       onOpenTrail(r.trailId);
     },
     onError: (e) => toast(e.message, { kind: 'bad' }),
@@ -69,9 +69,9 @@ export function PlayerSwitches({ onOpenTrail }: { onOpenTrail: (id: number) => v
       {!hasSlip && (
         <div className={ui.row}>
           <Button tone="sky" icon="ticket" loading={makeSlip.isPending} onClick={() => makeSlip.mutate()} data-testid="create-morse-slip">
-            create the morse slip (80 unique tickets)
+            create the morse slip (tickets I-IV x 80, one A4 page each)
           </Button>
-          <span className={ui.hand}>one unique ticket per kit, no venue locations. the switches stay as they are.</span>
+          <span className={ui.hand}>four unique tickets per kit, no venue locations. the switches stay as they are.</span>
         </div>
       )}
     </Section>

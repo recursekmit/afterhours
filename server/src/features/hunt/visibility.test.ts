@@ -4,13 +4,13 @@
 // Plus "the morse slip": the standalone one-slip Morse challenge, and its balanced ticket designs.
 import type { LiveEnvelope } from '@afterhours/shared';
 import type { HuntAdmin, HuntMe, HuntSlipResult, HuntVisibility, MorseSlipSetup, SlipCopies, SlipPrintSheet, TrailList } from '@afterhours/shared/features/hunt';
-import { SLIP_TICKETS, reverseReading } from '@afterhours/shared/morse-slip';
+import { SLIP_SIZES, SLIP_TICKETS, layoutSlip, reverseReading } from '@afterhours/shared/morse-slip';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type TestApp, AVATAR, Jar, adminJar, capture, makeApp, makeKits, req, signedInAttendee } from '../../../test/helpers';
 import { createSession } from '../../core/auth/sessions';
-import { all } from '../../core/db';
+import { all, one, run } from '../../core/db';
 import { tick as dropsTick } from '../drops/index';
-import { MORSE_SLIP_BONUS, MORSE_SLIP_POINTS, MORSE_SLIP_TITLE, createMorseSlip } from './morseSlip';
+import { MORSE_SLIP_BONUS, MORSE_SLIP_POINTS, MORSE_SLIP_SMALL_BONUS, MORSE_SLIP_TITLE, createMorseSlip, getMorseTicketSet } from './morseSlip';
 import { rankBonus } from './rules';
 import { seedHunt } from './seed';
 import { assignDesigns } from './slipwords';
@@ -140,58 +140,118 @@ describe('the morse slip: one unique slip per participant', () => {
   });
   afterEach(async () => t.close());
 
-  it('creates one open graph trail with one unique slip stop that is the finale; a second call changes nothing', async () => {
+  it('creates one open graph trail: one slip stop (the finale) reading four tickets I-IV x 80; a second call changes nothing', async () => {
     const a = (await req(t.app, admin, 'POST', '/api/hunt/admin/morse-slip')).json<MorseSlipSetup>();
     expect(a.created).toBe(true);
     const b = (await req(t.app, admin, 'POST', '/api/hunt/admin/morse-slip')).json<MorseSlipSetup>();
     expect(b).toEqual({ ...a, created: false });
+    expect(getMorseTicketSet(t.ctx)).toBe(a.setId);
     const adm = (await req(t.app, admin, 'GET', `/api/hunt/admin?trail=${a.trailId}`)).json<HuntAdmin>();
     expect(adm.trail).toMatchObject({ kind: 'morse', orderMode: 'graph', status: 'open', title: MORSE_SLIP_TITLE });
     expect(adm.stops).toHaveLength(1);
     expect(adm.stops[0]).toMatchObject({ challenge: 'slip', finale: true, points: MORSE_SLIP_POINTS });
     const copies = (await req(t.app, admin, 'GET', `/api/hunt/admin/slip-sets/${a.setId}/copies`)).json<SlipCopies>();
     expect(copies.copies).toBe(80);
-    expect(copies.slips).toHaveLength(1);
-    // all four ticket designs, 20 each
-    const designs = copies.rows.map((r) => r.cells[0]!.design);
-    for (const d of SLIP_TICKETS) expect(designs.filter((x) => x === d)).toHaveLength(20);
-    // and the print sheet carries them
+    expect(copies.slips.map((x) => x.slipNo)).toEqual([1, 2, 3, 4]);
+    // slip I is the guild: 20 of each design over the 80 serials
+    const guild = copies.rows.map((r) => r.cells[0]!.design);
+    for (const d of SLIP_TICKETS) expect(guild.filter((x) => x === d)).toHaveLength(20);
+    // every serial (one page, one participant) holds all four designs, once each
+    for (const r of copies.rows) expect(new Set(r.cells.map((c) => c.design)).size).toBe(4);
+    // the print sheet: serial order, slips I-IV of a serial together, the four-per-page size, the designs
     const sheet = (await req(t.app, admin, 'GET', `/api/hunt/admin/slip-print?set=${a.setId}`)).json<SlipPrintSheet>();
-    expect(sheet.slips.map((s) => s.ticket)).toEqual(designs);
-    // the answer key shows them too
+    expect(sheet.size).toBe('quad');
+    expect(sheet.slips).toHaveLength(320);
+    expect(sheet.slips.slice(0, 8).map((x) => [x.serial, x.slipNo])).toEqual([
+      [1, 1],
+      [1, 2],
+      [1, 3],
+      [1, 4],
+      [2, 1],
+      [2, 2],
+      [2, 3],
+      [2, 4],
+    ]);
+    expect(sheet.slips.slice(0, 4).map((x) => x.ticket)).toEqual(copies.rows[0]!.cells.map((c) => c.design));
+    // every edge of every ticket has its own word, 3 or 4 letters
+    const words = sheet.slips.flatMap((x) => Object.values(x.edges).map((e) => e!.word));
+    expect(words).toHaveLength(1280);
+    expect(new Set(words).size).toBe(1280);
+    for (const w of words) expect(w.length >= 3 && w.length <= 4, w).toBe(true);
+    // and they print at the four-per-page size with dots of at least 1.3 mm
+    for (const x of sheet.slips.slice(0, 40)) {
+      const L = layoutSlip({ strips: Object.fromEntries(Object.entries(x.edges).map(([k, e]) => [k, e!.word])), widthMm: SLIP_SIZES.quad.widthMm, heightMm: SLIP_SIZES.quad.heightMm });
+      expect(L.errors).toEqual([]);
+      for (const st of L.strips) expect(st.unitMm).toBeGreaterThanOrEqual(1.3);
+    }
+    // the answer key shows each copy's design
     const csv = (await req(t.app, admin, 'GET', `/api/hunt/admin/slip-sets/${a.setId}/answer-key.csv`)).body.trim().split('\n');
     expect(csv[0]).toBe('serial,slip_no,label,design,bottom,right,top,left,top_upside_down_morse,claimed_by');
-    expect(csv[1]!.split(',')[3]).toBe(designs[0]);
+    expect(csv).toHaveLength(321);
+    expect(csv[1]!.split(',')[3]).toBe(guild[0]);
   });
 
-  it('bottom finishes (points, finish stamp, rank bonus); left pays once; right is a clue; top and upside down are decoys; a friend is refused', async () => {
+  it("ticket I: bottom finishes, left pays once, right clue, top and upside down decoys; II-IV read at the same stop; a serial is one person's", async () => {
     const m = createMorseSlip(t.ctx);
     const sheet = (await req(t.app, admin, 'GET', `/api/hunt/admin/slip-print?set=${m.setId}`)).json<SlipPrintSheet>();
+    const ticket = (serial: number, slipNo: number) => sheet.slips.find((x) => x.serial === serial && x.slipNo === slipNo)!.edges;
     const stop = (await req(t.app, admin, 'GET', `/api/hunt/admin?trail=${m.trailId}`)).json<HuntAdmin>().stops[0]!.id;
     const kits = await makeKits(t.app, 2);
     const a = await signedInAttendee(t.app, kits[0]!, 'ana');
     const b = await signedInAttendee(t.app, kits[1]!, 'bo');
     const slip = (who: { jar: Jar }, read: object) => req(t.app, who.jar, 'POST', '/api/hunt/slip', { stopId: stop, ...read });
     for (const p of [a, b]) expect((await req(t.app, p.jar, 'POST', '/api/hunt/start', { trailId: m.trailId })).json<HuntMe>().current!.slip).toMatchObject({ unique: true, serial: null });
-    const mine = sheet.slips[6]!.edges; // copy no. 007
     const before = t.ctx.points.total(a.id);
+    // ana starts with ticket III of serial 7: that reserves serial 7 for her
+    expect((await slip(a, { text: ticket(7, 3).right!.word })).json<HuntSlipResult>()).toMatchObject({ outcome: 'bonus', points: MORSE_SLIP_SMALL_BONUS, serial: 7 });
+    expect((await req(t.app, a.jar, 'GET', `/api/hunt?trail=${m.trailId}`)).json<HuntMe>().current!.slip).toMatchObject({ serial: 7 });
+    // bo cannot use any ticket of serial 7, even one ana has not scanned yet
+    expect((await slip(b, { text: ticket(7, 2).bottom!.word })).json<HuntSlipResult>()).toMatchObject({ outcome: 'taken', stamped: null });
+    // and ana cannot use another serial's tickets
+    const other = (await slip(a, { text: ticket(9, 2).bottom!.word })).json<HuntSlipResult>();
+    expect(other).toMatchObject({ outcome: 'taken', serial: 7 });
+    expect(other.message).toContain('no. 007');
+    // II and IV of her own serial
+    expect((await slip(a, { text: ticket(7, 2).right!.word })).json<HuntSlipResult>().outcome).toBe('clue');
+    expect((await slip(a, { text: ticket(7, 4).top!.word })).json<HuntSlipResult>().outcome).toBe('decoy');
+    // ticket I
+    const mine = ticket(7, 1);
     expect((await slip(a, { text: mine.right!.word })).json<HuntSlipResult>()).toMatchObject({ outcome: 'clue', serial: 7 });
     expect((await slip(a, { morse: mine.left!.morse })).json<HuntSlipResult>()).toMatchObject({ outcome: 'bonus', points: MORSE_SLIP_BONUS });
     expect((await slip(a, { morse: mine.left!.morse })).json<HuntSlipResult>()).toMatchObject({ outcome: 'bonus', points: 0 });
     expect((await slip(a, { text: mine.top!.word })).json<HuntSlipResult>().outcome).toBe('decoy');
     expect((await slip(a, { morse: reverseReading(mine.top!.morse) })).json<HuntSlipResult>().outcome).toBe('decoy');
-    // the friend scanning ana's copy: refused
-    expect((await slip(b, { text: mine.bottom!.word })).json<HuntSlipResult>()).toMatchObject({ outcome: 'taken', stamped: null });
-    // bottom: finished
     const done = (await slip(a, { text: mine.bottom!.word, morse: mine.bottom!.morse })).json<HuntSlipResult>();
     expect(done.outcome).toBe('next');
-    expect(done.stamped).toMatchObject({ title: 'your morse slip', points: MORSE_SLIP_POINTS });
+    expect(done.stamped).toMatchObject({ title: 'your morse tickets', points: MORSE_SLIP_POINTS });
     expect(done.finish).toMatchObject({ rank: 1, rankBonus: rankBonus(1) });
     expect(done.me.current).toBeNull();
-    expect(t.ctx.points.total(a.id) - before).toBe(MORSE_SLIP_POINTS + MORSE_SLIP_BONUS + rankBonus(1) + done.finish!.speedBonus);
-    // bo, on their own copy, finishes second
-    const theirs = sheet.slips[11]!.edges;
-    expect((await slip(b, { text: theirs.bottom!.word })).json<HuntSlipResult>().finish!.rank).toBe(2);
+    expect(t.ctx.points.total(a.id) - before).toBe(MORSE_SLIP_POINTS + MORSE_SLIP_BONUS + MORSE_SLIP_SMALL_BONUS + rankBonus(1) + done.finish!.speedBonus);
+    // bo, on his own serial, finishes second
+    expect((await slip(b, { text: ticket(12, 1).bottom!.word })).json<HuntSlipResult>().finish!.rank).toBe(2);
+  });
+
+  it('rebuilds an older one-ticket set into four tickets x 80, only while nothing is claimed', async () => {
+    // the live database: "the morse slip" made before tickets II-IV existed (one slip x 80)
+    const m = createMorseSlip(t.ctx);
+    run(t.ctx.db, 'DELETE FROM hunt_slips WHERE set_id = ? AND slip_no > 1', m.setId);
+    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slips WHERE set_id = ?', m.setId)!.n).toBe(1);
+    const r = await req(t.app, admin, 'POST', '/api/hunt/admin/morse-slip/rebuild');
+    expect(r.statusCode, r.body).toBe(200);
+    expect(r.json<MorseSlipSetup>()).toEqual({ trailId: m.trailId, setId: m.setId, created: false });
+    const copies = (await req(t.app, admin, 'GET', `/api/hunt/admin/slip-sets/${m.setId}/copies`)).json<SlipCopies>();
+    expect(copies.slips.map((x) => x.label)).toEqual(['ticket I', 'ticket II', 'ticket III', 'ticket IV']);
+    expect(copies.rows).toHaveLength(80);
+    const stop = (await req(t.app, admin, 'GET', `/api/hunt/admin?trail=${m.trailId}`)).json<HuntAdmin>().stops[0]!;
+    expect(stop.slipId).toBe(copies.slips[0]!.id);
+    // someone claims a ticket: no more rebuilding
+    const [kit] = await makeKits(t.app, 1);
+    const p = await signedInAttendee(t.app, kit!, 'pat');
+    await req(t.app, p.jar, 'POST', '/api/hunt/start', { trailId: m.trailId });
+    const sheet = (await req(t.app, admin, 'GET', `/api/hunt/admin/slip-print?set=${m.setId}`)).json<SlipPrintSheet>();
+    await req(t.app, p.jar, 'POST', '/api/hunt/slip', { stopId: stop.id, text: sheet.slips[0]!.edges.right!.word });
+    expect((await req(t.app, admin, 'POST', '/api/hunt/admin/morse-slip/rebuild')).statusCode).toBe(409);
+    expect((await req(t.app, p.jar, 'POST', '/api/hunt/admin/morse-slip/rebuild')).statusCode).toBe(401);
   });
 
   it('a single stop can open only when it is a slip stop', async () => {

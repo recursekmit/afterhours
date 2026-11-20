@@ -5,118 +5,118 @@
       "serial": 1,
       "slip": 1,
       "edges": {
-        "bottom": "BODA",
-        "left": "TIN",
-        "right": "LOH",
-        "top": "BAGE"
+        "bottom": "ENUM",
+        "left": "KEG",
+        "right": "NIB",
+        "top": "TECE"
       }
     },
     {
       "serial": 9,
       "slip": 1,
       "edges": {
-        "bottom": "ZOHU",
-        "left": "REM",
-        "right": "JAL",
-        "top": "MULU"
+        "bottom": "SIJU",
+        "left": "SID",
+        "right": "GAB",
+        "top": "NAGO"
       }
     },
     {
       "serial": 17,
       "slip": 1,
       "edges": {
-        "bottom": "SOHO",
-        "left": "RUN",
-        "right": "NIM",
-        "top": "HUJE"
+        "bottom": "TUFI",
+        "left": "NER",
+        "right": "MAD",
+        "top": "LUTU"
       }
     },
     {
       "serial": 25,
       "slip": 1,
       "edges": {
-        "bottom": "READ",
-        "left": "LUA",
-        "right": "NET",
-        "top": "LOGE"
+        "bottom": "ZUGI",
+        "left": "TAK",
+        "right": "FAL",
+        "top": "PUSH"
       }
     },
     {
       "serial": 33,
       "slip": 1,
       "edges": {
-        "bottom": "WAFA",
-        "left": "HEL",
-        "right": "FAJ",
-        "top": "TOLA"
+        "bottom": "GICO",
+        "left": "HUZ",
+        "right": "CUT",
+        "top": "VUWE"
       }
     },
     {
       "serial": 41,
       "slip": 1,
       "edges": {
-        "bottom": "CISC",
-        "left": "JUD",
-        "right": "SIW",
-        "top": "PEJA"
+        "bottom": "VUVU",
+        "left": "MIZ",
+        "right": "PIB",
+        "top": "PUMO"
       }
     },
     {
       "serial": 49,
       "slip": 1,
       "edges": {
-        "bottom": "WOGU",
-        "left": "HIC",
-        "right": "MIG",
-        "top": "HEHU"
+        "bottom": "MANU",
+        "left": "TAG",
+        "right": "KAR",
+        "top": "HOST"
       }
     },
     {
       "serial": 57,
       "slip": 1,
       "edges": {
-        "bottom": "BUTO",
-        "left": "WUM",
-        "right": "WEH",
-        "top": "SUWU"
+        "bottom": "WEMA",
+        "left": "CIV",
+        "right": "SAK",
+        "top": "NULA"
       }
     },
     {
       "serial": 65,
       "slip": 1,
       "edges": {
-        "bottom": "NANO",
-        "left": "RGB",
-        "right": "BUS",
-        "top": "NAVE"
+        "bottom": "PATH",
+        "left": "RUP",
+        "right": "VEH",
+        "top": "VUPU"
       }
     },
     {
       "serial": 73,
       "slip": 1,
       "edges": {
-        "bottom": "MIWA",
-        "left": "BED",
-        "right": "SAM",
-        "top": "DEMO"
+        "bottom": "JIMU",
+        "left": "BUS",
+        "right": "BIK",
+        "top": "CUCE"
       }
     },
     {
       "serial": 5,
       "slip": 4,
       "edges": {
-        "bottom": "BEBA",
-        "right": "CIR",
-        "left": "VED"
+        "bottom": "RABA",
+        "right": "PAN",
+        "left": "SOD"
       }
     },
     {
       "serial": 45,
       "slip": 4,
       "edges": {
-        "bottom": "TAPO",
-        "right": "BIS",
-        "left": "CUD"
+        "bottom": "KAWU",
+        "right": "TUB",
+        "left": "HAR"
       }
     }
   ]

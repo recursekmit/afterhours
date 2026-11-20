@@ -405,7 +405,7 @@ export function HuntPage({ trailId = TREASURE_TRAIL_ID }: { trailId?: number }) 
         title={me.title || 'the hunt'}
         note={
           me.total === 1
-            ? 'one ticket, four edges. every edge says something different, and your words are yours alone.'
+            ? 'your tickets from the kit. every edge says something different, and the words are yours alone.'
             : me.orderMode === 'shuffled'
             ? 'your clue order is yours alone. the last stop is the same for everyone.'
             : me.orderMode === 'graph'
@@ -426,7 +426,7 @@ export function HuntPage({ trailId = TREASURE_TRAIL_ID }: { trailId?: number }) 
         <Card tone="sun" tilt={-1} tape className={s.startCard}>
           <p className={s.startText}>
             {me.total === 1
-              ? 'one ticket from your kit. scan it, or decode it and type the word. turn it for a bonus. first finishers get bonuses.'
+              ? 'your kit tickets: scan them, or decode them and type the words. turn them for bonuses. first finishers get more.'
               : `${me.total} stops. scan the qr sticker at each one, or solve the clue. hints cost points. first finishers get bonuses.`}
           </p>
           <StartButton trailId={trailId} onStarted={setHunt} />

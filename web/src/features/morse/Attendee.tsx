@@ -397,7 +397,7 @@ function TrailTeaser() {
       {open.map((t, i) => (
         <Card key={t.id} tone="sky" tilt={i % 2 ? -1 : 1.2} tape="left" tapeColor="sun" className={s.teaser}>
           <p className={s.teaserText}>
-            {t.finishedRank ? `${t.title}: done, #${t.finishedRank}. nice ears.` : 'your kit has a morse ticket. its words are yours alone: scan it, turn it, decode it.'}
+            {t.finishedRank ? `${t.title}: done, #${t.finishedRank}. nice ears.` : 'your kit has four morse tickets. their words are yours alone: scan them, turn them, decode them.'}
           </p>
           <LinkButton to={trailPath(t)} tone="ink" size="sm" icon="ticket">
             {t.title}
@@ -421,9 +421,9 @@ export function MorseHomeCard() {
         {st.enabled && <span className={s.homeCount}>{cleared}/10</span>}
       </div>
       <p className={s.homeCode}>-- --- .-. ... .</p>
-      {slip && <p className={ui.hand}>your kit has a morse ticket with words nobody else has. decode it.</p>}
+      {slip && <p className={ui.hand}>your kit has four morse tickets with words nobody else has. decode them.</p>}
       <LinkButton to="/morse" tone="ink" size="sm" icon="morse">
-        {st.enabled ? 'grab the key' : 'decode your ticket'}
+        {st.enabled ? 'grab the key' : 'decode your tickets'}
       </LinkButton>
     </Card>
   );

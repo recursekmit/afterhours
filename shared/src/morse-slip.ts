@@ -207,6 +207,11 @@ export const SLIP_SPEC = {
 export const SLIP_SIZES = {
   /** The after hours ticket (2.2 : 1): the default for kit slips. Short edges still carry 3+ letters. */
   ticket: { widthMm: 176, heightMm: 80, label: 'ticket, 176 x 80 (the after hours ticket)' },
+  /**
+   * The morse slip kit ticket: the after hours ticket at 2.2 : 1, small enough that one participant's four
+   * tickets (I-IV) stack on one A4 page with crop marks. Short edges carry 42 mm of band (32 units at 1.3 mm).
+   */
+  quad: { widthMm: 146, heightMm: 66, label: 'kit ticket, 146 x 66 (four per A4 page)' },
   card: { widthMm: 85, heightMm: 55, label: 'business card, 85 x 55' },
   square: { widthMm: 66, heightMm: 66, label: 'square, 66 x 66 (longer side words)' },
   big: { widthMm: 105, heightMm: 74, label: 'A7, 105 x 74 (stick-on, long words)' },

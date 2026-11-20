@@ -58,7 +58,7 @@ import {
   slipMorseKey,
   slipWordKey,
 } from '@afterhours/shared/features/hunt';
-import type { SlipTicket } from '@afterhours/shared/morse-slip';
+import { SLIP_SIZES, type SlipSize, type SlipTicket } from '@afterhours/shared/morse-slip';
 import { z } from 'zod';
 import {
   type FeatureContext,
@@ -109,7 +109,7 @@ import {
   trailTotal,
 } from './engine';
 import { answerKeyCsv, checkUniqueReadings, claimedCount, convertToUnique, copiesView, copyEdges, getSet, releaseCopy, releaseTrail, syncCopies } from './unique';
-import { createMorseSlip } from './morseSlip';
+import { createMorseSlip, rebuildMorseTickets } from './morseSlip';
 import { groupOf, kindVisible, notOpen, setVisibility, trailAudience, trailVisible, visibility } from './visibility';
 import { seedHunt } from './seed';
 
@@ -390,6 +390,10 @@ export function writeSlip(ctx: FeatureContext, setId: number, slipId: number | n
 }
 
 function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
+  const printSize = (id: number): SlipSize | null => {
+    const v = one<{ print_size: string | null }>(ctx.db, 'SELECT print_size FROM hunt_slip_sets WHERE id = ?', id)?.print_size ?? null;
+    return v !== null && v in SLIP_SIZES ? (v as SlipSize) : null;
+  };
   const set = getSet(ctx, setId);
   const slips = all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT * FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', setId);
   if (set.mode === 'unique') {
@@ -404,6 +408,7 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
       setId: set.id,
       title: set.title,
       mode: set.mode,
+      size: printSize(set.id),
       slips: copies.map((c) => {
         const sl = bySlip.get(c.slip_id) as { slip_no: number; label: string };
         const { edges } = copyEdges(ctx, c.id, c.slip_id);
@@ -430,7 +435,7 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
       out.push({ slipNo: sl.slip_no, label: sl.label, kitId, serial: null, ticket: null, edges });
     }
   }
-  return { setId: set.id, title: set.title, mode: set.mode, slips: out };
+  return { setId: set.id, title: set.title, mode: set.mode, size: printSize(set.id), slips: out };
 }
 
 function trailGraph(ctx: FeatureContext, trailId: number): TrailGraph {
@@ -510,6 +515,15 @@ export const hunt = defineFeature({
     app.post('/admin/morse-slip', async (req): Promise<MorseSlipSetup> => {
       requireAdmin(req);
       const r = createMorseSlip(ctx);
+      bump(ctx, r.trailId);
+      return r;
+    });
+
+    // POST /api/hunt/admin/morse-slip/rebuild  -> MorseSlipSetup: the morse slip's set becomes four tickets
+    // (slips I-IV x 80, one A4 page per serial). Only while nothing is claimed or found; new words for all.
+    app.post('/admin/morse-slip/rebuild', async (req): Promise<MorseSlipSetup> => {
+      requireAdmin(req);
+      const r = rebuildMorseTickets(ctx);
       bump(ctx, r.trailId);
       return r;
     });

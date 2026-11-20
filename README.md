@@ -6,6 +6,7 @@ Every participant runs it on their phone as an installable app. It shows what's 
 
 | Document | What's in it |
 |---|---|
+| [docs/EVENT-DAY.md](docs/EVENT-DAY.md) | One-page operator cheat sheet: what to click, in order, and answers for volunteers |
 | [docs/SCOPE.md](docs/SCOPE.md) | Scope and action plan: features, out of scope, roles, timeline, prep checklist, event-day run sheet, risks |
 | [docs/SPEC.md](docs/SPEC.md) | Build spec: product, feel, stack, conventions |
 | [docs/SLIPS.md](docs/SLIPS.md) | The Morse slips: slip format, orientation rule, scanner output, outcomes |
@@ -21,6 +22,7 @@ Every participant runs it on their phone as an installable app. It shows what's 
 | Participant app | `/` | Every attendee, on their phone | Entry-kit ID + password |
 | Organiser console | `/admin` | Organisers, on a laptop | `ADMIN_PIN` |
 | Projector | `/screen` | The room, on the big screen | `SCREEN_PIN` |
+| Stall counter | `/stall` | Shopkeepers at the food, merch and mocktail stalls, on a phone or tablet | A 6-digit stall code from the console |
 
 **Features**
 
@@ -61,10 +63,25 @@ Every participant runs it on their phone as an installable app. It shows what's 
 - **Arcade.**
   - Lag Spike (reaction time), Base Rush (binary/decimal/hex) and Echo (memory).
   - Capped at 60 points per person per day.
+  - The puzzle hour: Packet Panic, Patch the Bot and Rebuild the Image in timed rounds, for houses and mocktail tokens.
+- **Stalls and mocktails.**
+  - Everyone starts with **2 free mocktails** (the allowance is set in the console). After that, points buy more: the home card shows "38 more points to your next mocktail".
+  - Food, merch and the mocktail bar have menus built in the console: items, a points price, stock, a per-person limit, an optional photo, or a pasted CSV. A fresh database already has the mocktail bar (one mocktail: free allowance first, then 50 points).
+  - The attendee shows a full-screen QR that changes every 30 s (plus a typed code). The shopkeeper scans it at `/stall`, sees free mocktails left, points and the basket, and taps "hand it over". The phone celebrates.
+  - Spending never lowers the leaderboard: the board ranks points earned; spending lives in its own table.
+  - Every hand-over is one SQLite transaction with an idempotency key, so two stalls can never give out a third free mocktail. Organisers can void a hand-over (points, drinks and stock come back) and export a transactions CSV.
+- **Flash drops, live feed, hype.**
+  - Drops fired or scheduled from the console take over every phone and the projector with a siren, a 3-2-1 and a countdown on the server clock: a **code drop** (first N to type the code win, live "17/20 claimed"), a **speed question**, a **golden slip** (a hidden word or QR, first finder takes the bonus and a sticker) and **everyone wins** (the room hits a reaction goal together). A ready-made library of tech and club drops fires in two taps.
+  - A live feed of what's happening (nicknames only, coalesced and capped) as a strip on the home screen and a ticker on the projector. Organisers can mute it, hide a line or post their own.
+  - A hype meter on the projector ("the room is on fire" at max, optionally firing an everyone-wins drop) and a personal streak chip on home.
+- **Recap.**
+  - After the closing reveal (or when the console opens it), everyone gets an Instagram-story style recap: arrival, check-ins, quiz rank and speed, trail path, Morse, arcade bests, stickers, final rank, top moment and an "after hours personality".
+  - A 1080x1920 share image with their avatar and the Recurse logo, shared with the Web Share API or downloaded.
+  - The projector shows the room's recap; the console previews anyone's.
 - **Points, leaderboard, stickers, reactions.**
   - One points ledger where each thing pays once.
   - "You are #N, X behind" on the leaderboard, plus a freeze and top-10 countdown reveal.
-  - A sticker book, and emoji reactions that rain on the projector.
+  - A sticker book you flip like a zine (a page per category, completion, "only N% have this", cheeky hints on locked ones, tap to slap), and emoji reactions that rain on the projector.
 
 **Fair play.** The server decides all scoring. Answers, future clues and quiz solutions never reach phones early. Everything spammable is rate-limited, and passwords are stored hashed (scrypt).
 
@@ -172,7 +189,7 @@ To update: `git pull && docker compose up -d --build`. The database volume is ke
 
 ## Event day, in short
 
-The full run sheet and prep checklist are in [docs/SCOPE.md](docs/SCOPE.md).
+The click-by-click version is [docs/EVENT-DAY.md](docs/EVENT-DAY.md). The run sheet and prep checklist are in [docs/SCOPE.md](docs/SCOPE.md).
 
 1. In the console, load the real run of show, polls and trails. Generate and print the kit cards, QR stickers, Morse cards and slips.
 2. At the entry desk, hand out kits and help each person sign in. Sign-in is their attendance.
@@ -181,9 +198,11 @@ The full run sheet and prep checklist are in [docs/SCOPE.md](docs/SCOPE.md).
    - open check-ins;
    - launch, close and reveal polls;
    - open trails;
+   - fire flash drops from the drop library;
    - send announcements.
-4. Keep `/screen` on the projector. It switches to whatever is live.
-5. To close: freeze the leaderboard and run the top-10 reveal. Afterwards, export the attendance CSVs.
+4. Stalls: before doors, set each stall's menu in the console (stalls panel) and give each shopkeeper their 6-digit code. They open `/stall` on their phone, sign in, and scan attendees' QRs.
+5. Keep `/screen` on the projector. It switches to whatever is live.
+6. To close: freeze the leaderboard and run the top-10 reveal. Recaps open by themselves when it finishes. Afterwards, export the attendance and stall CSVs.
 
 ## Working on the code
 

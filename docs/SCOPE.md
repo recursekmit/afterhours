@@ -1,7 +1,7 @@
 # After Hours: scope and action plan
 
 Recurse, the technical club of KMIT. Event: **Saturday 21 November 2026**, one afternoon, one venue.
-Status as of Wednesday 18 November 2026. The detailed build spec is [SPEC.md](SPEC.md).
+Status as of Friday 20 November 2026: every feature below is built and tested on `main`. The detailed build spec is [SPEC.md](SPEC.md).
 
 ## 1. What we are building
 
@@ -9,16 +9,17 @@ After Hours is the companion app for a chill tech afternoon. Every participant r
 
 1. It tells people what is on now and next, and alerts them before the big moments.
 2. It takes attendance: once at the entry desk and again at each session.
-3. It hosts every activity: polls and a quiz, the treasure hunt, the Morse challenge, an arcade, and live emoji reactions.
-4. It totals points from everything into one live leaderboard, which ends the day with a top-10 reveal on the projector.
+3. It hosts every activity: polls and a quiz, the treasure hunt, the Morse challenge, an arcade, flash drops, and live emoji reactions.
+4. It totals points from everything into one live leaderboard, which ends the day with a top-10 reveal on the projector. Points also buy mocktails and treats at the stalls, and everyone leaves with a personal recap.
 
-The same app runs on three kinds of screen:
+The same app runs on four kinds of screen:
 
 | Surface | Who | Where | Notes |
 |---|---|---|---|
 | Participant app `/` | Every attendee | Their own phone | Mobile app, installs to the home screen and opens full screen. On a laptop it shows a phone-sized column and a QR to open it on a phone. |
 | Organiser console `/admin` | Organisers | Laptop | PIN protected. Runs the schedule and every activity, prints cards and stickers, exports attendance. |
 | Projector `/screen` | The room | Big screen | PIN protected. Read only. Shows live results, check-in codes, the leaderboard and reactions. |
+| Stall counter `/stall` | Shopkeepers | Their phone or a tablet at the stall | Signed in with the stall's 6-digit code from the console. Scans attendee QRs (or the typed code) and hands things over. |
 
 Branding: Recurse logo and credits on sign-in, app header, app icon and launch screen, notifications, the install prompt, printed cards and stickers, every projector scene and the console. The colour theme stays as designed.
 
@@ -87,6 +88,24 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 - Sticker book that fills as people play.
 - Emoji reaction bar: taps float on the phone and rain on the projector.
 
+### Stalls and mocktails
+- Every participant starts with **2 free mocktails** (an allowance set in the console). Points earned buy more; the home card shows the progress to the next one.
+- Food, merch and mocktail stalls each have a menu set in the console: items, points price, stock, per-person limit, optional photo, or a pasted CSV. A fresh database starts with the mocktail bar (mocktail: free allowance first, then 50 points, editable).
+- The attendee shows a rotating QR (30 s, plus a typed code); the shopkeeper at `/stall` signs in with the stall's 6-digit code, scans it, and hands it over with one tap. The phone celebrates; receipts are in the wallet.
+- Spending never lowers the leaderboard. A console switch "spending lowers the leaderboard" exists, off, and is not wired.
+- Atomic and idempotent: two stalls can never exceed the allowance, stock or a balance. Organisers can void a hand-over and export a transactions CSV.
+- Puzzle-hour mocktail tokens are shown read-only; staff claim them in the arcade console.
+
+### Flash drops, live feed, hype, streaks
+- Drops fired or scheduled from the console take over every phone and the projector (siren, 3-2-1, countdown): code drop (first N win), speed question, golden slip (hidden word or QR), and everyone wins (a room reaction goal). A ready-made library fires in two taps.
+- A live feed on the home screen and as a projector ticker, nicknames only, coalesced and capped; organisers can mute it, hide a line or post one.
+- A hype meter on the projector, optionally firing an everyone-wins drop at max, and a personal streak chip on home.
+
+### Recap and sticker book
+- After the closing reveal, or when the console opens it: an Instagram-story recap on every phone (arrival, check-ins, quiz, trail path, Morse, arcade, stickers, final rank, top moment, "after hours personality") with a 1080x1920 share image.
+- The projector shows the room's recap; the console previews anyone's.
+- The sticker book is a flippable zine with a page per category, completion, rarity ("only N% have this"), hints on locked stickers and tap to slap.
+
 ### Fair play and safety
 - All scoring is decided on the server. Answers, future clues and quiz solutions never reach phones early.
 - Everything that can be spammed is rate-limited.
@@ -104,7 +123,7 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 - Email or SMS messages. Notifications are push and in-app only.
 - Working without internet. The app needs Wi-Fi or mobile data; it rides out short drops by polling.
 - Multiple events or days in one install. One event, one database.
-- Prizes, payments, or any personal data beyond name, roll number and nickname.
+- Prizes or real-money payments (stalls use points only), or any personal data beyond name, roll number and nickname.
 
 ## 4. Roles
 
@@ -124,9 +143,9 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 |---|---|---|---|
 | Mon 16 Nov | Spec. Foundation: sign-in, live updates, points, UI kit. | | Done |
 | Tue 17 Nov | Foundation screens and look. Server rules and tests for every feature (376 tests passing together). | | Done |
-| Wed 18 Nov | Every feature merged and given working screens (full outline commit). Mobile-app shell, Recurse branding, hybrid trails. | Start drafting real content (section 6) | In progress |
-| Thu 19 Nov | Polish pass: the rich interactions. Full-app checks: 300-phone bot run, Docker build. **Deploy to the droplet.** | **Real content and server access needed today** | Planned |
-| Fri 20 Nov | Fixes from the dry run. Load real content. | **Organiser dry run on real phones** (Android and iPhone). Print kit cards, QR stickers and Morse cards. Go/no-go. | Planned |
+| Wed 18 Nov | Every feature merged and given working screens (full outline commit). Mobile-app shell, Recurse branding, hybrid trails. | Start drafting real content (section 6) | Done |
+| Thu 19 Nov | Polish pass: the rich interactions. Morse slips and the camera scanner. Arcade puzzle hour. Full-app checks: 300-phone bot run, Docker build. | **Real content and server access needed today** | Done (droplet deploy: tech on-call) |
+| Fri 20 Nov | Stalls and mocktails, flash drops and the live feed, recap and sticker book. Full suite, 300-phone run, Docker build. Load real content. | **Organiser dry run on real phones** (Android and iPhone). Print kit cards, QR stickers, Morse cards and golden slips. Set stall menus. Go/no-go. | Built and tested |
 | Sat 21 Nov | Tech on call. | **After Hours.** Run sheet in section 8. | Event day |
 
 ## 6. What the team needs to provide
@@ -165,8 +184,9 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 | Poll segments | Launch, close and reveal from the console; projector takes over automatically | Console operator |
 | Trails open | Open the trail; marshals in place; projector crowd map | Console operator, marshals |
 | Delays | Use +5, +10 or +15 on the console; everyone's phone and alerts update | Event lead, console operator |
+| Breaks | Stalls open; shopkeepers on `/stall`; fire a flash drop from the library to wake the room | Console operator, shopkeepers |
 | Before the close | Freeze the leaderboard | Console operator |
-| Close | Run the top-10 reveal on the projector | Console operator, event lead |
+| Close | Run the top-10 reveal on the projector; recaps open on every phone when it finishes | Console operator, event lead |
 | After | Export attendance CSVs; keep the database backup | Tech on-call |
 
 ## 9. Risks and what we do about them

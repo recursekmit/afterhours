@@ -69,9 +69,9 @@ export default function LeaderboardScene() {
             <motion.div
               key="champ"
               className={s.champ}
-              initial={reduce ? { opacity: 0 } : { scale: 0.2, rotate: -20, opacity: 0 }}
-              animate={{ scale: 1, rotate: -2, opacity: 1 }}
-              transition={{ type: 'spring', stiffness: 220, damping: 12, delay: 0.25 }}
+              initial={reduce ? { opacity: 0 } : { scaleY: 0.04, opacity: 0 }}
+              animate={{ scaleY: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 160, damping: 24, delay: 0.25 }}
             >
               <motion.span
                 className={s.champCrown}

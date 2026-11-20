@@ -1,6 +1,10 @@
 // Polish pass: drives the interactive bits of the non-trail features and saves screenshots to docs/screens/polish-*.png.
 import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
 
+// believable nicknames for the screenshots
+const NICKS = ['lakshmi', 'omar', 'riya', 'neel', 'aisha', 'karthik', 'tanvi', 'sid', 'pooja', 'farhan', 'esha', 'manav', 'leela', 'kunal', 'divya', 'arnav', 'gauri', 'vihaan', 'naina', 'reyansh'];
+const nick = (n: number) => NICKS[(n - 1) % NICKS.length]! + (n > NICKS.length ? String(Math.ceil(n / NICKS.length)) : '');
+
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SMALL = { viewport: { width: 360, height: 740 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SHOT = 'docs/screens';
@@ -22,7 +26,7 @@ async function attendee(browser: Browser, opts: typeof PHONE | typeof SMALL = PH
   const kit = kits[next++]!;
   expect((await page.request.post('/api/auth/signin', { data: kit })).ok()).toBeTruthy();
   const prof = await page.request.put('/api/me/profile', {
-    data: { name: `Polish ${next}`, roll: `P${next}`, nickname: `polish${next}`, avatar: { shape: 'blob', color: 'lime', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
+    data: { name: nick(next), roll: `P${next}`, nickname: nick(next), avatar: { shape: 'blob', color: 'lime', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
   });
   expect(prof.ok()).toBeTruthy();
   return page;

@@ -4,6 +4,10 @@
 import { writeFileSync } from 'node:fs';
 import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
 
+// believable nicknames for the screenshots
+const NICKS = ['harsha', 'anjali', 'rudra', 'swara', 'nikhil', 'pari', 'shaurya', 'myra'];
+const nick = (n: number) => NICKS[(n - 1) % NICKS.length]! + (n > NICKS.length ? String(Math.ceil(n / NICKS.length)) : '');
+
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SHOT = 'docs/screens';
 
@@ -24,7 +28,7 @@ async function attendee(browser: Browser): Promise<Page> {
   const kit = kits[next++]!;
   expect((await page.request.post('/api/auth/signin', { data: kit })).ok()).toBeTruthy();
   const prof = await page.request.put('/api/me/profile', {
-    data: { name: `Recap ${next}`, roll: `RC${next}`, nickname: `rewinder${next}`, avatar: { shape: 'blob', color: 'pink', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
+    data: { name: nick(next), roll: `RC${next}`, nickname: nick(next), avatar: { shape: 'blob', color: 'pink', eyes: 'wide', mouth: 'grin', top: 'none', extra: 'none' } },
   });
   expect(prof.ok()).toBeTruthy();
   return page;
@@ -82,7 +86,7 @@ test.describe.serial('recap', () => {
 
     const story = phone.getByRole('dialog', { name: 'your after hours recap' });
     await expect(story).toBeVisible();
-    await expect(story.getByText('after hours, rewinder1')).toBeVisible();
+    await expect(story.getByText('after hours, harsha')).toBeVisible();
     await phone.waitForTimeout(900);
     await phone.screenshot({ path: `${SHOT}/recap-story-hello-390.png` });
     // tap through: the right side of the card goes forward
@@ -140,8 +144,8 @@ test.describe.serial('recap', () => {
     writeFileSync(`${SHOT}/recap-share-1080.png`, Buffer.from(png.replace(/^data:image\/png;base64,/, ''), 'base64'));
 
     // console preview of the same person
-    await con.getByLabel('find by kit or nickname').fill('rewinder1');
-    await con.getByRole('button', { name: /rewinder1/ }).click();
+    await con.getByLabel('find by kit or nickname').fill('harsha');
+    await con.getByRole('button', { name: /harsha/ }).click();
     await expect(con.getByRole('dialog', { name: 'your after hours recap' })).toBeVisible({ timeout: 8000 });
     await con.waitForTimeout(800);
     await con.screenshot({ path: `${SHOT}/recap-console-1280.png` });

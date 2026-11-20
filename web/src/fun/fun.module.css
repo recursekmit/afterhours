@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   padding: var(--s-4);
-  background: color-mix(in srgb, var(--ink) 80%, transparent);
+  background: radial-gradient(60% 45% at 50% 42%, rgb(255 196 110 / 0.22), transparent 70%), rgb(6 8 16 / 0.86);
   overflow: hidden;
 }
 .celebrate::before {

@@ -275,7 +275,7 @@ function Card({ data, onHide }: { data: CurrentDropResponse; onHide: () => void 
       className={s.card}
       style={{ background: KIND_TONE[drop.kind] }}
       initial={reduce ? { opacity: 0 } : { y: 600, rotate: 12, scale: 0.7 }}
-      animate={{ y: 0, rotate: -1, scale: 1, opacity: 1 }}
+      animate={{ y: 0, rotate: 0, scale: 1, opacity: 1 }}
       exit={reduce ? { opacity: 0 } : { y: 600, rotate: -8 }}
       transition={{ type: 'spring', stiffness: 260, damping: 15 }}
     >

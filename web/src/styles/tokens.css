@@ -31,7 +31,9 @@
   --bad-text: #f2a9ae;
   --frame: #e3c48a;          /* card frame rule (deeper gold on parchment) */
   /* parchment: fibres + foxed edges (cards use it with data-ground="parchment") */
-  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .1 0 0 0 .7 -.3'/%3E%3C/filter%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.08 .7' numOctaves='2' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .35 -.14'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23a)'/%3E%3Crect width='600' height='600' filter='url(%23b)'/%3E%3C/svg%3E");
+  --fibre: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.08 .7' numOctaves='2' seed='8' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .27 0 0 0 0 .1 0 0 0 .35 -.14'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23b)'/%3E%3C/svg%3E");
+  /* the age blotches: one stretched layer per surface (never tiled, so no seams) */
+  --mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .3 0 0 0 0 .1 0 0 0 .7 -.3'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23a)'/%3E%3C/svg%3E");
   --foxing: radial-gradient(130% 120% at 50% 45%, transparent 52%, rgb(125 82 30 / 0.2) 82%, rgb(95 58 18 / 0.38) 100%);
   /* enamel pins (stickers): fixed colours, the same on any ground */
   --enamel-tangerine: #8c2638;

@@ -21,8 +21,8 @@
   padding: var(--s-5) var(--s-3) var(--s-4) calc(var(--s-3) + 18px);
   background-color: var(--paper-3);
   /* the gutter: the page curves into the spine on the left */
-  background-image: linear-gradient(90deg, rgb(70 40 10 / 0.38), rgb(70 40 10 / 0.1) 22px, transparent 46px), var(--foxing), var(--fibre);
-  background-size: 100% 100%, 100% 100%, 600px 600px;
+  background-image: linear-gradient(90deg, rgb(70 40 10 / 0.38), rgb(70 40 10 / 0.1) 22px, transparent 46px), var(--foxing), var(--mottle), var(--fibre);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 240px 240px;
   /* tooled leather cover around the leaf */
   border: 9px solid var(--leather);
   border-radius: 4px 10px 10px 4px;

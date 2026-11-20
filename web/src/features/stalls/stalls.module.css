@@ -75,7 +75,7 @@
 .qrHint { display: flex; gap: 6px; align-items: center; font-family: var(--font-hand); font-weight: 800; text-align: center; }
 
 /* ---- celebration ---- */
-.celebrate { position: fixed; inset: 0; z-index: var(--z-celebrate); display: grid; place-items: center; padding: var(--s-4); background: color-mix(in srgb, var(--ink) 70%, transparent); }
+.celebrate { position: fixed; inset: 0; z-index: var(--z-celebrate); display: grid; place-items: center; padding: var(--s-4); background: rgb(6 8 16 / 0.86); }
 .celebrateCard { display: grid; justify-items: center; gap: var(--s-3); text-align: center; width: min(92vw, 400px); }
 .celebrateTitle { font-size: var(--step-4);  }
 .celebrateWhat { font-family: var(--font-hand); font-weight: 800; font-size: var(--step-1); }

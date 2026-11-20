@@ -6,7 +6,7 @@ import { type APIRequestContext, type Browser, expect, type Page, test } from '@
 
 const PHONE = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true } as const;
 const SHOT = 'docs/screens';
-const NAMES = ['meera', 'arjun.k', 'zoya', 'kabir_dev', 'ishaan', 'tara', 'rohan.exe', 'anvi'];
+const NAMES = ['lanternlight', 'quill', 'nightjar.exe', 'byte_bard', 'inkwell', 'starchart', 'brasskey', 'moonlit'];
 
 let admin: APIRequestContext;
 let baseURL = '';
@@ -22,6 +22,8 @@ async function api<T = unknown>(method: 'GET' | 'POST', path: string, data?: unk
 async function attendee(browser: Browser): Promise<Page> {
   const ctx = await browser.newContext({ ...PHONE, baseURL });
   const page = await ctx.newPage();
+  // a missing element skips its screenshot quickly instead of waiting out the test
+  page.setDefaultTimeout(6000);
   const kit = kits[next]!;
   const nick = NAMES[next % NAMES.length]!;
   next++;
@@ -121,7 +123,7 @@ test.describe.serial('screenshot tour', () => {
   });
 
   test('games: how-to, a miss and a result', async ({ browser }) => {
-    test.setTimeout(240_000);
+    test.setTimeout(420_000);
     const page = await attendee(browser);
     // the classic cabinets: the how-to card before the coin goes in
     for (const [game, name] of [

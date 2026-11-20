@@ -354,7 +354,9 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
   const set = one<{ id: number; title: string; mode: 'shared' | 'per_kit' }>(ctx.db, 'SELECT id, title, mode FROM hunt_slip_sets WHERE id = ?', setId);
   if (!set) throw notFound('No such slip set.');
   const slips = all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT * FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', setId);
-  const kits = set.mode === 'per_kit' ? all<{ id: string }>(ctx.db, 'SELECT id FROM kits ORDER BY id').map((k) => k.id) : [null];
+  // Per-kit sets print one set per printed card, then one per roster participant (labelled with their roll),
+  // so someone who signs in with their college ID can be handed their own slips at the desk.
+  const kits = set.mode === 'per_kit' ? all<{ id: string }>(ctx.db, "SELECT id FROM kits ORDER BY kind = 'roster', id").map((k) => k.id) : [null];
   const out: SlipPrintSheet['slips'] = [];
   for (const kitId of kits) {
     const kw = kitId ? ensureKitWords(ctx, kitId, setId) : new Map<number, { word: string; morse: string }>();

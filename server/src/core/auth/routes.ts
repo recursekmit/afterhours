@@ -21,6 +21,7 @@ import { parse } from '../validate';
 import { getMe, saveProfile } from './attendees';
 import { getDummyHash, newToken, safeEqual, sha256, verifyPassword } from './crypto';
 import { requireAdmin, requireAttendee } from './guards';
+import { registerIdLoginRoutes } from './idRoutes';
 import { generateKits, listKits, parseKitCsv, resetKit } from './kits';
 import { COOKIES, clearCookie, createSession, deleteSession, findSession, setCookie } from './sessions';
 
@@ -53,9 +54,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
         retryAfter: Math.max(1, kitFailLimiter.retryAfter(kitKey)),
       });
     }
-    const kit = one<{ id: string; password_hash: string; preset_name: string | null; preset_roll: string | null }>(
+    const kit = one<{ id: string; password_hash: string }>(
       ctx.db,
-      'SELECT id, password_hash, preset_name, preset_roll FROM kits WHERE id = ?',
+      "SELECT id, password_hash FROM kits WHERE id = ? AND kind = 'card'",
       body.kitId,
     );
     // Always run scrypt so a missing kit and a wrong password take the same time.
@@ -64,7 +65,17 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
       kitFailLimiter.hit(kitKey);
       throw new HttpError(401, 'bad_credentials', "That kit ID and password don't match. Check your card?");
     }
+    const me = signInToKit(req, reply, kit.id, () => new HttpError(409, 'kit_bound', 'This kit is already signed in on another phone. Ask the desk to reset it.'));
+    kitFailLimiter.reset(kitKey);
+    return me;
+  });
 
+  /**
+   * Bind a kit (printed card or a participant's roster kit) to this phone and
+   * sign in. First sign-in creates the attendee: that is the attendance record.
+   * Throws `bound()` if the kit is already bound to another phone.
+   */
+  function signInToKit(req: FastifyRequest, reply: FastifyReply, kitId: string, bound: () => HttpError): MeResponse {
     let deviceToken = req.cookies[COOKIES.device];
     if (!deviceToken || !/^[A-Za-z0-9_-]{20,100}$/.test(deviceToken)) deviceToken = newToken();
     const deviceHash = sha256(deviceToken);
@@ -78,19 +89,20 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
           WHERE id = ? AND (device_hash IS NULL OR device_hash = ?)`,
         deviceHash,
         now,
-        kit.id,
+        kitId,
         deviceHash,
       );
       if (bind.changes === 0) return null;
-      let attendee = one<{ id: number }>(ctx.db, 'SELECT id FROM attendees WHERE kit_id = ?', kit.id);
+      const kit = one<{ preset_name: string | null; preset_roll: string | null }>(ctx.db, 'SELECT preset_name, preset_roll FROM kits WHERE id = ?', kitId);
+      let attendee = one<{ id: number }>(ctx.db, 'SELECT id FROM attendees WHERE kit_id = ?', kitId);
       let first = false;
       if (!attendee) {
         const ins = run(
           ctx.db,
           'INSERT INTO attendees (kit_id, name, roll, first_signin_at) VALUES (?, ?, ?, ?)',
-          kit.id,
-          kit.preset_name,
-          kit.preset_roll,
+          kitId,
+          kit?.preset_name ?? null,
+          kit?.preset_roll ?? null,
           now,
         );
         attendee = { id: ins.lastId };
@@ -100,10 +112,7 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
       return { attendeeId: attendee.id, first, session };
     });
 
-    if (!outcome) {
-      throw new HttpError(409, 'kit_bound', 'This kit is already signed in on another phone. Ask the desk to reset it.');
-    }
-    kitFailLimiter.reset(kitKey);
+    if (!outcome) throw bound();
     setCookie(reply, ctx, COOKIES.device, deviceToken, now + DEVICE_COOKIE_DAYS * 86_400_000);
     setCookie(reply, ctx, COOKIES.attendee, outcome.session.token, outcome.session.expiresAt);
     if (outcome.first) {
@@ -111,7 +120,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
       ctx.stickers.unlock(outcome.attendeeId, 'showed-up');
     }
     return getMe(ctx, outcome.attendeeId);
-  });
+  }
+
+  registerIdLoginRoutes(app, ctx, { ipLimiter, signInToKit });
 
   app.post('/api/auth/signout', async (req, reply): Promise<Ok> => {
     deleteSession(ctx, req.cookies[COOKIES.attendee]);

@@ -17,6 +17,11 @@ export const ErrorCodeSchema = z.enum([
   'bad_credentials',
   'kit_bound',
   'profile_required',
+  // student-ID login
+  'bad_qr',
+  'not_registered',
+  'need_roll',
+  'id_bound',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
 

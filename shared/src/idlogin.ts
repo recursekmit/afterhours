@@ -1,0 +1,397 @@
+/*
+  Student-ID login (spec 4.1): the roster of registered participants, the QR
+  printed on the KMIT student ID card, and how a scan resolves to one person.
+
+  The card's QR looks like  055W-12600-C-DATTA-CSE-250908
+    055W    last four characters of the roll (26BD1A055W), the primary key
+    12600   a number (unknown meaning, ignored)
+    C       section letter
+    DATTA   surname
+    CSE     branch
+    250908  a date, probably yyMMdd; its yy likely matches the roll's batch (25BD1A...)
+  Everything after the first segment is a hint, never a fact.
+*/
+import { z } from 'zod';
+
+/* ------------------------------------------------------------- rolls */
+
+/** KMIT roll shape after normalising: 26BD1A055W (batch, college, 1, A, branch code, serial). */
+export const KMIT_ROLL_RE = /^\d{2}[A-Z]{2}\d[A-Z]\d{2}[A-Z0-9]{2}$/;
+/** Any roll we accept (walk-ins from elsewhere too): letters and digits only. */
+export const ROLL_RE = /^[A-Z0-9]{4,16}$/;
+
+/** Positions in a 10-character KMIT roll that are always digits. */
+const DIGIT_POSITIONS = [0, 1, 4, 6, 7];
+
+/**
+ * "26bd1a o55w", "26-BD1A-055W", "26BD1AO55W" -> "26BD1A055W".
+ * Uppercases, drops spaces and separators, and turns a typed letter O into a
+ * zero where a KMIT roll always has a digit. Returns '' for nothing usable.
+ */
+export function normaliseRoll(input: string): string {
+  const s = input.toUpperCase().replace(/[\s\-_./\\,:;|]+/g, '');
+  if (s.length !== 10) return s;
+  const chars = [...s];
+  for (const i of DIGIT_POSITIONS) if (chars[i] === 'O') chars[i] = '0';
+  return chars.join('');
+}
+
+/** Matching key: O and 0 are the same everywhere, so a typo in the serial still finds the roll. */
+export function rollKey(roll: string): string {
+  return normaliseRoll(roll).replace(/O/g, '0');
+}
+
+/** The last four characters of a roll: what the ID card's QR starts with. */
+export function rollSuffix(roll: string): string {
+  return rollKey(roll).slice(-4);
+}
+
+/** Only the digits of a phone number, without a leading +91 / 91 / 0 country or trunk code. */
+export function phoneDigits(input: string | null | undefined): string {
+  return (input ?? '').replace(/\D/g, '');
+}
+
+export function phoneLast4(input: string | null | undefined): string {
+  return phoneDigits(input).slice(-4);
+}
+
+/* ---------------------------------------------------------- QR payload */
+
+export interface IdQr {
+  /** The 4-character roll suffix (O fixed to 0 where the roll has digits). */
+  suffix: string;
+  /** A full roll, if the payload carried one instead of (or as well as) the suffix. */
+  roll: string | null;
+  number: string | null;
+  section: string | null;
+  surname: string | null;
+  branch: string | null;
+  /** The raw date segment, yyMMdd. */
+  date: string | null;
+  /** Two-digit batch year read from the date (the "25" of 250908). */
+  batch: string | null;
+}
+
+const BRANCHES = new Set(['CSE', 'CSM', 'CSD', 'CSO', 'CSC', 'CSB', 'CS', 'IT', 'ECE', 'EEE', 'EIE', 'MECH', 'ME', 'CIVIL', 'CE', 'AIML', 'AIDS', 'AI', 'DS', 'CSAI', 'CSIT']);
+
+function fixSuffix(s: string): string {
+  // The suffix is roll positions 6..9: two digits (branch code), then a serial.
+  const chars = [...s];
+  for (const i of [0, 1]) if (chars[i] === 'O') chars[i] = '0';
+  return chars.join('');
+}
+
+const SUFFIX_RE = /^[0-9O]{2}[A-Z0-9]{2}$/;
+
+function dateBatch(tok: string): { date: string; batch: string } | null {
+  // yyMMdd, or yyyyMMdd
+  const six = tok.length === 8 && /^20\d{6}$/.test(tok) ? tok.slice(2) : tok;
+  if (!/^\d{6}$/.test(six)) return null;
+  const mm = Number(six.slice(2, 4));
+  const dd = Number(six.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  return { date: six, batch: six.slice(0, 2) };
+}
+
+/**
+ * Read a student-ID QR. Liberal: any separators (or spaces), any case, a full
+ * roll anywhere, segments in the expected order or not. Returns null for
+ * anything that is not a student ID (a URL, a kit QR, a stall code, junk).
+ */
+export function parseIdQr(raw: string): IdQr | null {
+  if (typeof raw !== 'string') return null;
+  const text = raw.trim().toUpperCase();
+  if (!text || text.length > 200) return null;
+  if (/^[A-Z][A-Z0-9+.-]*:\/\//.test(text)) return null; // a URL: our kit cards, stall QRs, anything else
+  const tokens = text.split(/[^A-Z0-9]+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  // A full roll anywhere wins.
+  let roll: string | null = null;
+  for (const t of tokens) {
+    const r = normaliseRoll(t);
+    if (KMIT_ROLL_RE.test(r)) {
+      roll = r;
+      break;
+    }
+  }
+
+  let suffix: string | null = null;
+  let rest = tokens;
+  const first = tokens[0] ?? '';
+  if (SUFFIX_RE.test(first)) {
+    suffix = fixSuffix(first);
+    rest = tokens.slice(1);
+  } else if (roll) {
+    suffix = roll.slice(-4);
+    rest = tokens.filter((t) => normaliseRoll(t) !== roll);
+  } else if (tokens.length === 1 && first.length > 10) {
+    // No separators at all: 055W12600CDATTACSE250908
+    const m = /^([0-9O]{2}[A-Z0-9]{2})(\d{3,7}?)([A-Z])([A-Z]{2,}?)(CSE|CSM|CSD|CSO|IT|ECE|EEE|AIML|AIDS|DS)?(\d{6}|20\d{6})$/.exec(first);
+    if (!m) return null;
+    rest = [m[2], m[3], m[4], m[5], m[6]].filter((x): x is string => Boolean(x));
+    suffix = fixSuffix(m[1] ?? '');
+  }
+  if (!suffix) return null;
+  // A student ID has more than the suffix; a lone 4-character string is not one.
+  if (!roll && rest.length === 0) return null;
+
+  const out: IdQr = { suffix, roll, number: null, section: null, surname: null, branch: null, date: null, batch: null };
+  // The date is the last all-digit segment that reads as a date; the number is the first other one.
+  let dateAt = -1;
+  for (let i = rest.length - 1; i >= 0; i--) {
+    const d = dateBatch(rest[i] ?? '');
+    if (d) {
+      out.date = d.date;
+      out.batch = d.batch;
+      dateAt = i;
+      break;
+    }
+  }
+  const words: string[] = [];
+  for (const [i, t] of rest.entries()) {
+    if (i === dateAt) continue;
+    if (/^\d+$/.test(t)) out.number ??= t;
+    else if (/^[A-Z]$/.test(t) && out.section === null) out.section = t;
+    else if (/^[A-Z]+$/.test(t) && BRANCHES.has(t) && out.branch === null) out.branch = t;
+    else if (/^[A-Z]{2,}$/.test(t)) words.push(t);
+  }
+  if (words.length) out.surname = words.join(' ');
+  return out;
+}
+
+/* ------------------------------------------------------------ resolve */
+
+export interface RosterCandidate {
+  roll: string;
+  name: string;
+}
+
+export type Resolution<T extends RosterCandidate> =
+  | { kind: 'one'; who: T; by: 'roll' | 'only' | 'year' | 'surname' }
+  | { kind: 'ambiguous'; candidates: T[] }
+  | { kind: 'none' };
+
+const letters = (s: string) => s.toUpperCase().replace(/[^A-Z]/g, '');
+
+/** Does a surname from the card match a registered name? Case-insensitive, word or (4+ letters) substring. */
+export function surnameMatches(surname: string, name: string): boolean {
+  const sur = surname.split(/\s+/).map(letters).filter((w) => w.length >= 2);
+  if (sur.length === 0) return false;
+  const words = name.toUpperCase().split(/[^A-Z]+/).filter(Boolean);
+  const joined = letters(name);
+  return sur.some((w) => words.includes(w) || (w.length >= 4 && joined.includes(w)));
+}
+
+/**
+ * Which registered person a scanned card is. Rules, in order:
+ *   a full roll in the QR -> that roll, exactly;
+ *   the 4-character suffix finds the candidates;
+ *   1. the batch year from the date segment, if it picks exactly one;
+ *   2. the surname segment against the registered name, if it picks exactly one;
+ *   3. otherwise ambiguous: the phone asks for the full roll.
+ * A single candidate is still checked: if the card's year and surname both
+ * disagree with it (or one disagrees and the other says nothing), it is
+ * probably someone else with the same last four, so we ask for the roll.
+ */
+export function resolveIdQr<T extends RosterCandidate>(qr: IdQr, roster: readonly T[]): Resolution<T> {
+  if (qr.roll) {
+    const key = rollKey(qr.roll);
+    const who = roster.find((p) => rollKey(p.roll) === key);
+    return who ? { kind: 'one', who, by: 'roll' } : { kind: 'none' };
+  }
+  const suffix = rollKey(qr.suffix);
+  const cands = roster.filter((p) => rollSuffix(p.roll) === suffix);
+  if (cands.length === 0) return { kind: 'none' };
+
+  const yearOk = (p: T): boolean | null => (qr.batch ? rollKey(p.roll).startsWith(qr.batch) : null);
+  const nameOk = (p: T): boolean | null => (qr.surname ? surnameMatches(qr.surname, p.name) : null);
+
+  if (cands.length === 1) {
+    const who = cands[0] as T;
+    const y = yearOk(who);
+    const n = nameOk(who);
+    const contradicted = (y === false && n !== true) || (n === false && y !== true);
+    return contradicted ? { kind: 'ambiguous', candidates: cands } : { kind: 'one', who, by: 'only' };
+  }
+
+  const byYear = cands.filter((p) => yearOk(p) === true);
+  const byName = cands.filter((p) => nameOk(p) === true);
+  if (byYear.length === 1) {
+    const who = byYear[0] as T;
+    // The year says one person, the surname clearly says another: do not guess.
+    const clash = nameOk(who) === false && byName.length > 0;
+    if (clash) return { kind: 'ambiguous', candidates: cands };
+    return { kind: 'one', who, by: 'year' };
+  }
+  if (byName.length === 1) return { kind: 'one', who: byName[0] as T, by: 'surname' };
+  return { kind: 'ambiguous', candidates: cands };
+}
+
+/* ---------------------------------------------------------- roster CSV */
+
+export interface ParticipantInput {
+  name: string;
+  year: string | null;
+  section: string | null;
+  roll: string;
+  phone: string | null;
+  email: string | null;
+}
+
+/** Names that look like a test entry, not a person: listed in the import report. */
+export function looksLikeTestEntry(name: string): boolean {
+  return /\b(test|testing|trial|demo|dummy|sample|asdf|xyz)\b/i.test(name);
+}
+
+/* ------------------------------------------------------------- schemas */
+
+const RollInputSchema = z
+  .string()
+  .max(40)
+  .transform((v, ctx) => {
+    const r = normaliseRoll(v);
+    if (!ROLL_RE.test(r)) {
+      ctx.addIssue({ code: 'custom', message: 'That roll number looks off. It is on your ID card, like 26BD1A0501.' });
+      return z.NEVER;
+    }
+    return r;
+  });
+
+const Phone4Schema = z
+  .string()
+  .max(12)
+  .transform((v, ctx) => {
+    const d = v.replace(/\D/g, '');
+    if (d.length !== 4) {
+      ctx.addIssue({ code: 'custom', message: 'The last 4 digits of your phone number.' });
+      return z.NEVER;
+    }
+    return d;
+  });
+
+/** Phone: a scanned ID card. `roll` answers a "which one are you?"; `phone4` is for the stricter mode. */
+export const IdResolveRequestSchema = z.object({
+  payload: z.string().min(1).max(300),
+  roll: RollInputSchema.optional(),
+});
+export type IdResolveRequest = z.input<typeof IdResolveRequestSchema>;
+
+export const IdResolveResponseSchema = z.object({
+  /** First name only, for "hi Kashvi! that's you?". */
+  firstName: z.string(),
+  roll: z.string(),
+  /** The console asks for the last 4 phone digits after a scan. */
+  needPhone: z.boolean(),
+  /** This phone is already the one this ID is bound to. */
+  thisPhone: z.boolean(),
+});
+export type IdResolveResponse = z.infer<typeof IdResolveResponseSchema>;
+
+export const IdSignInRequestSchema = z.object({
+  payload: z.string().min(1).max(300),
+  roll: RollInputSchema.optional(),
+  phone4: Phone4Schema.optional(),
+});
+export type IdSignInRequest = z.input<typeof IdSignInRequestSchema>;
+
+/** Typed fallback: full roll + last 4 digits of the registered phone. */
+export const RollSignInRequestSchema = z.object({
+  roll: RollInputSchema,
+  phone4: Phone4Schema,
+});
+export type RollSignInRequest = z.input<typeof RollSignInRequestSchema>;
+
+/* -------------------------------------------------------------- console */
+
+const opt = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? v : null));
+
+export const ParticipantInputSchema = z.object({
+  name: z.string().trim().min(1, 'a name please').max(80),
+  roll: RollInputSchema,
+  year: opt(20),
+  section: opt(20),
+  phone: opt(20),
+  email: opt(120),
+  note: opt(200),
+});
+export type ParticipantInputBody = z.input<typeof ParticipantInputSchema>;
+
+export const ParticipantRowSchema = z.object({
+  id: z.number().int(),
+  roll: z.string(),
+  name: z.string(),
+  year: z.string().nullable(),
+  section: z.string().nullable(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
+  /** Desk notes: duplicate rolls, probable test entries, walk-in. */
+  note: z.string(),
+  source: z.enum(['import', 'walkin']),
+  kitId: z.string(),
+  createdAt: z.number(),
+  /** Bound to a phone right now. */
+  bound: z.boolean(),
+  resets: z.number().int(),
+  attendee: z
+    .object({
+      id: z.number().int(),
+      nickname: z.string().nullable(),
+      firstSignInAt: z.number(),
+      profileComplete: z.boolean(),
+      points: z.number().int(),
+    })
+    .nullable(),
+});
+export type ParticipantRow = z.infer<typeof ParticipantRowSchema>;
+
+export const ParticipantListResponseSchema = z.object({
+  participants: z.array(ParticipantRowSchema),
+  stats: z.object({ total: z.number(), signedIn: z.number(), bound: z.number() }),
+  settings: z.object({ strictPhone: z.boolean() }),
+});
+export type ParticipantListResponse = z.infer<typeof ParticipantListResponseSchema>;
+
+export const ImportParticipantsRequestSchema = z.object({ csv: z.string().min(1).max(500_000) });
+
+export const ImportReportSchema = z.object({
+  added: z.number().int(),
+  /** Rows read (not counting blanks and a header). */
+  rows: z.number().int(),
+  /** Same roll again with the same name and phone: dropped quietly. */
+  duplicates: z.array(z.object({ line: z.number(), roll: z.string(), name: z.string() })),
+  /** Same roll with a different name or phone: the first is kept, these are listed for the desk. */
+  conflicts: z.array(
+    z.object({ line: z.number(), roll: z.string(), name: z.string(), keptName: z.string(), differs: z.array(z.enum(['name', 'phone'])), existing: z.boolean() }),
+  ),
+  /** Already on the list before this import (same name and phone). */
+  existing: z.number().int(),
+  skipped: z.array(z.object({ line: z.number(), reason: z.string() })),
+  /** Imported, but worth a look: probable test entries. */
+  flagged: z.array(z.object({ roll: z.string(), name: z.string(), reason: z.string() })),
+});
+export type ImportReport = z.infer<typeof ImportReportSchema>;
+
+export const ParticipantSettingsSchema = z.object({ strictPhone: z.boolean() });
+export type ParticipantSettings = z.infer<typeof ParticipantSettingsSchema>;
+
+/** Desk lookup: a scanned card, a roll, part of a roll or a name. */
+export const DeskLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(300) });
+export const DeskLookupResponseSchema = z.object({
+  /** How the query was read. */
+  read: z.enum(['qr', 'roll', 'search']),
+  qr: z
+    .object({ suffix: z.string(), surname: z.string().nullable(), batch: z.string().nullable(), section: z.string().nullable(), branch: z.string().nullable() })
+    .nullable(),
+  /** The person the phone would sign in as for this scan, if exactly one. */
+  pickId: z.number().int().nullable(),
+  matches: z.array(ParticipantRowSchema),
+});
+export type DeskLookupResponse = z.infer<typeof DeskLookupResponseSchema>;

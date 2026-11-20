@@ -27,7 +27,7 @@ export interface LiveEvents {
   /** To everyone: people here / phones online (throttled server side). */
   'presence.changed': Presence;
   /** To one attendee: an organiser reset your kit, this session is gone. */
-  'session.revoked': { reason: 'kit-reset' };
+  'session.revoked': { reason: 'kit-reset' | 'id-reset' };
   /** To screens: the console pinned (or unpinned) a projector scene. */
   'screen.pinned': ScreenState;
 }

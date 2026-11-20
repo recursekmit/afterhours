@@ -5,6 +5,7 @@ export * from './errors';
 export * from './palette';
 export * from './avatar';
 export * from './auth';
+export * from './idlogin';
 export * from './live';
 export * from './points';
 export * from './stickers';

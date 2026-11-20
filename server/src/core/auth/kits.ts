@@ -37,7 +37,7 @@ export function parseKitCsv(csv: string): { rows: KitSeedRow[]; skipped: { line:
   return { rows, skipped };
 }
 
-function splitCsvLine(line: string, sep: string): string[] {
+export function splitCsvLine(line: string, sep: string): string[] {
   const out: string[] = [];
   let cur = '';
   let quoted = false;
@@ -112,6 +112,7 @@ export function listKits(ctx: AppContext): KitListResponse {
     `SELECT k.id, k.preset_name, k.preset_roll, k.created_at, k.device_hash, k.bound_at, k.resets,
             a.id AS attendee_id, a.name, a.roll, a.nickname, a.first_signin_at, a.profile_complete
        FROM kits k LEFT JOIN attendees a ON a.kit_id = k.id
+      WHERE k.kind = 'card'
       ORDER BY k.id`,
   );
   const kits: KitRow[] = rows.map((r) => ({
@@ -150,16 +151,27 @@ export function listKits(ctx: AppContext): KitListResponse {
  * password (lost card). The attendee keeps their points and stickers.
  */
 export async function resetKit(ctx: AppContext, kitId: string, newPassword: boolean): Promise<{ kitId: string; password: string | null }> {
-  const kit = one<{ id: string }>(ctx.db, 'SELECT id FROM kits WHERE id = ?', kitId);
+  const kit = one<{ id: string }>(ctx.db, "SELECT id FROM kits WHERE id = ? AND kind = 'card'", kitId);
   if (!kit) throw notFound(`No kit called ${kitId}.`);
   const password = newPassword ? generatePassword() : null;
   const hash = password ? await hashPassword(password) : null;
+  tx(ctx.db, () => {
+    if (hash) run(ctx.db, 'UPDATE kits SET password_hash = ? WHERE id = ?', hash, kitId);
+    unbindKit(ctx, kitId, 'kit-reset');
+  });
+  return { kitId, password };
+}
+
+/**
+ * Unbind a kit (a printed card, or a participant's roster kit) from its phone
+ * and sign out every session of its attendee. Points, stickers and stall
+ * history stay with the attendee.
+ */
+export function unbindKit(ctx: AppContext, kitId: string, reason: 'kit-reset' | 'id-reset'): void {
   const attendee = one<{ id: number }>(ctx.db, 'SELECT id FROM attendees WHERE kit_id = ?', kitId);
   tx(ctx.db, () => {
     run(ctx.db, 'UPDATE kits SET device_hash = NULL, bound_at = NULL, resets = resets + 1 WHERE id = ?', kitId);
-    if (hash) run(ctx.db, 'UPDATE kits SET password_hash = ? WHERE id = ?', hash, kitId);
     if (attendee) revokeAttendeeSessions(ctx, attendee.id);
   });
-  if (attendee) ctx.live.publish('session.revoked', { reason: 'kit-reset' }, { attendeeId: attendee.id });
-  return { kitId, password };
+  if (attendee) ctx.live.publish('session.revoked', { reason }, { attendeeId: attendee.id });
 }

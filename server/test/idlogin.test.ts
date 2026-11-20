@@ -1,0 +1,358 @@
+// Student-ID login, end to end on the API. Made-up people only: nothing here is from the real roster.
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { importParticipants, parseParticipantCsv } from '../src/core/auth/participants';
+import { all, one } from '../src/core/db';
+import { AVATAR, type Jar, type TestApp, Jar as JarClass, adminJar, capture, makeApp, makeKits, req, signedInAttendee } from './helpers';
+
+type J = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+const ROSTER = [
+  'name,year,section,roll,phone,email',
+  'Asha Verma,2nd,CSE-A,25BD1A0527,9000000011,asha@example.com',
+  'Bhavya Datta,1st,CSE-B,26BD1A0527,9000000022,bhavya@example.com',
+  'Chetan Rao,2nd,CSE-C,25BD1A0563,9000000033,chetan@example.com',
+  'Chandana Rao,1st,CSE-C,26BD1A0563,9000000044,chandana@example.com',
+  'Divya Kapoor,1st,CSM-A,26BD1A660W,9000000055,divya@example.com',
+  'Eshan Mehta,1st,CSE-D,26BD1A05E7,9000000066,eshan@example.com',
+].join('\n');
+
+const DIVYA_QR = '660W-12600-A-KAPOOR-CSM-260908';
+
+describe('student-ID login', () => {
+  let t: TestApp;
+  let admin: Jar;
+  beforeEach(async () => {
+    t = await makeApp();
+    admin = await adminJar(t.app);
+    const r = await req(t.app, admin, 'POST', '/api/admin/participants/import', { csv: ROSTER });
+    expect(r.statusCode, r.body).toBe(200);
+    expect((r.json() as J).added).toBe(6);
+  });
+  afterEach(async () => t.close());
+
+  const phone = () => new JarClass();
+  const resolve = (jar: Jar, payload: string, roll?: string) => req(t.app, jar, 'POST', '/api/auth/id/resolve', { payload, ...(roll ? { roll } : {}) });
+  const idSignIn = (jar: Jar, body: J) => req(t.app, jar, 'POST', '/api/auth/id/signin', body);
+  const rollSignIn = (jar: Jar, roll: string, phone4: string) => req(t.app, jar, 'POST', '/api/auth/roll/signin', { roll, phone4 });
+  const list = async () => (await req(t.app, admin, 'GET', '/api/admin/participants')).json() as J;
+  const byRoll = async (roll: string) => (await list()).participants.find((p: J) => p.roll === roll);
+
+  describe('QR scan', () => {
+    it('resolves, confirms and signs in: a normal attendee prefilled with name and roll', async () => {
+      const jar = phone();
+      const r = await resolve(jar, DIVYA_QR);
+      expect(r.statusCode, r.body).toBe(200);
+      expect(r.json()).toEqual({ firstName: 'Divya', roll: '26BD1A660W', needPhone: false, thisPhone: false });
+      // resolving changes nothing
+      expect((await byRoll('26BD1A660W')).attendee).toBeNull();
+      const s = await idSignIn(jar, { payload: DIVYA_QR });
+      expect(s.statusCode, s.body).toBe(200);
+      const me = s.json() as J;
+      expect(me.attendee).toMatchObject({ name: 'Divya Kapoor', roll: '26BD1A660W', kitId: '26BD1A660W', profileComplete: false });
+      expect(me.preset).toEqual({ name: 'Divya Kapoor', roll: '26BD1A660W' });
+      expect(jar.cookies.ah_sid).toBeTruthy();
+      // first sign-in = attendance: the attendee row, the sign-in points and sticker, as with kits
+      expect(t.ctx.points.total(me.attendee.id)).toBe(10);
+      expect(one(t.ctx.db, "SELECT 1 AS x FROM sticker_unlocks WHERE attendee_id = ? AND sticker_id = 'showed-up'", me.attendee.id)).toBeTruthy();
+      const p = await req(t.app, jar, 'PUT', '/api/me/profile', { name: 'Divya Kapoor', roll: '26BD1A660W', nickname: 'divz', avatar: AVATAR });
+      expect(p.statusCode).toBe(200);
+      const row = await byRoll('26BD1A660W');
+      expect(row).toMatchObject({ bound: true, attendee: { nickname: 'divz', profileComplete: true, points: 20 } });
+      // signing in again on the same phone is fine and keeps one attendee
+      expect((await idSignIn(jar, { payload: DIVYA_QR })).statusCode).toBe(200);
+      expect(all(t.ctx.db, 'SELECT id FROM attendees')).toHaveLength(1);
+      expect((await resolve(jar, DIVYA_QR)).json()).toMatchObject({ thisPhone: true });
+    });
+
+    it('a second phone is refused with a clear message; the desk unbinds and it works', async () => {
+      const a = phone();
+      expect((await idSignIn(a, { payload: DIVYA_QR })).statusCode).toBe(200);
+      const b = phone();
+      const r = await resolve(b, DIVYA_QR);
+      expect(r.statusCode).toBe(409);
+      expect((r.json() as J).error.code).toBe('id_bound');
+      expect((r.json() as J).error.message).toMatch(/already signed in on another phone/);
+      expect((await idSignIn(b, { payload: DIVYA_QR })).statusCode).toBe(409);
+      // console unbind: the old phone is signed out and told so, the new phone gets in, same attendee
+      const row = await byRoll('26BD1A660W');
+      const cap = capture(t.ctx, { attendeeId: row.attendee.id, admin: false, screen: false });
+      const u = await req(t.app, admin, 'POST', `/api/admin/participants/${row.id}/unbind`);
+      expect(u.statusCode).toBe(200);
+      expect((u.json() as J).bound).toBe(false);
+      expect(cap.events.find((e) => e.type === 'session.revoked')?.data).toEqual({ reason: 'id-reset' });
+      cap.unsub();
+      expect((await req(t.app, a, 'GET', '/api/me')).statusCode).toBe(401);
+      const s = await idSignIn(b, { payload: DIVYA_QR });
+      expect(s.statusCode).toBe(200);
+      expect((s.json() as J).attendee.id).toBe(row.attendee.id);
+      expect(t.ctx.points.total(row.attendee.id)).toBe(10); // points stay, sign-in pays once
+    });
+
+    it('colliding last four: the year decides, then the surname, else the phone asks for the full roll', async () => {
+      expect((await resolve(phone(), '0527-1-A-X-CSE-250801')).json()).toMatchObject({ roll: '25BD1A0527', firstName: 'Asha' });
+      expect((await resolve(phone(), '0527-1-A-X-CSE-260801')).json()).toMatchObject({ roll: '26BD1A0527' });
+      expect((await resolve(phone(), '0527-1-B-DATTA-CSE')).json()).toMatchObject({ roll: '26BD1A0527' });
+      const amb = await resolve(phone(), '0563-1-C-RAO-CSE');
+      expect(amb.statusCode).toBe(409);
+      expect((amb.json() as J).error.code).toBe('need_roll');
+      // answering with the full roll (O for zero is fine)
+      const jar = phone();
+      expect((await resolve(jar, '0563-1-C-RAO-CSE', '26bd1ao563')).json()).toMatchObject({ roll: '26BD1A0563', firstName: 'Chandana' });
+      expect((await idSignIn(jar, { payload: '0563-1-C-RAO-CSE', roll: '26BD1A0563' })).statusCode).toBe(200);
+      // a roll that does not end like the card is refused
+      expect((await resolve(phone(), '0563-1-C-RAO-CSE', '26BD1A0527')).statusCode).toBe(400);
+      // a roll that ends right but is not registered: not on the list
+      expect((await resolve(phone(), '0563-1-C-RAO-CSE', '24BD1A0563')).json()).toMatchObject({ error: { code: 'not_registered' } });
+    });
+
+    it('not on the list, junk and a kit QR get kind, distinct errors', async () => {
+      const nr = await resolve(phone(), '0999-12600-A-NOBODY-CSE-260908');
+      expect(nr.statusCode).toBe(404);
+      expect((nr.json() as J).error).toMatchObject({ code: 'not_registered', message: expect.stringMatching(/not on the list/) });
+      for (const junk of ['hello there', 'https://afterhours.example/?kit=AH-001', '055W']) {
+        const r = await resolve(phone(), junk);
+        expect(r.statusCode, junk).toBe(400);
+        expect((r.json() as J).error.code).toBe('bad_qr');
+      }
+    });
+
+    it('stricter mode asks for the last 4 phone digits after a scan', async () => {
+      const set = await req(t.app, admin, 'PUT', '/api/admin/idlogin/settings', { strictPhone: true });
+      expect(set.json()).toEqual({ strictPhone: true });
+      const jar = phone();
+      expect((await resolve(jar, DIVYA_QR)).json()).toMatchObject({ needPhone: true });
+      expect((await idSignIn(jar, { payload: DIVYA_QR })).statusCode).toBe(401);
+      expect((await idSignIn(jar, { payload: DIVYA_QR, phone4: '1234' })).statusCode).toBe(401);
+      expect((await idSignIn(jar, { payload: DIVYA_QR, phone4: '0055' })).statusCode).toBe(200);
+      // the bound phone is not asked again
+      expect((await resolve(jar, DIVYA_QR)).json()).toMatchObject({ needPhone: false, thisPhone: true });
+      expect((await list()).settings).toEqual({ strictPhone: true });
+    });
+
+    it('off by default', async () => {
+      expect((await list()).settings).toEqual({ strictPhone: false });
+    });
+  });
+
+  describe('typed fallback: full roll + last 4 phone digits', () => {
+    it('signs in with the right digits; O for zero in the roll is fine', async () => {
+      const r = await rollSignIn(phone(), '26BD1A66OW', '0055');
+      expect(r.statusCode, r.body).toBe(200);
+      expect((r.json() as J).attendee.roll).toBe('26BD1A660W');
+    });
+
+    it('a wrong roll and wrong digits look exactly the same', async () => {
+      const unknown = await rollSignIn(phone(), '24BD1A0001', '0055');
+      const wrong = await rollSignIn(phone(), '26BD1A660W', '9999');
+      expect(unknown.statusCode).toBe(401);
+      expect(wrong.statusCode).toBe(401);
+      expect(unknown.body).toBe(wrong.body);
+    });
+
+    it('rate limits per roll, the same for a roll that exists and one that does not', async () => {
+      const go = async (roll: string) => {
+        const codes: number[] = [];
+        for (let i = 0; i < 6; i++) codes.push((await rollSignIn(phone(), roll, '1111')).statusCode);
+        return codes;
+      };
+      expect(await go('26BD1A660W')).toEqual([401, 401, 401, 401, 401, 429]);
+      expect(await go('24BD1A0001')).toEqual([401, 401, 401, 401, 401, 429]);
+      // the right digits are refused too while the roll is locked
+      expect((await rollSignIn(phone(), '26BD1A660W', '0055')).statusCode).toBe(429);
+      t.clock.advance(6 * 60_000);
+      expect((await rollSignIn(phone(), '26BD1A660W', '0055')).statusCode).toBe(200);
+    });
+
+    it('rate limits per network across rolls', async () => {
+      const codes: number[] = [];
+      for (let i = 0; i < 32; i++) codes.push((await rollSignIn(phone(), `24BD1A${String(1000 + i)}`, '1111')).statusCode);
+      expect(codes.slice(0, 30).every((c) => c === 401)).toBe(true);
+      expect(codes.at(-1)).toBe(429);
+    });
+
+    it('a bound ID is only reported after the digits match', async () => {
+      expect((await rollSignIn(phone(), '26BD1A660W', '0055')).statusCode).toBe(200);
+      expect((await rollSignIn(phone(), '26BD1A660W', '9999')).statusCode).toBe(401);
+      const r = await rollSignIn(phone(), '26BD1A660W', '0055');
+      expect(r.statusCode).toBe(409);
+      expect((r.json() as J).error.code).toBe('id_bound');
+    });
+  });
+
+  describe('console roster', () => {
+    it('import dedupes by roll and lists duplicates, conflicts and test entries', () => {
+      const r = importParticipants(
+        t.ctx,
+        [
+          'Farah Khan\t1st\tCSE-A\t26BD1A0581\t9000000077\tf@example.com',
+          'Farah Khan\t1st\tCSE-A\t26bd1a0581\t+91 90000 00077\tf@example.com', // same person again
+          'F Khan\t1st\tCSE-A\t26BD1A0581\t9000000088\tf2@example.com', // same roll, other name and phone
+          'Gita (trial)\t1st\tCSE-A\t26BD1A0582\t9000000099\tg@example.com',
+          'Divya Kapoor\t1st\tCSM-A\t26BD1A660W\t9000000055\tdivya@example.com', // already on the list
+          'Someone Else\t1st\tCSM-A\t26BD1A66OW\t9000000000\tx@example.com', // already on the list, different person
+          '\t1st\tCSE-A\t26BD1A0583\t9\tx', // no name
+          'Odd Roll\t1st\tCSE-A\t??\t9\tx',
+        ].join('\n'),
+      );
+      expect(r).toMatchObject({ added: 2, rows: 6, existing: 1 });
+      expect(r.duplicates).toEqual([{ line: 2, roll: '26BD1A0581', name: 'Farah Khan' }]);
+      expect(r.conflicts).toEqual([
+        { line: 3, roll: '26BD1A0581', name: 'F Khan', keptName: 'Farah Khan', differs: ['name', 'phone'], existing: false },
+        { line: 6, roll: '26BD1A66OW', name: 'Someone Else', keptName: 'Divya Kapoor', differs: ['name', 'phone'], existing: true },
+      ]);
+      expect(r.skipped.map((s) => s.line)).toEqual([7, 8]);
+      expect(r.flagged).toEqual([{ roll: '26BD1A0582', name: 'Gita (trial)', reason: 'probable test entry' }]);
+      const notes = Object.fromEntries(all<{ roll: string; note: string }>(t.ctx.db, 'SELECT roll, note FROM participants').map((p) => [p.roll, p.note]));
+      expect(notes['26BD1A0581']).toMatch(/roll also given by "F Khan" \(phone ending 88\)/);
+      expect(notes['26BD1A660W']).toMatch(/roll also given by "Someone Else"/);
+      expect(notes['26BD1A0582']).toBe('probable test entry');
+      // importing the same file again adds nobody
+      expect(importParticipants(t.ctx, ROSTER)).toMatchObject({ added: 0, existing: 6, conflicts: [] });
+    });
+
+    it('header names are read loosely and decide the column order', () => {
+      const { rows } = parseParticipantCsv('Roll No,Full Name,Mobile Number\n26BD1A0590,Hari Prasad,9000000101\n');
+      expect(rows).toEqual([{ line: 2, input: { name: 'Hari Prasad', roll: '26BD1A0590', phone: '9000000101', year: null, section: null, email: null } }]);
+    });
+
+    it('roster kits stay out of the kits panel and cannot be used with a kit password', async () => {
+      const kits = (await req(t.app, admin, 'GET', '/api/admin/kits')).json() as J;
+      expect(kits.stats.total).toBe(0);
+      expect((await req(t.app, phone(), 'POST', '/api/auth/signin', { kitId: '26BD1A660W', password: '!roster' })).statusCode).toBe(400);
+    });
+
+    it('walk-in: add, sign in by scan, edit, cannot remove once in, export fields present', async () => {
+      const add = await req(t.app, admin, 'POST', '/api/admin/participants', { name: 'Walk In', roll: '26bd1a0599', phone: '9000000123' });
+      expect(add.statusCode, add.body).toBe(200);
+      expect(add.json()).toMatchObject({ roll: '26BD1A0599', source: 'walkin', kitId: '26BD1A0599' });
+      expect((await req(t.app, admin, 'POST', '/api/admin/participants', { name: 'Again', roll: '26BD1A0599' })).statusCode).toBe(409);
+      const s = await idSignIn(phone(), { payload: '0599-1-A-IN-CSE-260801' });
+      expect(s.statusCode).toBe(200);
+      const id = (add.json() as J).id;
+      const ed = await req(t.app, admin, 'PUT', `/api/admin/participants/${id}`, { name: 'Walk In Fixed', roll: '26BD1A0599', phone: '9000000124' });
+      expect(ed.json()).toMatchObject({ name: 'Walk In Fixed', phone: '9000000124', kitId: '26BD1A0599' });
+      expect((await req(t.app, admin, 'DELETE', `/api/admin/participants/${id}`)).statusCode).toBe(409);
+      const row = (await list()).participants.find((p: J) => p.id === id);
+      expect(row.attendee).toMatchObject({ firstSignInAt: t.clock.now(), points: 10 });
+      // someone who never signed in can be removed, and their kit goes with them
+      const gone = await byRoll('25BD1A0563');
+      expect((await req(t.app, admin, 'DELETE', `/api/admin/participants/${gone.id}`)).statusCode).toBe(200);
+      expect(one(t.ctx.db, "SELECT 1 AS x FROM kits WHERE id = '25BD1A0563'")).toBeUndefined();
+    });
+
+    it('desk lookup: a scanned card, a roll, part of a roll, a name', async () => {
+      const look = async (q: string) => (await req(t.app, admin, 'POST', '/api/admin/desk/lookup', { q })).json() as J;
+      const scan = await look('0527-1-B-DATTA-CSE');
+      expect(scan.read).toBe('qr');
+      expect(scan.matches.map((m: J) => m.roll).sort()).toEqual(['25BD1A0527', '26BD1A0527']);
+      expect(scan.matches.find((m: J) => m.id === scan.pickId).roll).toBe('26BD1A0527');
+      expect((await look('26bd1a66ow')).matches.map((m: J) => m.roll)).toEqual(['26BD1A660W']);
+      expect((await look('0563')).matches).toHaveLength(2);
+      expect((await look('kapoor')).matches.map((m: J) => m.roll)).toEqual(['26BD1A660W']);
+      expect((await look('zzzz')).matches).toEqual([]);
+    });
+
+    it('console routes need the PIN', async () => {
+      expect((await req(t.app, phone(), 'GET', '/api/admin/participants')).statusCode).toBe(401);
+      expect((await req(t.app, phone(), 'POST', '/api/admin/participants/import', { csv: ROSTER })).statusCode).toBe(401);
+      expect((await req(t.app, phone(), 'PUT', '/api/admin/idlogin/settings', { strictPhone: true })).statusCode).toBe(401);
+    });
+  });
+
+  describe('kits keep working', () => {
+    it('kit sign-in, the one-phone rule and reset are unchanged', async () => {
+      const [kit] = await makeKits(t.app, 1);
+      const a = await signedInAttendee(t.app, kit!, 'kitty');
+      expect(a.id).toBeGreaterThan(0);
+      const b = phone();
+      const r = await req(t.app, b, 'POST', '/api/auth/signin', kit);
+      expect((r.json() as J).error.code).toBe('kit_bound');
+      expect((await req(t.app, admin, 'POST', `/api/admin/kits/${kit!.kitId}/reset`, {})).statusCode).toBe(200);
+      expect((await req(t.app, b, 'POST', '/api/auth/signin', kit)).statusCode).toBe(200);
+      const kits = (await req(t.app, admin, 'GET', '/api/admin/kits')).json() as J;
+      expect(kits.stats).toMatchObject({ total: 1, signedIn: 1 });
+      // a roster kit cannot be reset from the kits panel
+      expect((await req(t.app, admin, 'POST', '/api/admin/kits/26BD1A660W/reset', {})).statusCode).toBe(400);
+    });
+  });
+
+  describe('a QR-login attendee plays like anyone else', () => {
+    async function divya() {
+      const jar = phone();
+      expect((await idSignIn(jar, { payload: DIVYA_QR })).statusCode).toBe(200);
+      const p = await req(t.app, jar, 'PUT', '/api/me/profile', { name: 'Divya Kapoor', roll: '26BD1A660W', nickname: 'divz', avatar: AVATAR });
+      return { jar, id: (p.json() as J).attendee.id as number };
+    }
+
+    it('plays a per-kit slip stop with the words of their own roster kit', async () => {
+      const d = await divya();
+      const h = async (method: 'GET' | 'POST' | 'PUT', url: string, body?: unknown, jar: Jar = admin) => {
+        const r = await req(t.app, jar, method, `/api/hunt${url}`, body);
+        expect(r.statusCode, `${url}: ${r.body}`).toBe(200);
+        return r.json() as J;
+      };
+      const pool = ['ALPHA', 'BRAVO', 'DELTA', 'ECHO', 'FOXTROT', 'GOLF', 'HOTEL', 'INDIA'];
+      const tr = (await h('POST', '/admin/trails', { title: 'slips', kind: 'morse', orderMode: 'graph' })).trail.id;
+      const setId = (await h('POST', `/admin/slip-sets?trail=${tr}`, { title: 'kit', mode: 'per_kit', pool })).sets[0].id;
+      const end = (await h('POST', `/admin/stops?trail=${tr}`, { title: 'end', clue: 'c', answers: ['x'], finale: true })).stops.at(-1);
+      const slips = await h('POST', `/admin/slip-sets/${setId}/slips`, {
+        slipNo: 1,
+        label: 'one',
+        readings: [
+          { orientation: 'bottom', word: null, outcome: 'next', targetStopId: end.id },
+          { orientation: 'right', word: null, outcome: 'decoy' },
+          { orientation: 'top', word: null, outcome: 'decoy' },
+          { orientation: 'left', word: null, outcome: 'decoy' },
+        ],
+      });
+      const slipStop = (await h('POST', `/admin/stops?trail=${tr}`, { title: 'slip stop', clue: 'scan slip 1', slipId: slips.sets[0].slips[0].id })).stops.at(-1);
+      await h('PUT', `/admin/order?trail=${tr}`, { ids: [slipStop.id, end.id] });
+      await h('PUT', `/admin/state?trail=${tr}`, { status: 'open' });
+      // the print sheet has a slip for the roster kit, labelled with the roll
+      const sheet = await h('GET', `/admin/slip-print?set=${setId}`);
+      const mine = sheet.slips.find((s: J) => s.kitId === '26BD1A660W');
+      expect(mine).toBeTruthy();
+      await h('POST', '/start', { trailId: tr }, d.jar);
+      const res = await h('POST', '/slip', { stopId: slipStop.id, text: mine.edges.bottom.word }, d.jar);
+      expect(res.outcome).toBe('next');
+      expect(res.me.current.stopId).toBe(end.id);
+    });
+
+    it('gets 2 free mocktails at the stall', async () => {
+      const d = await divya();
+      const ov = (await req(t.app, admin, 'GET', '/api/stalls/admin/overview')).json() as J;
+      const bar = ov.stalls[0];
+      const mocktail = bar.items[0].id;
+      const shop = new JarClass();
+      expect((await req(t.app, shop, 'POST', '/api/stalls/shop/signin', { code: bar.code })).statusCode).toBe(200);
+      const hand = async (k: string) => {
+        const token = ((await req(t.app, d.jar, 'GET', '/api/stalls/qr')).json() as J).token;
+        const s = await req(t.app, shop, 'POST', '/api/stalls/shop/scan', { input: token });
+        expect(s.statusCode, s.body).toBe(200);
+        expect((s.json() as J).attendee.nickname).toBe('divz');
+        return req(t.app, shop, 'POST', '/api/stalls/shop/commit', { ticket: (s.json() as J).ticket, key: k, lines: [{ itemId: mocktail, qty: 1 }] });
+      };
+      const r1 = await hand('key-000001-abcdefgh');
+      expect((r1.json() as J).freeLeft).toBe(1);
+      const r2 = await hand('key-000002-abcdefgh');
+      expect((r2.json() as J).freeLeft).toBe(0);
+      expect((r2.json() as J).pointsSpent).toBe(0);
+      // the console's stall lookup by kit id takes the roll
+      const look = await req(t.app, admin, 'GET', '/api/stalls/admin/lookup?kit=26bd1a660w');
+      expect(look.json()).toMatchObject({ nickname: 'divz', allowance: { used: 2, left: 0 } });
+    });
+
+    it('appears on the leaderboard', async () => {
+      const d = await divya();
+      const [kit] = await makeKits(t.app, 1);
+      await signedInAttendee(t.app, kit!, 'kitty');
+      t.ctx.points.award({ attendeeId: d.id, source: 'test', ref: 'boost', points: 30 });
+      const lb = t.ctx.points.leaderboard(10, d.id);
+      expect(lb.entries.map((e) => [e.nickname, e.total])).toEqual([
+        ['divz', 50],
+        ['kitty', 20],
+      ]);
+      expect(lb.me?.rank).toBe(1);
+    });
+  });
+});

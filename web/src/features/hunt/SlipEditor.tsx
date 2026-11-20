@@ -223,7 +223,8 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
       const sheet = await api.get(`/api/hunt/admin/slip-print?set=${setId}`, SlipPrintSheetSchema);
       // unique copies print in serial order, a kit's slips 1..3 of one serial together on a page
       const items = range ? sheet.slips.filter((i) => i.serial !== null && i.serial >= range.from && i.serial <= range.to) : sheet.slips;
-      const what = sheet.mode === 'per_kit' ? ' (one per kit)' : sheet.mode === 'unique' ? `, unique copies${range ? ` no. ${String(range.from).padStart(3, '0')} to ${String(range.to).padStart(3, '0')}` : ''}` : '';
+      // unique: each page names its own serials, so the title stays short
+      const what = sheet.mode === 'per_kit' ? ' (one per kit)' : sheet.mode === 'unique' ? ' (unique)' : '';
       setPrinting({ title: `${sheet.title}${what}`, slips: items.map((i) => designFromPrintItem(i, undefined, printAs)) });
     } catch (e) {
       toast((e as Error).message, { kind: 'bad' });

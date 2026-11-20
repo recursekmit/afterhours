@@ -93,7 +93,7 @@ function CropMarks({ x, y, w, h }: { x: number; y: number; w: number; h: number 
 export function SlipPage({ placed, title, page, pages }: { placed: Placed[]; title: string; page: number; pages: number }) {
   // unique copies: say which serials are on this page, so a stack can be checked before it is cut
   const serials = [...new Set(placed.map((p) => p.layout.serial).filter((x): x is string => x !== null))];
-  const copies = serials.length === 0 ? '' : serials.length === 1 ? `copy no. ${serials[0]}, ` : `copies no. ${serials[0]} to ${serials[serials.length - 1]}, `;
+  const copies = serials.length === 0 ? '' : serials.length === 1 ? `no. ${serials[0]}, ` : `no. ${serials[0]} to ${serials[serials.length - 1]}, `;
   return (
     <svg
       className={s.sheetPage}

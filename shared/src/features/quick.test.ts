@@ -41,7 +41,7 @@ describe('parseQuizPaste', () => {
     expect(parseQuizPaste('  \n ').problems).toEqual(['paste at least one question']);
   });
   it('what it reads passes the quiz schema', () => {
-    const { questions } = parseQuizPaste('Q?\n*right\nwrong\nwrong');
+    const { questions } = parseQuizPaste('Which one?\n*right\nwrong\nwrong');
     const r = QuickSpecSchema.safeParse({ template: 'quiz', questions });
     expect(r.success).toBe(true);
   });

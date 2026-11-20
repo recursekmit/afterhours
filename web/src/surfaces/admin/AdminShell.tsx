@@ -49,8 +49,9 @@ export function AdminShell() {
             </NavLink>
           ))}
         </nav>
-        <Button tone="paper" size="sm" ghost onClick={() => signOut.mutate()}>
-          lock console
+        {/* ends the console session on the server (DELETE /api/admin/session), then the PIN gate shows */}
+        <Button tone="pink" icon="lock" loading={signOut.isPending} onClick={() => signOut.mutate()} data-testid="admin-logout">
+          log out
         </Button>
       </aside>
       <main className={s.content}>

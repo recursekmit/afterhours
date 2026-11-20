@@ -168,3 +168,9 @@
 .copiesScroll { max-height: 420px; overflow: auto; border: var(--line-thin) solid var(--ink); border-radius: var(--cut-3); background: var(--paper); }
 .copiesScroll thead th { position: sticky; top: 0; background: var(--paper-3); z-index: 1; }
 .copyCell { display: inline-flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* console: what players can see (PlayerSwitches.tsx) */
+.switches { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s-3); }
+.switchCard { display: grid; gap: var(--s-2); padding: var(--s-3); background: var(--paper-3); border: var(--outline); border-radius: var(--cut-2); }
+.switchOn { background: color-mix(in srgb, var(--lime) 30%, var(--paper-3)); }
+.switchTitle { font-family: var(--font-display); font-size: var(--step-1); }
+.copyDesign { display: inline-block; margin-right: 6px; font-family: var(--font-hand); font-weight: 800; font-size: var(--step--1); padding: 0 6px; border-radius: var(--cut-3); color: var(--paper); background: var(--ink); }

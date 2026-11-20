@@ -81,6 +81,8 @@ test.describe.serial('unique slips: two phones, two copies, one slip', () => {
   test.beforeAll(async ({ playwright }) => {
     admin = await playwright.request.newContext({ baseURL: BASE });
     expect((await admin.post('/api/admin/session', { data: { pin: '2468' } })).ok()).toBeTruthy();
+    // both events are hidden from players until the console shows them
+    expect((await admin.put('/api/hunt/admin/visibility', { data: { hunt: true, morse: true } })).ok()).toBeTruthy();
   });
 
   test('build a trail with a unique slip set and print two copies with the real renderer', async ({ browser }) => {

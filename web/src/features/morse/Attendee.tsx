@@ -27,7 +27,8 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import { TrailListSchema } from '@afterhours/shared/features/hunt';
+import { trailPath } from '@afterhours/shared/features/hunt';
+import { useTrailVisibility, useTrails } from '../hunt/useHunt';
 import { api } from '../../core/api';
 import { useLiveEvent } from '../../core/live';
 import { celebrate, haptics, sfx } from '../../fun';
@@ -330,7 +331,7 @@ export function MorsePage() {
   return (
     <div className={ui.page}>
       <PageHead title="morse" note={`${st.players} ${st.players === 1 ? 'person has' : 'people have'} tried. you have ${st.morsePoints} morse points.`} color="var(--sky)" />
-      {!st.enabled && <p className={s.off}>morse is switched off right now. the organisers will open it.</p>}
+      {!st.enabled && <p className={s.off}>the online ladder is switched off right now. the organisers will open it.</p>}
       <TrailTeaser />
       <SprintBanner st={st} />
       {round ? (
@@ -384,35 +385,45 @@ export function MorsePage() {
   );
 }
 
-/** The offline half of the challenge: Morse messages and kit slips around the venue (trails). */
+/** The offline half of the challenge: your kit's morse slip (and any other Morse trail), when it is shown to players. */
 function TrailTeaser() {
-  const q = useQuery({ queryKey: ['hunt', 'trails'], queryFn: () => api.get('/api/hunt/trails', TrailListSchema), staleTime: 30_000 });
-  const morse = (q.data?.trails ?? []).filter((t) => t.kind === 'morse' && t.status === 'open');
-  if (morse.length === 0) return null;
+  const visible = useTrailVisibility().morse;
+  const q = useTrails('morse', visible);
+  if (!visible) return null;
+  const open = (q.data?.trails ?? []).filter((t) => t.status === 'open' || t.started);
+  if (open.length === 0) return null;
   return (
-    <Card tone="sky" tilt={1.2} tape="left" tapeColor="sun" className={s.teaser}>
-      <p className={s.teaserText}>there are morse messages hidden around the venue, and your kit slips read differently when you turn them.</p>
-      <LinkButton to={morse.length === 1 ? `/hunt/t/${morse[0]!.id}` : '/hunt'} tone="ink" size="sm" icon="map">
-        {morse.length === 1 ? morse[0]!.title : 'the morse trails'}
-      </LinkButton>
-    </Card>
+    <div className={ui.stack} data-testid="morse-trails">
+      {open.map((t, i) => (
+        <Card key={t.id} tone="sky" tilt={i % 2 ? -1 : 1.2} tape="left" tapeColor="sun" className={s.teaser}>
+          <p className={s.teaserText}>
+            {t.finishedRank ? `${t.title}: done, #${t.finishedRank}. nice ears.` : 'your kit has a morse ticket. its words are yours alone: scan it, turn it, decode it.'}
+          </p>
+          <LinkButton to={trailPath(t)} tone="ink" size="sm" icon="ticket">
+            {t.title}
+          </LinkButton>
+        </Card>
+      ))}
+    </div>
   );
 }
 
 export function MorseHomeCard() {
   const q = useMorse();
+  const slip = useTrailVisibility().morse;
   const st = q.data;
-  if (!st?.enabled) return null;
+  if (!st || (!st.enabled && !slip)) return null;
   const cleared = st.decode.filter((p) => p.cleared).length + st.encode.filter((p) => p.cleared).length;
   return (
     <Card tone="sky" tilt={1} tape="left" tapeColor="pink" className={s.homeCard}>
       <div className={ui.between}>
         <span className={ui.kicker}>{st.sprint ? 'speed round is on!' : 'morse challenge'}</span>
-        <span className={s.homeCount}>{cleared}/10</span>
+        {st.enabled && <span className={s.homeCount}>{cleared}/10</span>}
       </div>
       <p className={s.homeCode}>-- --- .-. ... .</p>
+      {slip && <p className={ui.hand}>your kit has a morse ticket with words nobody else has. decode it.</p>}
       <LinkButton to="/morse" tone="ink" size="sm" icon="morse">
-        grab the key
+        {st.enabled ? 'grab the key' : 'decode your ticket'}
       </LinkButton>
     </Card>
   );

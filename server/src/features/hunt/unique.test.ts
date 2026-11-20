@@ -18,6 +18,7 @@ import { stopSubset } from './rules';
 import { SEED_SLIP_COPIES, seedHunt } from './seed';
 import { SLIP_BLOCKLIST, TECH_WORDS, type WordSlot, edgeUnitLimit, generateWords, isBlockedWord, withinOneEdit } from './slipwords';
 import { claimCopy, convertToUnique } from './unique';
+import { setVisibility } from './visibility';
 
 // ---------------------------------------------------------------------------
 // the generator (pure)
@@ -207,6 +208,7 @@ describe('unique slips on a trail', () => {
   let admin: Jar;
   beforeEach(async () => {
     t = await makeApp();
+    setVisibility(t.ctx, { hunt: true, morse: true }); // both events are hidden from players by default
     admin = await adminJar(t.app);
   });
   afterEach(async () => t.close());
@@ -383,10 +385,11 @@ describe('unique slips on a trail', () => {
     expect(csv.statusCode).toBe(200);
     expect(csv.headers['content-type']).toContain('text/csv');
     const lines = csv.body.trim().split('\n');
-    expect(lines[0]).toBe('serial,slip_no,label,bottom,right,top,left,top_upside_down_morse,claimed_by');
+    expect(lines[0]).toBe('serial,slip_no,label,design,bottom,right,top,left,top_upside_down_morse,claimed_by');
     expect(lines).toHaveLength(9);
     const e1 = copyOf(after, 1);
-    expect(lines[1]).toBe(`001,1,one,${e1.bottom!.word},${e1.right!.word},${e1.top!.word},${e1.left!.word},${reverseReading(e1.top!.morse)},`);
+    const design1 = (await api<SlipCopies>(admin, 'GET', `/admin/slip-sets/${g.setId}/copies`)).body.rows[0]!.cells[0]!.design;
+    expect(lines[1]).toBe(`001,1,one,${design1},${e1.bottom!.word},${e1.right!.word},${e1.top!.word},${e1.left!.word},${reverseReading(e1.top!.morse)},`);
     expect(lines[8]!.endsWith(',a')).toBe(true);
     // attendees cannot read the key or the table
     expect((await req(t.app, a.jar, 'GET', `/api/hunt/admin/slip-sets/${g.setId}/answer-key.csv`)).statusCode).toBe(401);
@@ -478,10 +481,11 @@ describe('seed and live migration', () => {
     expect(sets.map((s) => [s.title, s.mode, s.copies])).toEqual([
       ['kit slips', 'unique', SEED_SLIP_COPIES],
       ['kit slip: first location', 'unique', SEED_SLIP_COPIES],
+      ['the morse slip', 'unique', 80],
     ]);
-    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copies')!.n).toBe(4 * SEED_SLIP_COPIES);
-    // 9 edges + 1 upside-down extra per trio, 3 edges per hunt slip
-    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copy_words')!.n).toBe((9 + 1 + 3) * SEED_SLIP_COPIES);
+    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copies')!.n).toBe(5 * SEED_SLIP_COPIES);
+    // 9 edges + 1 upside-down extra per trio, 3 edges per hunt slip, 4 edges + 1 upside-down per morse slip
+    expect(one<{ n: number }>(t.ctx.db, 'SELECT COUNT(*) AS n FROM hunt_slip_copy_words')!.n).toBe((9 + 1 + 3 + 5) * SEED_SLIP_COPIES);
     expect(one<{ n: number }>(t.ctx.db, "SELECT COUNT(*) AS n FROM hunt_slip_readings WHERE word IS NOT NULL AND orientation != 'extra'")!.n).toBe(0);
   });
 

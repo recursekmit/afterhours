@@ -32,6 +32,9 @@ import {
   type HuntSlipResult,
   type HuntStickerSheet,
   HuntStopInputSchema,
+  type HuntVisibility,
+  HuntVisibilityPatchSchema,
+  type MorseSlipSetup,
   type MorseCardSheet,
   type SlipCopies,
   SlipCopiesRequestSchema,
@@ -55,6 +58,7 @@ import {
   slipMorseKey,
   slipWordKey,
 } from '@afterhours/shared/features/hunt';
+import type { SlipTicket } from '@afterhours/shared/morse-slip';
 import { z } from 'zod';
 import {
   type FeatureContext,
@@ -63,6 +67,7 @@ import {
   conflict,
   defineFeature,
   getAttendee,
+  isAdmin,
   isScreen,
   notFound,
   one,
@@ -95,6 +100,8 @@ import {
   revealHint,
   runtime,
   scan,
+  scanTrailId,
+  trailOfStop,
   startHunt,
   stopCount,
   submitSlip,
@@ -102,6 +109,8 @@ import {
   trailTotal,
 } from './engine';
 import { answerKeyCsv, checkUniqueReadings, claimedCount, convertToUnique, copiesView, copyEdges, getSet, releaseCopy, releaseTrail, syncCopies } from './unique';
+import { createMorseSlip } from './morseSlip';
+import { groupOf, kindVisible, notOpen, setVisibility, trailAudience, trailVisible, visibility } from './visibility';
 import { seedHunt } from './seed';
 
 export const huntStickers = [
@@ -118,6 +127,7 @@ const TrailQuery = z.object({ trail: z.coerce.number().int().positive().default(
 const StartBody = z.object({ trailId: z.number().int().positive().optional() }).default({});
 const ScanBody = z.object({ code: z.string().min(1).max(300), trailId: z.number().int().positive().optional() });
 const SetQuery = z.object({ set: z.coerce.number().int().positive() });
+const GroupQuery = z.object({ group: z.enum(['hunt', 'morse']).optional() });
 
 const trailOf = (req: { query: unknown }): number => parse(TrailQuery, req.query ?? {}).trail;
 
@@ -176,7 +186,7 @@ function buildAdmin(ctx: FeatureContext, trailId: number): HuntAdmin {
 
 function publishState(ctx: FeatureContext, trailId: number): void {
   const t = getTrail(ctx, trailId);
-  ctx.live.publish('hunt.state', { trailId, status: t.status, title: t.title, total: trailTotal(t, stopCount(ctx, trailId)) }, 'all');
+  ctx.live.publish('hunt.state', { trailId, status: t.status, title: t.title, total: trailTotal(t, stopCount(ctx, trailId)) }, trailAudience(ctx, trailId, 'all'));
 }
 
 /** Answers must contain letters or digits to be matchable; duplicates (after normalising) are dropped. */
@@ -384,9 +394,9 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
   const slips = all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT * FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', setId);
   if (set.mode === 'unique') {
     // every copy in serial order, slips 1..n of one serial together (a kit's matching trio)
-    const copies = all<{ id: number; slip_id: number; serial: number }>(
+    const copies = all<{ id: number; slip_id: number; serial: number; design: SlipTicket | null }>(
       ctx.db,
-      'SELECT c.id, c.slip_id, c.serial FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id',
+      'SELECT c.id, c.slip_id, c.serial, c.design FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id',
       setId,
     );
     const bySlip = new Map(slips.map((sl) => [sl.id, sl]));
@@ -401,7 +411,7 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
           const w = edges[e];
           return w ? { word: w, morse: slipWordKey(w) } : null;
         };
-        return { slipNo: sl.slip_no, label: sl.label, kitId: null, serial: c.serial, edges: { bottom: edge('bottom'), right: edge('right'), top: edge('top'), left: edge('left') } };
+        return { slipNo: sl.slip_no, label: sl.label, kitId: null, serial: c.serial, ticket: c.design, edges: { bottom: edge('bottom'), right: edge('right'), top: edge('top'), left: edge('left') } };
       }),
     };
   }
@@ -417,7 +427,7 @@ function slipPrint(ctx: FeatureContext, setId: number): SlipPrintSheet {
         const word = r.word ?? kw.get(r.id)?.word ?? null;
         if (word) edges[r.orientation as 'bottom' | 'right' | 'top' | 'left'] = { word, morse: slipWordKey(word) };
       }
-      out.push({ slipNo: sl.slip_no, label: sl.label, kitId, serial: null, edges });
+      out.push({ slipNo: sl.slip_no, label: sl.label, kitId, serial: null, ticket: null, edges });
     }
   }
   return { setId: set.id, title: set.title, mode: set.mode, slips: out };
@@ -473,12 +483,46 @@ export const hunt = defineFeature({
   stickers: [...huntStickers],
 
   routes(app, ctx) {
+    // ---------- player visibility: one switch per event, both off by default ----------
+    // While an event is hidden, its attendee and projector routes answer 403 not_open, so nothing leaks
+    // through the API. The console (/admin/*) and admins (organisers testing on their phone) pass.
+    const gate = (req: Parameters<typeof isAdmin>[0], trailId: number) => {
+      if (!isAdmin(req) && !trailVisible(ctx, trailId)) throw notOpen();
+    };
+
+    // GET /api/hunt/visibility (anyone)  -> { hunt, morse }
+    app.get('/visibility', async (): Promise<HuntVisibility> => visibility(ctx));
+
+    // PUT /api/hunt/admin/visibility { hunt?, morse? }  -> { hunt, morse }. Publishes 'hunt.visibility' to everyone.
+    app.put('/admin/visibility', async (req): Promise<HuntVisibility> => {
+      requireAdmin(req);
+      const before = visibility(ctx);
+      const v = setVisibility(ctx, parse(HuntVisibilityPatchSchema, req.body));
+      // trails of an event that just appeared: phones refetch them
+      for (const t of listTrails(ctx)) if (v[groupOf(t.kind)] && !before[groupOf(t.kind)]) publishState(ctx, t.id);
+      return v;
+    });
+
+    // POST /api/hunt/admin/morse-slip  -> MorseSlipSetup: the standalone morse slip trail (one unique slip,
+    // 80 copies). Idempotent: a second call returns the existing one. Switches and other trails untouched.
+    app.post('/admin/morse-slip', async (req): Promise<MorseSlipSetup> => {
+      requireAdmin(req);
+      const r = createMorseSlip(ctx);
+      bump(ctx, r.trailId);
+      return r;
+    });
+
     // ---------- attendee ----------
 
-    // GET /api/hunt/trails  -> TrailList (open and closed trails, with my progress)
+    // GET /api/hunt/trails?group=hunt|morse  -> TrailList (open and closed trails of that event, with my progress)
     app.get('/trails', async (req): Promise<TrailList> => {
       const me = requireAttendee(req);
-      const trails = listTrails(ctx).filter((t) => t.status !== 'draft');
+      const { group } = parse(GroupQuery, req.query ?? {});
+      const admin = isAdmin(req);
+      if (group && !admin && !visibility(ctx)[group]) throw notOpen();
+      const shown = (t: Trail) => (group ? groupOf(t.kind) === group : true) && (admin || kindVisible(ctx, t.kind));
+      if (!group && !admin && !visibility(ctx).hunt && !visibility(ctx).morse) throw notOpen();
+      const trails = listTrails(ctx).filter((t) => t.status !== 'draft' && shown(t));
       return {
         serverNow: ctx.now(),
         trails: trails.map((t) => {
@@ -494,6 +538,7 @@ export const hunt = defineFeature({
     // GET /api/hunt?trail=  -> HuntMe
     app.get('/', async (req): Promise<HuntMe> => {
       const me = requireAttendee(req);
+      gate(req, trailOf(req));
       return buildMe(ctx, me.attendeeId, trailOf(req));
     });
 
@@ -501,6 +546,7 @@ export const hunt = defineFeature({
     app.post('/start', async (req): Promise<HuntMe> => {
       const me = requireAttendee(req);
       const b = parse(StartBody, req.body ?? {});
+      gate(req, b.trailId ?? TREASURE_TRAIL_ID);
       return startHunt(ctx, me.attendeeId, b.trailId ?? TREASURE_TRAIL_ID);
     });
 
@@ -508,6 +554,7 @@ export const hunt = defineFeature({
     app.post('/scan', async (req): Promise<HuntAttemptResult> => {
       const me = requireAttendee(req);
       const b = parse(ScanBody, req.body);
+      gate(req, scanTrailId(ctx, b.code, b.trailId));
       return scan(ctx, me.attendeeId, b.code, b.trailId);
     });
 
@@ -515,6 +562,7 @@ export const hunt = defineFeature({
     app.post('/answer', async (req): Promise<HuntAttemptResult> => {
       const me = requireAttendee(req);
       const body = parse(HuntAnswerRequestSchema, req.body);
+      gate(req, trailOfStop(ctx, body.stopId));
       return answer(ctx, me.attendeeId, body.stopId, body.answer);
     });
 
@@ -522,6 +570,7 @@ export const hunt = defineFeature({
     app.post('/hint', async (req): Promise<HuntHintResult> => {
       const me = requireAttendee(req);
       const body = parse(HuntHintRequestSchema, req.body);
+      gate(req, trailOfStop(ctx, body.stopId));
       return revealHint(ctx, me.attendeeId, body.stopId, body.n);
     });
 
@@ -529,12 +578,14 @@ export const hunt = defineFeature({
     app.post('/slip', async (req): Promise<HuntSlipResult> => {
       const me = requireAttendee(req);
       const body = parse(HuntSlipRequestSchema, req.body);
+      gate(req, trailOfStop(ctx, body.stopId));
       return submitSlip(ctx, me.attendeeId, body.stopId, body);
     });
 
     // GET /api/hunt/board?trail= (attendee, projector or console)  -> HuntBoard
     app.get('/board', async (req): Promise<HuntBoard> => {
       if (!getAttendee(req) && !isScreen(req)) throw unauthorized('Sign in first.');
+      gate(req, trailOf(req));
       return buildBoard(ctx, trailOf(req));
     });
 
@@ -615,7 +666,9 @@ export const hunt = defineFeature({
       if (body.title !== undefined) run(ctx.db, 'UPDATE hunt_trails SET title = ? WHERE id = ?', body.title, trailId);
       if (body.status !== undefined && body.status !== t.status) {
         if (body.status === 'open') {
-          if (stopCount(ctx, trailId) < 2) throw conflict('Add at least two stops before opening.');
+          // Two stops at least, except a single slip stop: a standalone slip (the morse slip) finishes on its own.
+          const st = loadStops(ctx, trailId);
+          if (st.length < 2 && !(st.length === 1 && st[0]?.challenge === 'slip')) throw conflict('Add at least two stops before opening (or one slip stop).');
           run(ctx.db, "UPDATE hunt_trails SET status = 'open', opened_at = COALESCE(opened_at, ?), closed_at = NULL WHERE id = ?", now, trailId);
         } else if (body.status === 'closed') {
           run(ctx.db, "UPDATE hunt_trails SET status = 'closed', closed_at = ? WHERE id = ?", now, trailId);
@@ -921,7 +974,7 @@ export const hunt = defineFeature({
       rt.dirty.clear();
       for (const id of ids) {
         const t = listTrails(ctx).find((x) => x.id === id);
-        if (!t || t.status === 'draft') continue;
+        if (!t || t.status === 'draft' || !trailVisible(ctx, id)) continue;
         ctx.live.publish('hunt.crowd', crowdOf(ctx, id).crowd, 'all');
       }
     },

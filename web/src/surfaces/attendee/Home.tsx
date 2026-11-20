@@ -7,9 +7,10 @@ import type { MeResponse } from '@afterhours/shared';
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react';
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { homeCards } from '../../core/featureHost';
+import { homeCards, useHiddenFeatures } from '../../core/featureHost';
 import { InstallCard } from '../../core/pwa/install';
-import { useMyPoints, usePresence, useSignOut, useStickerBook } from '../../core/queries';
+import { useMyPoints, usePresence, useStickerBook } from '../../core/queries';
+import { SignOutButton } from './SignOut';
 import { haptics, sfx, useMuted } from '../../fun';
 import { Avatar, Card, Doodle, EmptyState, IconButton, NumberTicker, Sheet, Sticker, Torn } from '../../kit';
 import { MadeByRecurse, RecurseLogo } from '../../kit/Brand';
@@ -164,14 +165,15 @@ function PresenceNote() {
 }
 
 export function Home({ me }: { me: MeResponse }) {
-  const signOut = useSignOut();
+  const hidden = useHiddenFeatures();
+  const cards = homeCards.filter((c) => !hidden.has(c.feature));
   return (
     <div className={s.home}>
       <Greeting me={me} />
       <div className={s.homeBody}>
         {/* order < 10: the cards that matter most right now (now and next) sit above your points */}
         <section className={s.slot} data-slot="home-top" aria-label="now">
-          {homeCards
+          {cards
             .filter((c) => c.order < 10)
             .map((c) => (
               <c.Card key={c.feature} />
@@ -180,15 +182,13 @@ export function Home({ me }: { me: MeResponse }) {
         <PointsTicket />
         <PresenceNote />
         <section className={s.slot} data-slot="home-cards" aria-label="happening">
-          {homeCards.filter((c) => c.order >= 10).map((c) => (
+          {cards.filter((c) => c.order >= 10).map((c) => (
             <c.Card key={c.feature} />
           ))}
         </section>
         <StickerStrip />
         <InstallCard />
-        <button type="button" className={s.signout} onClick={() => signOut.mutate()}>
-          not {me.attendee.nickname ?? 'you'}? sign out
-        </button>
+        <SignOutButton me={me} />
         <MadeByRecurse />
       </div>
     </div>

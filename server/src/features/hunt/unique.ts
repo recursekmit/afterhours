@@ -7,9 +7,9 @@
 // sequence is "derived": that copy's top strip read upside down.
 import { randomBytes } from 'node:crypto';
 import { type SlipCopies, slipWordKey } from '@afterhours/shared/features/hunt';
-import { type SlipEdge, reverseReading } from '@afterhours/shared/morse-slip';
+import { SLIP_TICKETS, type SlipEdge, type SlipTicket, reverseReading } from '@afterhours/shared/morse-slip';
 import { type FeatureContext, all, badRequest, conflict, notFound, one, run, tx } from '../../core';
-import { type WordSlot, generateWords } from './slipwords';
+import { type WordSlot, assignDesigns, generateWords } from './slipwords';
 
 interface SetRow {
   id: number;
@@ -79,6 +79,10 @@ export function syncCopies(ctx: FeatureContext, setId: number, opts: { copies?: 
     const slots: (WordSlot & { copyId: number; readingId: number })[] = [];
     for (const sl of slips) {
       for (let serial = 1; serial <= n; serial++) run(ctx.db, 'INSERT OR IGNORE INTO hunt_slip_copies (slip_id, serial) VALUES (?, ?)', sl.id, serial);
+      // each copy's ticket design: all four, balanced, shuffled from the set; kept once given
+      const designRows = all<{ id: number; serial: number; design: string | null }>(ctx.db, 'SELECT id, serial, design FROM hunt_slip_copies WHERE slip_id = ?', sl.id);
+      const designs = assignDesigns(SLIP_TICKETS, new Map(designRows.map((r) => [r.serial, r.design as SlipTicket | null])), `design:${setId}:${sl.id}`);
+      for (const r of designRows) if (r.design !== designs.get(r.serial)) run(ctx.db, 'UPDATE hunt_slip_copies SET design = ? WHERE id = ?', designs.get(r.serial) ?? null, r.id);
       const readings = all<ReadingRow>(ctx.db, 'SELECT * FROM hunt_slip_readings WHERE slip_id = ? ORDER BY id', sl.id);
       const generated = readings.filter(isGenerated);
       // words of readings that are no longer generated (a fixed word was typed in), and every derived extra (rebuilt below)
@@ -208,9 +212,9 @@ export function claimedCount(ctx: FeatureContext, setId: number): number {
 export function copiesView(ctx: FeatureContext, setId: number): SlipCopies {
   const set = getSet(ctx, setId);
   const slips = all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT id, slip_no, label FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', setId);
-  const cells = all<{ id: number; slip_id: number; serial: number; claimed_by: number | null; claimed_at: number | null; nickname: string | null }>(
+  const cells = all<{ id: number; slip_id: number; serial: number; design: string | null; claimed_by: number | null; claimed_at: number | null; nickname: string | null }>(
     ctx.db,
-    `SELECT c.id, c.slip_id, c.serial, c.claimed_by, c.claimed_at, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
+    `SELECT c.id, c.slip_id, c.serial, c.design, c.claimed_by, c.claimed_at, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
        LEFT JOIN attendees a ON a.id = c.claimed_by WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id`,
     setId,
   );
@@ -218,7 +222,7 @@ export function copiesView(ctx: FeatureContext, setId: number): SlipCopies {
   for (const c of cells) {
     let row = rows.get(c.serial);
     if (!row) rows.set(c.serial, (row = { serial: c.serial, cells: [] }));
-    row.cells.push({ slipId: c.slip_id, copyId: c.id, claimedBy: c.claimed_by === null ? null : { attendeeId: c.claimed_by, nickname: c.nickname }, claimedAt: c.claimed_at });
+    row.cells.push({ slipId: c.slip_id, copyId: c.id, design: (c.design as SlipTicket | null) ?? null, claimedBy: c.claimed_by === null ? null : { attendeeId: c.claimed_by, nickname: c.nickname }, claimedAt: c.claimed_at });
   }
   return {
     setId,
@@ -261,17 +265,17 @@ const csvCell = (v: string | number | null) => {
 /** The organisers' private answer key: serial -> words, one line per copy. */
 export function answerKeyCsv(ctx: FeatureContext, setId: number): string {
   getSet(ctx, setId);
-  const copies = all<{ id: number; slip_id: number; serial: number; slip_no: number; label: string; nickname: string | null }>(
+  const copies = all<{ id: number; slip_id: number; serial: number; design: string | null; slip_no: number; label: string; nickname: string | null }>(
     ctx.db,
-    `SELECT c.id, c.slip_id, c.serial, s.slip_no, s.label, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
+    `SELECT c.id, c.slip_id, c.serial, c.design, s.slip_no, s.label, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
        LEFT JOIN attendees a ON a.id = c.claimed_by WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id`,
     setId,
   );
-  const lines = ['serial,slip_no,label,bottom,right,top,left,top_upside_down_morse,claimed_by'];
+  const lines = ['serial,slip_no,label,design,bottom,right,top,left,top_upside_down_morse,claimed_by'];
   for (const c of copies) {
     const { edges, upside } = copyEdges(ctx, c.id, c.slip_id);
     lines.push(
-      [String(c.serial).padStart(3, '0'), c.slip_no, c.label, edges.bottom ?? '', edges.right ?? '', edges.top ?? '', edges.left ?? '', upside ?? '', c.nickname ?? ''].map(csvCell).join(','),
+      [String(c.serial).padStart(3, '0'), c.slip_no, c.label, c.design ?? '', edges.bottom ?? '', edges.right ?? '', edges.top ?? '', edges.left ?? '', upside ?? '', c.nickname ?? ''].map(csvCell).join(','),
     );
   }
   return `${lines.join('\n')}\n`;

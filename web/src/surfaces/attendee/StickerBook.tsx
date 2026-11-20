@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStickerBook } from '../../core/queries';
+import { useTrailVisibility } from '../../features/hunt/useHunt';
 import { recapApi, rk } from '../../features/recap/api';
 import { haptics, sfx } from '../../fun';
 import { Doodle, ErrorState, LoadingState, Meter, NumberTicker, Scribble, Sheet, Sticker } from '../../kit';
@@ -80,10 +81,13 @@ export function StickerBook() {
   const [open, setOpen] = useState<StickerDef | null>(null);
   const slap = useSlaps();
 
+  // stickers of an event hidden from players (treasure hunt, morse challenge) are not in the book yet
+  const vis = useTrailVisibility();
   const pages = useMemo(() => {
-    const cat = book.data?.catalogue ?? [];
+    const hidden = (id: string) => (!vis.hunt && id.startsWith('hunt-')) || (!vis.morse && id.startsWith('trail-morse-'));
+    const cat = (book.data?.catalogue ?? []).filter((d) => !hidden(d.id));
     return STICKER_CATEGORIES.map((c) => ({ id: c, defs: cat.filter((d) => stickerCategory(d) === c).sort((a, b) => a.order - b.order) })).filter((p) => p.defs.length > 0);
-  }, [book.data]);
+  }, [book.data, vis.hunt, vis.morse]);
 
   if (book.isPending) return <LoadingState label="finding your stickers..." />;
   if (book.isError) return <ErrorState error={book.error} onRetry={() => void book.refetch()} />;

@@ -9,7 +9,7 @@
   Stop variants: riddle (type), scan (sticker only), morse (decode the object; chart helper and
   an optional "play it"), slip (scan a kit slip or type its bottom strip). See Stops.tsx.
 */
-import { type HuntAttemptResult, HuntAttemptResultSchema, HuntHintResultSchema, type HuntMe, HuntMeSchema, type HuntSolvedStop, TREASURE_TRAIL_ID, type TrailSummary, extractHuntCode } from '@afterhours/shared/features/hunt';
+import { type HuntAttemptResult, HuntAttemptResultSchema, HuntHintResultSchema, type HuntMe, HuntMeSchema, type HuntSolvedStop, TREASURE_TRAIL_ID, type TrailSummary, extractHuntCode, trailPath } from '@afterhours/shared/features/hunt';
 import { useMutation } from '@tanstack/react-query';
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
@@ -18,12 +18,24 @@ import { api } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { fmtElapsed } from '../../core/time';
 import { celebrate, haptics, sfx } from '../../fun';
-import { Button, Card, Doodle, ErrorState, LinkButton, LoadingState, NumberTicker, ProgressRing, Sticker, TextField, useToast, WaxSeal } from '../../kit';
+import { Button, Card, Doodle, EmptyState, ErrorState, LinkButton, LoadingState, NumberTicker, ProgressRing, Sticker, TextField, useToast, WaxSeal } from '../../kit';
 import { Scanner } from '../common/Scanner';
 import { PageHead, Stamp, ui } from '../common/ui';
 import s from './hunt.module.css';
 import { MorseHelper, SlipStop } from './Stops';
-import { useHunt, useHuntBoard, useSetHunt, useTrails } from './useHunt';
+import { isNotOpen, useHunt, useHuntBoard, useSetHunt, useTrailVisibility, useTrails } from './useHunt';
+
+/** What a hidden event (or a hidden trail) looks like on the phone: friendly, no details. */
+export function NotOpenYet({ what = 'this' }: { what?: string }) {
+  return (
+    <div className={ui.page} data-testid="not-open">
+      <EmptyState title="not open yet" hint={`${what} opens later this afternoon. keep an eye on home, we will shout.`} />
+      <LinkButton to="/" tone="ink" icon="home">
+        back home
+      </LinkButton>
+    </div>
+  );
+}
 
 function Passport({ me }: { me: HuntMe }) {
   const slots = Array.from({ length: me.total }, (_, i) => me.solved[i] ?? null);
@@ -382,12 +394,12 @@ export function HuntPage({ trailId = TREASURE_TRAIL_ID }: { trailId?: number }) 
   const setHunt = useSetHunt();
   const [just, setJust] = useState<HuntSolvedStop | null>(null);
   if (q.isPending) return <LoadingState label="unfolding the map..." />;
-  if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  if (q.isError) return isNotOpen(q.error) ? <NotOpenYet /> : <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   const me = q.data;
   return (
     <div className={ui.page}>
-      <Link to="/hunt" className={s.back}>
-        <Doodle name="arrow" size={20} style={{ transform: 'rotate(180deg)' }} /> all trails
+      <Link to={me.kind === 'morse' ? '/morse' : '/hunt'} className={s.back}>
+        <Doodle name="arrow" size={20} style={{ transform: 'rotate(180deg)' }} /> {me.kind === 'morse' ? 'back to morse' : 'the treasure hunt'}
       </Link>
       <PageHead
         title={me.title || 'the hunt'}
@@ -445,14 +457,15 @@ export function HuntScanLanding() {
         setR(res);
         if (res.result === 'solved') haptics.celebrate();
       })
-      .catch((e: Error) => setErr(e.message));
+      .catch((e: Error) => (isNotOpen(e) ? setErr('not_open') : setErr(e.message)));
   }, [token, setHunt]);
+  if (err === 'not_open') return <NotOpenYet what="that sticker" />;
   if (err)
     return (
       <div className={ui.page}>
         <ErrorState error={err} title="that sticker did not stick" />
-        <LinkButton to="/hunt" tone="ink">
-          to my passport
+        <LinkButton to="/" tone="ink">
+          back home
         </LinkButton>
       </div>
     );
@@ -460,7 +473,7 @@ export function HuntScanLanding() {
   return (
     <div className={ui.page}>
       {r.result === 'solved' ? (
-        <SolvedCard stop={r.stop} onClose={() => navigate(`/hunt/t/${r.me.trailId}`, { replace: true })} />
+        <SolvedCard stop={r.stop} onClose={() => navigate(trailPath({ kind: r.me.kind, id: r.me.trailId }), { replace: true })} />
       ) : (
         <motion.div animate={{ rotate: [0, -3, 3, -1, 0] }} transition={{ duration: 0.6 }}>
           <Card tone={r.result === 'already' ? 'sky' : 'pink'} tilt={-1}>
@@ -469,7 +482,7 @@ export function HuntScanLanding() {
           </Card>
         </motion.div>
       )}
-      <LinkButton to={`/hunt/t/${r.me.trailId}`} tone="ink" icon="map" replace>
+      <LinkButton to={trailPath({ kind: r.me.kind, id: r.me.trailId })} tone="ink" icon="map" replace>
         to my passport
       </LinkButton>
     </div>
@@ -480,7 +493,7 @@ const KIND_TONE: Record<TrailSummary['kind'], 'tangerine' | 'sky' | 'grape'> = {
 
 function TrailCard({ t, i }: { t: TrailSummary; i: number }) {
   return (
-    <Link to={`/hunt/t/${t.id}`} className={s.trailLink}>
+    <Link to={trailPath(t)} className={s.trailLink}>
       <Card tone={KIND_TONE[t.kind]} tilt={i % 2 ? 1 : -1} press className={s.trailCard}>
         <div className={ui.between}>
           <span className={s.trailKind}>{t.kind === 'hunt' ? 'treasure hunt' : t.kind === 'morse' ? 'morse trail' : 'trail'}</span>
@@ -500,15 +513,15 @@ function TrailCard({ t, i }: { t: TrailSummary; i: number }) {
   );
 }
 
-/** /hunt: every open trail. */
+/** /hunt: the treasure hunt's open trails (Morse trails live under the Morse tab). */
 export function TrailsPage() {
-  const q = useTrails();
+  const q = useTrails('hunt');
   if (q.isPending) return <LoadingState label="unfolding the maps..." />;
-  if (q.isError) return <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
+  if (q.isError) return isNotOpen(q.error) ? <NotOpenYet what="the treasure hunt" /> : <ErrorState error={q.error} onRetry={() => void q.refetch()} />;
   const trails = q.data.trails;
   return (
     <div className={ui.page}>
-      <PageHead title="trails" note="treasure hunts and morse trails. scan, decode, turn your slips. each trail pays its own points." color="var(--tangerine)" />
+      <PageHead title="treasure hunt" note="find the stickers, solve the riddles. each trail pays its own points." color="var(--tangerine)" />
       {trails.length === 0 ? (
         <Card tone="paper" tilt={-1}>
           <p className={s.closed}>no trail is open yet. the organisers will shout.</p>
@@ -521,14 +534,16 @@ export function TrailsPage() {
 }
 
 export function HuntHomeCard() {
-  const q = useTrails();
+  const visible = useTrailVisibility().hunt;
+  const q = useTrails('hunt', visible);
+  if (!visible) return null;
   const open = (q.data?.trails ?? []).filter((t) => t.status === 'open');
   if (open.length === 0) return null;
   const mine = open.find((t) => t.started && !t.finishedRank) ?? open[0]!;
   return (
     <Card tone="tangerine" tilt={-0.8} tape="right" tapeColor="sun" className={s.homeCard}>
       <div className={ui.between}>
-        <span className={ui.kicker}>{open.length === 1 ? 'a trail is open' : `${open.length} trails are open`}</span>
+        <span className={ui.kicker}>{open.length === 1 ? 'the treasure hunt is open' : `${open.length} hunt trails are open`}</span>
         <span className={s.count}>
           {mine.solved}/{mine.total}
         </span>
@@ -537,7 +552,7 @@ export function HuntHomeCard() {
       <p className={ui.hand}>
         {mine.hunting} on it right now, {mine.finished} done
       </p>
-      <LinkButton to={open.length === 1 ? `/hunt/t/${mine.id}` : '/hunt'} tone="ink" icon="map" size="sm">
+      <LinkButton to={open.length === 1 ? trailPath(mine) : '/hunt'} tone="ink" icon="map" size="sm">
         {mine.started ? 'my passport' : 'pick a trail'}
       </LinkButton>
     </Card>

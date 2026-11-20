@@ -22,6 +22,7 @@ import { tick } from './index';
 import { HYPE_EVERY_MS } from './pulse';
 import { flushTally } from './service';
 import { streakFrom } from './streak';
+import { setVisibility } from '../hunt/visibility';
 
 const STAFF = { attendeeId: null, admin: true, screen: true } as const;
 const SCREEN = { attendeeId: null, admin: false, screen: true } as const;
@@ -64,6 +65,7 @@ describe('drops feature', () => {
   beforeEach(async () => {
     sent = [];
     t = await makeApp({ pushSender: sender });
+    setVisibility(t.ctx, { hunt: true, morse: true }); // both events are hidden from players by default
     admin = await adminJar(t.app);
   });
   afterEach(async () => t.close());

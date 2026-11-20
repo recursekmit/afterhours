@@ -28,6 +28,8 @@ export interface SlipPrintItem {
   kitId?: string | null;
   /** unique sets: the printed copy's serial ("no. 037") */
   serial?: number | null;
+  /** unique sets: the copy's own ticket design (balanced over the four); 'mixed' printing uses it */
+  ticket?: SlipTicket | null;
   edges: Partial<Record<'bottom' | 'right' | 'top' | 'left', { word: string; morse: string } | null>>;
 }
 
@@ -46,7 +48,8 @@ export function designFromPrintItem(item: SlipPrintItem, size?: { widthMm: numbe
   }
   const serial = item.serial ?? undefined;
   if (as === 'card') return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, serial, ...(size ?? SLIP_SIZES.card) };
-  const ticket = as === 'mixed' ? (SLIP_TICKETS[(Math.max(1, item.slipNo) - 1) % SLIP_TICKETS.length] as SlipTicket) : as;
+  // mixed: a unique copy's own design (all four, balanced per set), else design N mod 4 by slip number
+  const ticket = as === 'mixed' ? (item.ticket ?? (SLIP_TICKETS[(Math.max(1, item.slipNo) - 1) % SLIP_TICKETS.length] as SlipTicket)) : as;
   const dims = size ?? SLIP_SIZES[KIT_SLIP_SIZE];
   return { strips, number: item.slipNo, kitId: item.kitId ?? undefined, serial, widthMm: dims.widthMm, heightMm: dims.heightMm, ticket };
 }

@@ -42,6 +42,7 @@ import {
 } from '../../core';
 import { cooldownFor, hintCost, normaliseCode, rankBonus, speedBonus, stopOrder, stopSubset, stopWorth } from './rules';
 import { claimCopy, matchCopy, myCopy, setOfSlip } from './unique';
+import { trailAudience } from './visibility';
 
 export const HUNT_SOURCE = 'hunt';
 
@@ -654,6 +655,14 @@ function reply(ctx: FeatureContext, attendeeId: number, trailId: number, r: { re
   return { ...r, me: buildMe(ctx, attendeeId, trailId) };
 }
 
+/** The trail a scanned code belongs to (as scan() resolves it): the sticker's trail, else the hint, else trail 1. */
+export function scanTrailId(ctx: FeatureContext, raw: string, trailHint: number = TREASURE_TRAIL_ID): number {
+  const code = extractHuntCode(raw);
+  const norm = normaliseCode(code);
+  const hit = findStop(ctx, 'token = ?', code) ?? (norm.length === 8 ? findStop(ctx, 'code = ?', norm) : null);
+  return hit?.trailId ?? (findTrail(ctx, trailHint) ? trailHint : TREASURE_TRAIL_ID);
+}
+
 /** A QR or typed sticker code. The trail comes from the sticker; `trailHint` only shapes the reply for unknown codes. */
 export function scan(ctx: FeatureContext, attendeeId: number, raw: string, trailHint: number = TREASURE_TRAIL_ID): HuntAttemptResult {
   const code = extractHuntCode(raw);
@@ -701,7 +710,7 @@ export function scan(ctx: FeatureContext, attendeeId: number, raw: string, trail
 }
 
 /** Resolve a stop id to its trail, for answer and hint (an unknown id replies as trail 1). */
-function trailOfStop(ctx: FeatureContext, stopId: number): number {
+export function trailOfStop(ctx: FeatureContext, stopId: number): number {
   return one<{ trail_id: number }>(ctx.db, 'SELECT trail_id FROM hunt_stops WHERE id = ?', stopId)?.trail_id ?? TREASURE_TRAIL_ID;
 }
 
@@ -890,7 +899,7 @@ export function solveStop(ctx: FeatureContext, attendeeId: number, stop: Stop, v
   if (!solvedStop) throw new Error('solved stop missing from view');
   const who = getPublicAttendee(ctx, attendeeId);
   if (who) {
-    ctx.live.publish('hunt.stamp', { trailId: trail.id, nickname: who.nickname, avatar: who.avatar, solved: outcome.solvedCount, total: trailTotal(trail, stops.length), at }, 'screens');
+    ctx.live.publish('hunt.stamp', { trailId: trail.id, nickname: who.nickname, avatar: who.avatar, solved: outcome.solvedCount, total: trailTotal(trail, stops.length), at }, trailAudience(ctx, trail.id, 'screens'));
   }
   let finish: HuntMyFinish | null = null;
   if (outcome.finishInfo) {
@@ -911,7 +920,7 @@ export function solveStop(ctx: FeatureContext, attendeeId: number, stop: Stop, v
           },
           finishedCount: outcome.finishInfo.rank,
         },
-        'all',
+        trailAudience(ctx, trail.id, 'all'),
       );
     }
   }

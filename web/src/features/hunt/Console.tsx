@@ -30,6 +30,7 @@ import { Button, IconButton, Meter, Sheet, Tabs, TextArea, TextField, useToast }
 import { Section, Stamp, Stat, ui } from '../common/ui';
 import s from './hunt.module.css';
 import { MorseCards, StickerSheet } from './Printables';
+import { PlayerSwitches } from './PlayerSwitches';
 import { SlipEditor } from './SlipEditor';
 
 const adminKey = (trail: number) => ['hunt', 'admin', trail] as const;
@@ -395,6 +396,7 @@ export default function HuntConsole() {
   const hasMorse = a?.stops.some((x) => x.challenge === 'morse') ?? false;
   return (
     <div className={ui.stack}>
+      <PlayerSwitches onOpenTrail={setTrail} />
       <Section title="trails" tape action={<Button size="sm" tone="lime" icon="plus" onClick={() => setNewOpen(true)}>new trail</Button>}>
         <div className={s.trailTabs}>
           {trails.data?.trails.map((tr) => (

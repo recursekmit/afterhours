@@ -263,3 +263,9 @@
   }
 }
 .idWrap { position: relative; z-index: 1; scroll-margin-top: var(--s-4); }
+/* sign out (SignOut.tsx): findable, with an in-page confirm */
+.signoutBox { display: grid; justify-items: center; padding: var(--s-3) 0; }
+.signoutCard { display: grid; gap: var(--s-2); max-width: 420px; }
+.signoutTitle { font-family: var(--font-display); font-size: var(--step-1); margin: 0; }
+.signoutText { margin: 0; font-weight: 600; }
+.signoutBtns { display: flex; flex-wrap: wrap; gap: var(--s-2); }

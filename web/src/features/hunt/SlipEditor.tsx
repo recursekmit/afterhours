@@ -259,7 +259,7 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
       <label className={ui.label}>
         print slips as
         <select className={ui.select} value={printAs} onChange={(e) => setPrintAs(e.target.value as PrintAs)} data-testid="slip-print-as">
-          <option value="mixed">tickets, all four designs in turn (176 x 80)</option>
+          <option value="mixed">tickets, all four designs (unique sets: each copy's own, balanced) (176 x 80)</option>
           {SLIP_TICKETS.map((t) => (
             <option key={t} value={t}>
               ticket: {TICKET_ART[t].label}

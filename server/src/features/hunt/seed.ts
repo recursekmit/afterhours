@@ -1,13 +1,16 @@
 // Demo content. Trail 1: a campus treasure hunt with a believable crowd mid-hunt. Trail 2: a Morse trail
 // (objects around the venue carrying Morse). Trail 3: a Morse slip trail (kit slips whose four orientations
 // branch). Trail 4: a slip hunt where your kit slip's orientation picks your first location.
-// Trails 3 and 4 print UNIQUE slips (80 copies): every copy has its own words, claimed on first scan.
+// Trails 2, 3 and 4 are drafts (never shown). Trail 5: "the morse slip", the Morse challenge: ONE unique slip per kit
+// (80 copies, own words, all four ticket designs), no venue locations. The treasure hunt (trail 1) runs on
+// stickers and riddles only. Both player-visibility switches start off.
 // Stickers go where `location` says; adjust the places to the real venue before printing.
 import type { HuntStopInput } from '@afterhours/shared/features/hunt';
 import { type FeatureContext, all, one, run } from '../../core';
 import { slipMorseKey } from '@afterhours/shared/features/hunt';
 import { bump, getTrail, loadStops, newCode, newSeed, newToken, orderFor, solveStop } from './engine';
 import { syncCopies } from './unique';
+import { createMorseSlip } from './morseSlip';
 
 /** Unique copies printed for each seeded slip set: one per kit, plus spares. */
 export const SEED_SLIP_COPIES = 80;
@@ -130,6 +133,7 @@ export function seedHunt(ctx: FeatureContext): void {
   seedMorseTrail(ctx);
   seedSlipTrail(ctx);
   seedSlipHunt(ctx);
+  createMorseSlip(ctx); // the Morse challenge: one unique slip per kit
   bump(ctx);
 }
 
@@ -219,7 +223,7 @@ function addSlip(ctx: FeatureContext, setId: number, slipNo: number, label: stri
 
 /** Trail 2: Morse messages on objects around the venue. Two need their QR scanned first, one can play online. */
 function seedMorseTrail(ctx: FeatureContext): void {
-  const t = addTrail(ctx, 'morse', 'the morse trail', 'shuffled');
+  const t = addTrail(ctx, 'morse', 'the morse trail', 'shuffled', 'draft'); // needs cards on venue objects: draft unless the organisers place them
   const stops: SeedStop[] = [
     { title: 'the notice board', clue: 'Something on the club notice board is tapping out a word. Decode the card and type it.', answers: ['BYTE'], challenge: 'morse', location: 'Club notice board', glyph: 'wave', color: 'sky', reveal: 'Eight bits, one byte, one very old joke about nibbles.' },
     { title: 'the lab door', clue: 'The computer lab door has a card on it. Scan its QR to prove you found it, then decode the dots.', answers: ['CODE'], challenge: 'morse', requireScan: true, location: 'Computer lab door', glyph: 'key', color: 'lime', reveal: 'Morse is a code too. You just compiled it by hand.' },
@@ -236,7 +240,7 @@ function seedMorseTrail(ctx: FeatureContext): void {
  * different stops, its top edge is a decoy and so is that strip read upside down; slip 2 has a bonus.
  */
 function seedSlipTrail(ctx: FeatureContext): void {
-  const t = addTrail(ctx, 'morse', 'the slip trail', 'graph');
+  const t = addTrail(ctx, 'morse', 'the slip trail', 'graph', 'draft'); // kept as an example; never shown
   const set = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool, copies) VALUES (?, 'kit slips', 'unique', '[]', ?)", t, SEED_SLIP_COPIES).lastId;
   // stops first (slip ids patched in after the slips exist)
   const start = addStop(ctx, t, { title: 'slip 1: the start', clue: 'Take slip 1 from your kit. Scan it. Then turn it: each edge says something different.', challenge: 'slip', glyph: 'flag', color: 'lime' });
@@ -270,7 +274,7 @@ function seedSlipTrail(ctx: FeatureContext): void {
 
 /** Trail 4: a treasure hunt variant. Your kit slip's orientation decides which venue location you go to first (unique copies). */
 function seedSlipHunt(ctx: FeatureContext): void {
-  const t = addTrail(ctx, 'other', 'the slip hunt', 'graph');
+  const t = addTrail(ctx, 'other', 'the slip hunt', 'graph', 'draft'); // the treasure hunt must not depend on a kit slip: unused draft
   const set = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool, copies) VALUES (?, 'kit slip: first location', 'unique', '[]', ?)", t, SEED_SLIP_COPIES).lastId;
   const start = addStop(ctx, t, { title: 'your kit slip', clue: 'Hold your kit slip any way up and scan it. The edge at the bottom decides where you start.', challenge: 'slip', glyph: 'map', color: 'sun' });
   const lib = addStop(ctx, t, { title: 'the library', clue: 'Find the sticker by the library entrance and scan it.', challenge: 'scan', location: 'Library entrance', glyph: 'note', color: 'sky' });

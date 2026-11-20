@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { importParticipants, parseParticipantCsv } from '../src/core/auth/participants';
 import { all, one } from '../src/core/db';
 import { AVATAR, type Jar, type TestApp, Jar as JarClass, adminJar, capture, makeApp, makeKits, req, signedInAttendee } from './helpers';
+import { setVisibility } from '../src/features/hunt/visibility';
 
 type J = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -23,6 +24,7 @@ describe('student-ID login', () => {
   let admin: Jar;
   beforeEach(async () => {
     t = await makeApp();
+    setVisibility(t.ctx, { hunt: true, morse: true }); // both events are hidden from players by default
     admin = await adminJar(t.app);
     const r = await req(t.app, admin, 'POST', '/api/admin/participants/import', { csv: ROSTER });
     expect(r.statusCode, r.body).toBe(200);

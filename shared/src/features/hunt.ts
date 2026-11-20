@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { AvatarConfigSchema } from '../avatar';
 import { GlyphSchema, PaletteColorSchema } from '../palette';
+import { SLIP_TICKETS } from '../morse-slip';
 import { MORSE_TABLE, MorseSignalSchema, wordToPatterns } from './morse';
 
 // ---- trails ------------------------------------------------------------------
@@ -485,8 +486,30 @@ declare module '../live' {
     'hunt.stamp': HuntStampEvent;
     /** To everyone: someone just finished. Drives the "first finishers" live moment. */
     'hunt.finished': HuntFinishedEvent;
+    /** To everyone: the console turned "show trails to players" on or off. */
+    'hunt.visibility': HuntVisibility;
   }
 }
+
+/**
+ * GET /api/hunt/visibility (anyone), PUT /api/hunt/admin/visibility (console, either field): one switch per
+ * event, both off by default. `hunt`: "show treasure hunt to players" (trails of kind hunt and other).
+ * `morse`: "show morse challenge to players" (trails of kind morse, e.g. the morse slip). While off, attendees
+ * see nothing of that event and its attendee APIs answer 403 not_open. The online Morse ladder has its own switch.
+ */
+export const HuntVisibilitySchema = z.object({ hunt: z.boolean(), morse: z.boolean() });
+export type HuntVisibility = z.infer<typeof HuntVisibilitySchema>;
+export const HuntVisibilityPatchSchema = HuntVisibilitySchema.partial().refine((v) => v.hunt !== undefined || v.morse !== undefined, 'Nothing to change');
+
+/** Which event a trail belongs to: the treasure hunt (hunt, other) or the Morse challenge (morse). */
+export type TrailGroup = 'hunt' | 'morse';
+export const trailGroupOf = (kind: TrailKind): TrailGroup => (kind === 'morse' ? 'morse' : 'hunt');
+/** Where a trail lives on the phone: Morse trails under the Morse tab, the rest under the treasure hunt. */
+export const trailPath = (t: { kind: TrailKind; id: number }): string => (t.kind === 'morse' ? `/morse/t/${t.id}` : `/hunt/t/${t.id}`);
+
+/** POST /api/hunt/admin/morse-slip: create the standalone morse slip (idempotent). */
+export const MorseSlipSetupSchema = z.object({ trailId: z.number().int(), setId: z.number().int(), created: z.boolean() });
+export type MorseSlipSetup = z.infer<typeof MorseSlipSetupSchema>;
 
 // ---- trails: lists, console --------------------------------------------------
 
@@ -665,6 +688,8 @@ export const SlipCopiesSchema = z.object({
         z.object({
           slipId: z.number().int(),
           copyId: z.number().int(),
+          /** The ticket this copy prints as (balanced over the four designs). */
+          design: z.enum(SLIP_TICKETS).nullable().default(null),
           claimedBy: z.object({ attendeeId: z.number().int(), nickname: z.string().nullable() }).nullable(),
           claimedAt: z.number().nullable(),
         }),
@@ -759,6 +784,8 @@ export const SlipPrintSheetSchema = z.object({
       kitId: z.string().nullable(),
       /** Unique sets: the copy's serial ("no. 037"), printed in the plaque. */
       serial: z.number().int().nullable().default(null),
+      /** Unique sets: the copy's own ticket design (all four, balanced); the console can override it. */
+      ticket: z.enum(SLIP_TICKETS).nullable().default(null),
       edges: z.object({
         bottom: z.object({ word: z.string(), morse: z.string() }).nullable(),
         right: z.object({ word: z.string(), morse: z.string() }).nullable(),

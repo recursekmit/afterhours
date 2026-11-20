@@ -114,6 +114,8 @@ function CropMarks({ x, y, w, h }: { x: number; y: number; w: number; h: number 
 
 export function SlipPage({ placed, title, page, pages, spacing = NORMAL }: { placed: Placed[]; title: string; page: number; pages: number; spacing?: Spacing }) {
   const M = spacing.margin;
+  // tight pages: the top row's crop ticks reach into the header band, so the header text starts past them
+  const TX = spacing === TIGHT ? Math.max(M + 27, (placed[0]?.x ?? 0) + 6) : M + 27;
   // unique copies: say which serials are on this page, so a stack can be checked before it is cut
   const serials = [...new Set(placed.map((p) => p.layout.serial).filter((x): x is string => x !== null))];
   const copies = serials.length === 0 ? '' : serials.length === 1 ? `no. ${serials[0]}, ` : `no. ${serials[0]} to ${serials[serials.length - 1]}, `;
@@ -130,10 +132,10 @@ export function SlipPage({ placed, title, page, pages, spacing = NORMAL }: { pla
     >
       <rect width={PAGE_W} height={PAGE_H} fill="#fff" />
       <image href={logo} x={M} y={M - 1} height={7} width={24} preserveAspectRatio="xMinYMid meet" />
-      <text x={M + 27} y={M + 4.2} fontFamily="'Cinzel', 'Times New Roman', serif" fontWeight={700} fontSize={4.2}>
+      <text x={TX} y={M + 4.2} fontFamily="'Cinzel', 'Times New Roman', serif" fontWeight={700} fontSize={4.2}>
         AFTER HOURS, MORSE SLIPS
       </text>
-      <text x={M + 27} y={M + 8.4} fontFamily="'IM Fell English', Georgia, serif" fontStyle="italic" fontSize={3.2}>
+      <text x={TX} y={M + 8.4} fontFamily="'IM Fell English', Georgia, serif" fontStyle="italic" fontSize={3.2}>
         {title ? `${title}, ` : ''}
         {copies}page {page} of {pages}. print at 100 %, cut on the marks{placed[0]?.layout.ticket ? ' and round the notched corners' : ''}
       </text>

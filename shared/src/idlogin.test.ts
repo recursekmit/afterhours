@@ -89,10 +89,10 @@ describe('student ID QR parsing', () => {
 });
 
 const R = [
-  { roll: '25BD1A0527', name: 'Asha Verma' },
-  { roll: '26BD1A0527', name: 'Bhavya Datta' },
-  { roll: '25BD1A0563', name: 'Chetan Rao' },
-  { roll: '26BD1A0563', name: 'Chandana Rao' },
+  { roll: '25BD1A0533', name: 'Asha Verma' },
+  { roll: '26BD1A0533', name: 'Bhavya Datta' },
+  { roll: '25BD1A0577', name: 'Chetan Rao' },
+  { roll: '26BD1A0577', name: 'Chandana Rao' },
   { roll: '26BD1A055W', name: 'Divya Kapoor' },
   { roll: '26BD1A6612', name: 'S Eshwar' },
 ];
@@ -114,13 +114,13 @@ describe('resolving a scan against the roster', () => {
     expect(resolve('0999-12600-C-KAPOOR-CSE-260908')).toBe('none');
   });
   it('two or more share it: everyone of them, for the picker; neither year nor surname narrows it', () => {
-    expect(resolve('0527-12600-C-DATTA-CSE-250908')).toBe('many:25BD1A0527,26BD1A0527');
-    expect(resolve('0527-12600-C-VERMA-CSE-260908')).toBe('many:25BD1A0527,26BD1A0527');
-    expect(resolve('0563-12600-C')).toBe('many:25BD1A0563,26BD1A0563');
+    expect(resolve('0533-12600-C-DATTA-CSE-250908')).toBe('many:25BD1A0533,26BD1A0533');
+    expect(resolve('0533-12600-C-VERMA-CSE-260908')).toBe('many:25BD1A0533,26BD1A0533');
+    expect(resolve('0577-12600-C')).toBe('many:25BD1A0577,26BD1A0577');
   });
   it('a full roll in the QR is exact', () => {
-    expect(resolve('26BD1A0563-C-RAO')).toBe('26BD1A0563');
-    expect(resolve('24BD1A0563-C-RAO')).toBe('none');
+    expect(resolve('26BD1A0577-C-RAO')).toBe('26BD1A0577');
+    expect(resolve('24BD1A0577-C-RAO')).toBe('none');
   });
 });
 

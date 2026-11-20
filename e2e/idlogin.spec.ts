@@ -24,8 +24,8 @@ const ROSTER = [
   'name,year,section,roll,phone,email',
   'Kavya Iyer,1st,CSE-A,26BD1A0581,9000000081,kavya@example.com',
   'Rohan Mehta,1st,CSE-B,26BD1A0582,9000000082,rohan@example.com',
-  'Asha Rao,2nd,CSE-C,25BD1A0563,9000000063,asha@example.com',
-  'Anil Rao,1st,CSE-C,26BD1A0563,9000000064,anil@example.com',
+  'Asha Rao,2nd,CSE-C,25BD1A0577,9000000063,asha@example.com',
+  'Anil Rao,1st,CSE-C,26BD1A0577,9000000064,anil@example.com',
   'Meera Das,1st,CSM-A,26BD1A660Q,9000000066,meera@example.com',
   'Kavya Iyer,1st,CSE-A,26BD1A0581,9000000081,kavya@example.com',
   'K Iyer,1st,CSE-A,26BD1A0581,9000000099,k@example.com',
@@ -34,7 +34,7 @@ const ROSTER = [
 
 const CARD_KAVYA = '0581-12600-A-IYER-CSE-260908';
 const CARD_ROHAN = '0582-12601-B-MEHTA-CSE-260908';
-const CARD_RAO = '0563-12602-C-RAO-CSE';
+const CARD_RAO = '0577-12602-C-RAO-CSE';
 const CARD_NOBODY = '0999-12603-D-NOBODY-CSE-260908';
 
 /** One grey frame with a white ID card and its QR in the middle, as Chromium's fake camera plays it. */
@@ -160,9 +160,9 @@ test.describe.serial('student-ID login', () => {
   });
 
   test('phone: a shared last four shows the "who are you?" picker, a bound person disabled', async ({ playwright }) => {
-    // Asha (25BD1A0563) is already in on another phone: typed fallback from a throwaway client
+    // Asha (25BD1A0577) is already in on another phone: typed fallback from a throwaway client
     const other = await playwright.request.newContext({ baseURL: BASE });
-    expect((await other.post('/api/auth/roll/signin', { data: { roll: '25BD1A0563', phone4: '0063' } })).ok()).toBeTruthy();
+    expect((await other.post('/api/auth/roll/signin', { data: { roll: '25BD1A0577', phone4: '0063' } })).ok()).toBeTruthy();
     await other.dispose();
     await withCamera('rao', CARD_RAO, async (page) => {
       await page.goto('/');
@@ -184,7 +184,7 @@ test.describe.serial('student-ID login', () => {
       await expect(page.getByTestId('id-confirm')).toContainText("hi Anil! that's you?");
       await page.getByRole('button', { name: "yes, that's me" }).click();
       await expect(page.getByRole('heading', { name: 'who are you?' })).toBeVisible();
-      await expect(page.getByLabel('roll number')).toHaveValue('26BD1A0563');
+      await expect(page.getByLabel('roll number')).toHaveValue('26BD1A0577');
     });
   });
 

@@ -52,7 +52,7 @@ test.describe.serial('after hours foundation', () => {
     await page.getByLabel('PIN').fill('0000');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('alert')).toContainText('Wrong PIN');
-    await page.screenshot({ path: `${SHOTS}/console-pin.png` });
+    await page.screenshot({ path: `${SHOTS}/console-pin-1280.png` });
     await ctx.close();
 
     const admin = await adminPage(browser);
@@ -62,7 +62,7 @@ test.describe.serial('after hours foundation', () => {
     await expect(p.getByText('fresh kits, passwords inside')).toBeVisible();
     await expect(p.getByTestId('kit-row-AH-001')).toBeVisible();
     await p.waitForTimeout(4500);
-    await p.screenshot({ path: `${SHOTS}/console-kits.png` });
+    await p.screenshot({ path: `${SHOTS}/console-kits-1280.png` });
 
     // CSV download
     const [dl] = await Promise.all([p.waitForEvent('download'), p.getByRole('button', { name: 'download csv' }).click()]);
@@ -84,7 +84,7 @@ test.describe.serial('after hours foundation', () => {
       expect(qr.toUpperCase()).not.toContain(pw);
     }
     expect(kits).toHaveLength(6);
-    await p.screenshot({ path: `${SHOTS}/console-print-sheet.png` });
+    await p.screenshot({ path: `${SHOTS}/console-print-sheet-1280.png` });
     await admin.ctx.close();
   });
 
@@ -94,7 +94,7 @@ test.describe.serial('after hours foundation', () => {
     await page.goto(`/?kit=${kit.kitId}`);
     await expect(page.getByLabel('kit id')).toHaveValue(kit.kitId);
     await page.waitForTimeout(1200);
-    await page.screenshot({ path: `${SHOTS}/attendee-signin.png` });
+    await page.screenshot({ path: `${SHOTS}/attendee-signin-390.png` });
 
     await page.getByLabel('password').fill('WRONG1');
     await page.getByRole('button', { name: 'let me in' }).click();
@@ -107,7 +107,7 @@ test.describe.serial('after hours foundation', () => {
     // the live stream delivers the "showed up" sticker as a celebration
     await expect(page.getByRole('alertdialog')).toContainText('showed up', { timeout: 10_000 });
     await page.waitForTimeout(900);
-    await page.screenshot({ path: `${SHOTS}/attendee-sticker-celebration.png` });
+    await page.screenshot({ path: `${SHOTS}/stickers-celebration-390.png` });
     await page.getByRole('button', { name: 'stick it in' }).click();
 
     // play with the builder
@@ -119,7 +119,7 @@ test.describe.serial('after hours foundation', () => {
     await page.waitForTimeout(3200);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(300);
-    await page.screenshot({ path: `${SHOTS}/attendee-avatar-builder.png` });
+    await page.screenshot({ path: `${SHOTS}/attendee-avatar-builder-390.png` });
 
     await page.getByLabel('your name').fill('Sana Qureshi');
     await page.getByLabel('roll number').fill('23bd1a0506');
@@ -130,12 +130,12 @@ test.describe.serial('after hours foundation', () => {
     await page.getByRole('button', { name: 'stick it in' }).click();
     await expect(page.getByText('hype the room')).toBeVisible();
     await page.waitForTimeout(4500);
-    await page.screenshot({ path: `${SHOTS}/attendee-home.png` });
+    await page.screenshot({ path: `${SHOTS}/attendee-home-390.png` });
 
     await page.getByRole('link', { name: 'stickers' }).click();
     await expect(page.getByRole('heading', { name: 'sticker book' })).toBeVisible();
     await page.waitForTimeout(700);
-    await page.screenshot({ path: `${SHOTS}/attendee-stickers.png` });
+    await page.screenshot({ path: `${SHOTS}/stickers-book-390.png` });
     await ctx.close();
   });
 
@@ -197,7 +197,7 @@ test.describe.serial('after hours foundation', () => {
     await page.goto('/dev/kit');
     await expect(page.getByRole('heading', { name: 'kit', exact: true })).toBeVisible();
     await page.waitForTimeout(800);
-    await page.screenshot({ path: `${SHOTS}/dev-kit.png`, fullPage: true });
+    await page.screenshot({ path: `${SHOTS}/kit-dev-1280.png`, fullPage: true });
     await ctx.close();
 
     const sc = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -207,7 +207,7 @@ test.describe.serial('after hours foundation', () => {
     await sp.keyboard.press('Enter');
     await expect(sp.locator('svg[data-qr-text]')).toBeVisible();
     await sp.waitForTimeout(1500);
-    await sp.screenshot({ path: `${SHOTS}/projector-join.png` });
+    await sp.screenshot({ path: `${SHOTS}/projector-join-1280.png` });
     await sc.close();
   });
 });

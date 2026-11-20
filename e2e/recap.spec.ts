@@ -137,7 +137,7 @@ test.describe.serial('recap', () => {
     await stick(phone); // "show-off": shared it
     // the share image itself, for the docs
     const png = await story.getByTestId('recap-share-canvas').evaluate((el) => (el as HTMLCanvasElement).toDataURL('image/png'));
-    writeFileSync(`${SHOT}/recap-share-image.png`, Buffer.from(png.replace(/^data:image\/png;base64,/, ''), 'base64'));
+    writeFileSync(`${SHOT}/recap-share-1080.png`, Buffer.from(png.replace(/^data:image\/png;base64,/, ''), 'base64'));
 
     // console preview of the same person
     await con.getByLabel('find by kit or nickname').fill('rewinder1');

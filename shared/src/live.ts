@@ -30,6 +30,8 @@ export interface LiveEvents {
   'session.revoked': { reason: 'kit-reset' | 'id-reset' };
   /** To screens: the console pinned (or unpinned) a projector scene. */
   'screen.pinned': ScreenState;
+  /** To door coordinators (and console): someone was marked entered or undone at /gate. */
+  'gate.changed': { entered: number; total: number; participantId: number; enteredAt: number | null };
 }
 
 export type LiveEventType = keyof LiveEvents & string;
@@ -67,10 +69,10 @@ export type LivePollResponse = z.infer<typeof LivePollResponseSchema>;
  * Who receives an event. Server only cares, but shared so tests and features agree.
  * - 'all': every connected client (attendees, screens, console)
  * - 'attendees': every signed-in attendee
- * - 'admins' / 'screens': staff surfaces ('screens' also reaches admins, who can preview the projector)
+ * - 'admins' / 'screens' / 'gates': staff surfaces ('screens' and 'gates' also reach admins)
  * - { attendeeId }: one person, on whichever phone they are signed in on
  */
-export type Audience = 'all' | 'attendees' | 'admins' | 'screens' | { attendeeId: number };
+export type Audience = 'all' | 'attendees' | 'admins' | 'screens' | 'gates' | { attendeeId: number };
 
 /** Transport-level SSE event names (not in LiveEvents): */
 export const SSE_HEARTBEAT = 'hb';

@@ -314,6 +314,8 @@ export const ParticipantRowSchema = z.object({
   /** Bound to a phone right now. */
   bound: z.boolean(),
   resets: z.number().int(),
+  /** Epoch ms when a coordinator let this person in at /gate, or null. */
+  gateEnteredAt: z.number().nullable(),
   attendee: z
     .object({
       id: z.number().int(),
@@ -385,3 +387,65 @@ export const PurgeReportSchema = z.object({
   rows: z.record(z.string(), z.number().int()),
 });
 export type PurgeReport = z.infer<typeof PurgeReportSchema>;
+
+/* ----------------------------------------------------------------- gate */
+
+/** One registered participant as shown to a door coordinator at /gate (no full phone or email). */
+export const GatePersonSchema = z.object({
+  id: z.number().int(),
+  roll: z.string(),
+  name: z.string(),
+  year: z.string().nullable(),
+  section: z.string().nullable(),
+  phoneLast4: z.string().nullable(),
+  note: z.string(),
+  signedIn: z.boolean(),
+  gateEnteredAt: z.number().nullable(),
+});
+export type GatePerson = z.infer<typeof GatePersonSchema>;
+
+export const GateCountSchema = z.object({
+  total: z.number().int(),
+  entered: z.number().int(),
+});
+export type GateCount = z.infer<typeof GateCountSchema>;
+
+export const GateRecentSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  roll: z.string(),
+  year: z.string().nullable(),
+  section: z.string().nullable(),
+  gateEnteredAt: z.number(),
+});
+export type GateRecent = z.infer<typeof GateRecentSchema>;
+
+export const GateStatsSchema = z.object({
+  total: z.number().int(),
+  entered: z.number().int(),
+  recent: z.array(GateRecentSchema),
+});
+export type GateStats = z.infer<typeof GateStatsSchema>;
+
+export const GateLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(300) });
+export const GateLookupResponseSchema = z.object({
+  read: z.enum(['qr', 'roll', 'search']),
+  qrSuffix: z.string().nullable(),
+  matches: z.array(GatePersonSchema),
+  stats: GateCountSchema,
+});
+export type GateLookupResponse = z.infer<typeof GateLookupResponseSchema>;
+
+export const GateEnterResponseSchema = z.object({
+  person: GatePersonSchema,
+  /** true when this tap marked them entered; false when they were already marked in. */
+  newlyEntered: z.boolean(),
+  stats: GateCountSchema,
+});
+export type GateEnterResponse = z.infer<typeof GateEnterResponseSchema>;
+
+export const GateUndoResponseSchema = z.object({
+  person: GatePersonSchema,
+  stats: GateCountSchema,
+});
+export type GateUndoResponse = z.infer<typeof GateUndoResponseSchema>;

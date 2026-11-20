@@ -18,6 +18,7 @@ import {
   type IdSignInRequest,
   type RollSignInRequest,
   StaffMeSchema,
+  type StaffRole,
   StickerBookResponseSchema,
 } from '@afterhours/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,9 +31,10 @@ export const qk = {
   leaderboard: (limit: number) => ['leaderboard', limit] as const,
   presence: ['presence'] as const,
   config: ['config'] as const,
-  staff: (role: 'admin' | 'screen') => ['staff', role] as const,
+  staff: (role: StaffRole) => ['staff', role] as const,
   kits: ['admin', 'kits'] as const,
   participants: ['admin', 'participants'] as const,
+  gateStats: ['gate', 'stats'] as const,
   screenState: ['screen', 'state'] as const,
 };
 
@@ -122,8 +124,8 @@ export function useAppConfig() {
   return useQuery({ queryKey: qk.config, queryFn: () => api.get('/api/config', AppConfigSchema), staleTime: Infinity });
 }
 
-/** Console / projector session. Resolves to true/false. */
-export function useStaffSession(role: 'admin' | 'screen') {
+/** Console / projector / gate session. Resolves to true/false. */
+export function useStaffSession(role: StaffRole) {
   return useQuery({
     queryKey: qk.staff(role),
     queryFn: async () => {
@@ -139,7 +141,7 @@ export function useStaffSession(role: 'admin' | 'screen') {
   });
 }
 
-export function useStaffSignIn(role: 'admin' | 'screen') {
+export function useStaffSignIn(role: StaffRole) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (pin: string) => api.post(`/api/${role}/session`, { pin }, StaffMeSchema),
@@ -147,7 +149,7 @@ export function useStaffSignIn(role: 'admin' | 'screen') {
   });
 }
 
-export function useStaffSignOut(role: 'admin' | 'screen') {
+export function useStaffSignOut(role: StaffRole) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.del(`/api/${role}/session`, OkSchema),

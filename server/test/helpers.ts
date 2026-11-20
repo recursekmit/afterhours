@@ -12,6 +12,7 @@ import { features as allFeatures } from '../src/features/registry';
 export const SRC_ROOT = resolve(import.meta.dirname, '../src');
 export const ADMIN_PIN = '9999';
 export const SCREEN_PIN = '8888';
+export const GATE_PIN = '7777';
 
 export interface TestApp {
   app: FastifyInstance;
@@ -28,7 +29,7 @@ export async function makeApp(
   opts: { config?: Partial<Config>; features?: ServerFeature[]; pushSender?: PushSender; env?: Record<string, string> } = {},
 ): Promise<TestApp> {
   const config: Config = {
-    ...loadConfig({ NODE_ENV: 'test', ADMIN_PIN, SCREEN_PIN, ...opts.env }),
+    ...loadConfig({ NODE_ENV: 'test', ADMIN_PIN, SCREEN_PIN, GATE_PIN, ...opts.env }),
     ...opts.config,
   };
   let t = Date.parse('2026-11-21T09:30:00Z');
@@ -94,6 +95,13 @@ export async function adminJar(app: FastifyInstance): Promise<Jar> {
   const jar = new Jar();
   const r = await req(app, jar, 'POST', '/api/admin/session', { pin: ADMIN_PIN });
   if (r.statusCode !== 200) throw new Error(`admin login failed: ${r.body}`);
+  return jar;
+}
+
+export async function gateJar(app: FastifyInstance): Promise<Jar> {
+  const jar = new Jar();
+  const r = await req(app, jar, 'POST', '/api/gate/session', { pin: GATE_PIN });
+  if (r.statusCode !== 200) throw new Error(`gate login failed: ${r.body}`);
   return jar;
 }
 

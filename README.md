@@ -2,7 +2,7 @@
 
 The companion app for **After Hours**, a chill afternoon tech event by [Recurse](https://github.com/recursekmit), the technical club of KMIT. Event day: **Saturday 21 November 2026**.
 
-Every participant runs it on their phone as an installable app. It shows what's on now and next, takes attendance, alerts people before the big moments, and hosts every activity. All points add up on one live leaderboard, which closes the day with a top-10 reveal on the projector.
+About **60-70 participants**, each running it on their phone as an installable app. It shows what's on now and next, takes attendance, alerts people before the big moments, and hosts every activity. All points add up on one live leaderboard, which closes the day with a top-10 reveal on the projector.
 
 | Document | What's in it |
 |---|---|
@@ -66,12 +66,12 @@ Every participant runs it on their phone as an installable app. It shows what's 
   - The puzzle hour: Packet Panic, Patch the Bot and Rebuild the Image in timed rounds, for houses and mocktail tokens.
 - **Stalls and mocktails.**
   - Everyone starts with **2 free mocktails** (the allowance is set in the console). After that, points buy more: the home card shows "38 more points to your next mocktail".
-  - Food, merch and the mocktail bar have menus built in the console: items, a points price, stock, a per-person limit, an optional photo, or a pasted CSV. A fresh database already has the mocktail bar (one mocktail: free allowance first, then 50 points).
+  - **2 stalls**: the mocktail bar and one food and merch stall. Menus are built in the console: items, a points price, stock, a per-person limit, an optional photo, or a pasted CSV. A fresh database already has the mocktail bar (one mocktail: free allowance first, then 50 points); the console's "add the second stall" sets up the other one.
   - The attendee shows a full-screen QR that changes every 30 s (plus a typed code). The shopkeeper scans it at `/stall`, sees free mocktails left, points and the basket, and taps "hand it over". The phone celebrates.
   - Spending never lowers the leaderboard: the board ranks points earned; spending lives in its own table.
   - Every hand-over is one SQLite transaction with an idempotency key, so two stalls can never give out a third free mocktail. Organisers can void a hand-over (points, drinks and stock come back) and export a transactions CSV.
 - **Flash drops, live feed, hype.**
-  - Drops fired or scheduled from the console take over every phone and the projector with a siren, a 3-2-1 and a countdown on the server clock: a **code drop** (first N to type the code win, live "17/20 claimed"), a **speed question**, a **golden slip** (a hidden word or QR, first finder takes the bonus and a sticker) and **everyone wins** (the room hits a reaction goal together). A ready-made library of tech and club drops fires in two taps.
+  - Drops fired or scheduled from the console take over every phone and the projector with a siren, a 3-2-1 and a countdown on the server clock: a **code drop** (first N to type the code win, live "17/20 claimed"), a **speed question**, a **golden slip** (a hidden word or QR, first finder takes the bonus and a sticker) and **everyone wins** (the room hits a reaction goal together). A ready-made library of tech and club drops fires in two taps. Winners, room goals and the hype meter scale to the people signed in (about 7 code-drop winners for 65 people), and the console can override any of them.
   - A live feed of what's happening (nicknames only, coalesced and capped) as a strip on the home screen and a ticker on the projector. Organisers can mute it, hide a line or post their own.
   - A hype meter on the projector ("the room is on fire" at max, optionally firing an everyone-wins drop) and a personal streak chip on home.
 - **Recap.**
@@ -93,7 +93,7 @@ Every participant runs it on their phone as an installable app. It shows what's 
   - `web/`: React, Vite, TanStack Query, `motion`, and `vite-plugin-pwa` (Workbox `injectManifest`).
 - One Node process serves the API and the built web app.
 - Fonts are bundled, so nothing is loaded from a font CDN.
-- Designed and load-tested for 300 phones at once.
+- Built for the 60-70 people on the day and load-tested for 300 phones at once, as headroom.
 
 ```
 shared/src/            contract: core schemas + one file per feature (shared/src/features/*.ts)
@@ -200,7 +200,7 @@ The click-by-click version is [docs/EVENT-DAY.md](docs/EVENT-DAY.md). The run sh
    - open trails;
    - fire flash drops from the drop library;
    - send announcements.
-4. Stalls: before doors, set each stall's menu in the console (stalls panel) and give each shopkeeper their 6-digit code. They open `/stall` on their phone, sign in, and scan attendees' QRs.
+4. Stalls (2: the mocktail bar and food + merch): before doors, add the second stall and both menus in the console (stalls panel) and give each shopkeeper their 6-digit code. They open `/stall` on their phone, sign in, and scan attendees' QRs.
 5. Keep `/screen` on the projector. It switches to whatever is live.
 6. To close: freeze the leaderboard and run the top-10 reveal. Recaps open by themselves when it finishes. Afterwards, export the attendance and stall CSVs.
 

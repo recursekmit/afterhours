@@ -61,9 +61,13 @@ test.describe.serial('stalls', () => {
 
     const ov0 = await api<Overview>('GET', '/api/stalls/admin/overview');
     if (!ov0.stalls.some((s) => s.name === STALL)) {
-      await page.getByLabel('stall name').fill(STALL);
-      await page.getByLabel('where', { exact: true }).last().fill('by the stage');
-      await page.getByRole('button', { name: 'create, get a code' }).click();
+      // with only the mocktail bar, the console puts "add the second stall" right at the top
+      const add = page.locator('div:has(> div > h2:text-is("add the second stall"))');
+      await expect(add).toBeVisible();
+      await expect(add.getByText('2 stalls')).toBeVisible();
+      await add.getByLabel('stall name').fill(STALL);
+      await add.getByLabel('where', { exact: true }).fill('by the stage');
+      await add.getByRole('button', { name: 'create, get a code' }).click();
       const block = page.locator(`div:has(> div > h2:text-is("${STALL}"))`);
       await expect(block).toBeVisible();
       const addItem = async (name: string, price: string, free: boolean) => {

@@ -1,6 +1,6 @@
 # Event day: operator cheat sheet
 
-Saturday 21 November 2026. Console at `/admin` (laptop, `ADMIN_PIN`), projector at `/screen` (`SCREEN_PIN`), shopkeepers at `/stall`. Everything below is a panel in the console's left menu.
+Saturday 21 November 2026, about 60-70 participants, 2 stalls. Console at `/admin` (laptop, `ADMIN_PIN`), projector at `/screen` (`SCREEN_PIN`), shopkeepers at `/stall`. Everything below is a panel in the console's left menu.
 
 ## Before doors (T-90 to T-30)
 
@@ -11,15 +11,15 @@ Saturday 21 November 2026. Console at `/admin` (laptop, `ADMIN_PIN`), projector 
 5. **stalls.**
    - "free mocktails per person": 2.
    - The **mocktail bar** already exists with "mocktail" (free allowance first, then 50 points). Change its price in the pts cell if the team decides.
-   - Add the food and merch stalls: type items, or paste a CSV (`stall,item,price,stock,limit[,free]`). Click a thumbnail to add a photo.
-   - Give each shopkeeper their stall's **6-digit code**. They open `/stall` on their phone, type it, and leave the page open (it keeps the screen awake).
+   - Add the **second stall** (food + merch) in "add the second stall" at the top of the panel, then its items, or paste a CSV (`stall,item,price,stock,limit[,free]`). Click a thumbnail to add a photo.
+   - Give each of the 2 shopkeepers their stall's **6-digit code**. They open `/stall` on their phone, type it, and leave the page open (it keeps the screen awake).
    - Leave "spending lowers the leaderboard" **off**.
 6. **drops.** Check "feed on" and "hype meter" are ticked. Print the golden slip's QR from the drop's "slip QR" button if you plan one, and hide it.
 7. **projector.** `/screen` signed in, display sleep off, sound on. No pinned scene.
 
 ## Doors
 
-8. **kits.** Hand out kit cards. Sign-in is attendance. Help with the avatar; suggest "add to home screen" and alerts.
+8. **kits.** About 80 printed (headcount plus spares). Hand out kit cards. Sign-in is attendance. Help with the avatar; suggest "add to home screen" and alerts.
 
 ## During the afternoon
 
@@ -27,7 +27,7 @@ Saturday 21 November 2026. Console at `/admin` (laptop, `ADMIN_PIN`), projector 
 10. **check-in.** Open check-in for the session. The projector shows the code; people type it.
 11. **polls.** Launch, then close, then reveal. The projector takes over by itself.
 12. **hunt.** Open a trail at its slot. Marshals at the stops.
-13. **drops.** Between segments, open "drop library" and press **fire** (or "in 5 min" to tease phones). One drop at a time. "cancel it" stops a live one; points already won stay. Post a feed line with "say something in the feed"; "hide" removes a bad line.
+13. **drops.** Between segments, open "drop library" and press **fire** (winners and goals are already sized to who is signed in, e.g. first 7 win for 65 people) (or "in 5 min" to tease phones). One drop at a time. "cancel it" stops a live one; points already won stay. Post a feed line with "say something in the feed"; "hide" removes a bad line.
 14. **stalls and the mocktail bar.** Nothing to click while it runs. Watch "hand-overs" in the stalls panel. Shopkeeper flow: scan the attendee's QR (or type their 6-character code), check the big "free mocktails left", tap items, **hand it over**, next person.
 15. **announce.** Banners and push for anything urgent.
 

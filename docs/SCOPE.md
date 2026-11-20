@@ -5,7 +5,7 @@ Status as of Friday 20 November 2026: every feature below is built and tested on
 
 ## 1. What we are building
 
-After Hours is the companion app for a chill tech afternoon. Every participant runs it on their phone as an installable app. It does four jobs:
+After Hours is the companion app for a chill tech afternoon for about **60-70 participants**. Every participant runs it on their phone as an installable app. It does four jobs:
 
 1. It tells people what is on now and next, and alerts them before the big moments.
 2. It takes attendance: once at the entry desk and again at each session.
@@ -90,7 +90,7 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 
 ### Stalls and mocktails
 - Every participant starts with **2 free mocktails** (an allowance set in the console). Points earned buy more; the home card shows the progress to the next one.
-- Food, merch and mocktail stalls each have a menu set in the console: items, points price, stock, per-person limit, optional photo, or a pasted CSV. A fresh database starts with the mocktail bar (mocktail: free allowance first, then 50 points, editable).
+- **2 stalls**: the mocktail bar and one food and merch stall. Each has a menu set in the console: items, points price, stock, per-person limit, optional photo, or a pasted CSV. A fresh database starts with the mocktail bar (mocktail: free allowance first, then 50 points, editable).
 - The attendee shows a rotating QR (30 s, plus a typed code); the shopkeeper at `/stall` signs in with the stall's 6-digit code, scans it, and hands it over with one tap. The phone celebrates; receipts are in the wallet.
 - Spending never lowers the leaderboard. A console switch "spending lowers the leaderboard" exists, off, and is not wired.
 - Atomic and idempotent: two stalls can never exceed the allowance, stock or a balance. Organisers can void a hand-over and export a transactions CSV.
@@ -113,7 +113,7 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 
 ### Hosting
 - Docker on a DigitalOcean droplet with automatic HTTPS. HTTPS is required for push notifications and the camera.
-- Designed and load-tested for **300 phones at once**.
+- Sized for the **60-70 people** on the day; load-tested for **300 phones at once** as headroom. Drop winners, room goals and the hype meter scale to the people signed in.
 
 ## 3. Out of scope
 
@@ -162,7 +162,7 @@ Both run on one flexible trail engine, so organisers can reshape them from the c
 
 ## 7. Physical prep checklist (Friday)
 
-- [ ] Kit cards printed, cut, and sorted by kit ID, plus about 10% spare blank kits.
+- [ ] About **80 kit cards** printed (the 60-70 headcount plus spares), cut, and sorted by kit ID.
 - [ ] Hunt QR stickers printed; each one has its printed backup code.
 - [ ] Morse cards printed and attached to their objects. Each card read back with the in-app chart to confirm it decodes to the right word.
 - [ ] Stickers and objects placed. Every stop scanned once with a test phone.

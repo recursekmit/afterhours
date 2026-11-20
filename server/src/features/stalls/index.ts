@@ -455,29 +455,26 @@ export const stalls = defineFeature({
     ensureMocktailBar(ctx);
   },
 
+  // Demo data: the event's 2 stalls, the mocktail bar and one for snacks and merch.
   seed(ctx) {
-    if (one(ctx.db, "SELECT 1 AS x FROM stalls_stall WHERE name = 'Snack Shack'")) return;
+    if (one(ctx.db, "SELECT 1 AS x FROM stalls_stall WHERE name = 'snacks + merch'")) return;
     importCsv(
       ctx,
       [
         'stall,item,price,stock,limit,free',
-        'Mocktail Bar,Mocktail,50,,,yes',
-        'Mocktail Bar,Cold coffee,10,60,2,',
-        'Mocktail Bar,Masala chai,5,,,',
-        'Snack Shack,Samosa,8,100,3,',
-        'Snack Shack,Brownie,12,40,2,',
-        'Snack Shack,Chips,5,,,',
-        'Merch Table,Recurse sticker pack,20,50,1,',
-        'Merch Table,Recurse tee,120,12,1,',
+        'mocktail bar,mocktail,50,,,yes',
+        'mocktail bar,masala chai,5,,,',
+        'snacks + merch,samosa,8,100,3,',
+        'snacks + merch,brownie,12,40,2,',
+        'snacks + merch,recurse sticker pack,20,50,1,',
+        'snacks + merch,recurse tee,120,12,1,',
       ].join('\n'),
     );
-    const bar = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Mocktail Bar'");
-    const snack = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Snack Shack'");
-    const merch = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'Merch Table'");
+    const bar = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'mocktail bar' COLLATE NOCASE");
+    const snack = one<{ id: number }>(ctx.db, "SELECT id FROM stalls_stall WHERE name = 'snacks + merch'");
     for (const [s, emoji, loc] of [
       [bar, '\u{1F379}', 'by the stage'],
       [snack, '\u{1F37F}', 'courtyard'],
-      [merch, 'doodle:star', 'registration desk'],
     ] as const) {
       if (s) run(ctx.db, 'UPDATE stalls_stall SET emoji = ?, location = ? WHERE id = ?', emoji, loc, s.id);
     }

@@ -284,12 +284,17 @@ function Settings({ ov, act }: { ov: z.infer<typeof AdminOverviewSchema>; act: (
   );
 }
 
-function AddStall({ act }: { act: (f: () => Promise<unknown>) => void }) {
-  const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState('\u{1F379}');
+function AddStall({ act, title = 'add a stall', first = false }: { act: (f: () => Promise<unknown>) => void; title?: string; first?: boolean }) {
+  const [name, setName] = useState(first ? 'snacks + merch' : '');
+  const [emoji, setEmoji] = useState(first ? '\u{1F37F}' : '\u{1F379}');
   const [location, setLocation] = useState('');
   return (
-    <Section title="add a stall" tilt={-0.2}>
+    <Section title={title} tape={first} tilt={-0.2}>
+      {first && (
+        <p className={ui.hand}>
+          after hours has <b>2 stalls</b>: the mocktail bar (ready below) and one for food and merch. 1. name it here and press create, you get its 6-digit shopkeeper code. 2. add its items in its block below (or paste the menu further down). 3. hand the code to its shopkeeper: they sign in at /stall.
+        </p>
+      )}
       <form
         className={s.addRow}
         onSubmit={(e) => {
@@ -330,7 +335,7 @@ function ImportCsv({ act }: { act: (f: () => Promise<unknown>) => void }) {
       <p className={ui.hand}>
         one row per item: <b>stall,item,price,stock,limit</b>. blank stock means unlimited, blank limit means none. add a sixth column <b>yes</b> for a free-mocktail item. pasting from a spreadsheet works. running it again updates items with the same name.
       </p>
-      <TextArea label="menu" rows={7} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={'stall,item,price,stock,limit\nBrew Bar,Cold coffee,10,60,2\nMerch Table,Sticker pack,20,50,1'} />
+      <TextArea label="menu" rows={7} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder={'stall,item,price,stock,limit\nsnacks + merch,Samosa,8,100,3\nsnacks + merch,Recurse sticker pack,20,50,1'} />
       <div className={ui.row}>
         <Button tone="lime" icon="download" disabled={!csv.trim()} loading={run.isPending} onClick={() => run.mutate()}>
           import
@@ -457,6 +462,7 @@ export function StallsConsole() {
   return (
     <div className={ui.stack}>
       <Settings ov={ov} act={run} />
+      {ov.stalls.filter((st) => st.active).length < 2 && <AddStall act={run} first title={ov.stalls.length === 0 ? 'add your stalls' : 'add the second stall'} />}
       {ov.stalls.length === 0 && (
         <Card tone="sun" tilt={0.4}>
           <div className={ui.row}>
@@ -468,7 +474,7 @@ export function StallsConsole() {
       {ov.stalls.map((st) => (
         <StallBlock key={st.id} st={st} act={run} />
       ))}
-      <AddStall act={run} />
+      {ov.stalls.filter((st) => st.active).length >= 2 && <AddStall act={run} title="add another stall" />}
       <ImportCsv act={run} />
       <Transactions act={run} />
       <DangerZone act={run} />

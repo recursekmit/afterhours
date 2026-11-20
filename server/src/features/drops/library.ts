@@ -1,5 +1,7 @@
 // Ready-made drops: fun tech/club content an organiser can fire in two taps.
-import { type DropInput, DropInputSchema, type LibraryDrop } from '@afterhours/shared/features/drops';
+// Numbers here are designed for a hall of 300; scaleInput() sizes first-N winners and room goals to the
+// people actually signed in when the drop fires, and fills {winners} / {goal} in the blurbs.
+import { type DropInput, DropInputSchema, type LibraryDrop, scaleGoal, scaleWinners } from '@afterhours/shared/features/drops';
 
 type Raw = { id: string; tag: string; input: unknown };
 
@@ -7,12 +9,12 @@ const RAW: Raw[] = [
   {
     id: 'code-sudo',
     tag: 'code',
-    input: { title: 'flash drop: say the magic word', blurb: 'the word is on the big screen. first 20 type it, quick.', durationSec: 45, config: { kind: 'code', code: 'SUDO', display: 'plain', winners: 20, winPoints: 15, restPoints: 3 } },
+    input: { title: 'flash drop: say the magic word', blurb: 'the word is on the big screen. first {winners} type it, quick.', durationSec: 45, config: { kind: 'code', code: 'SUDO', display: 'plain', winners: 20, winPoints: 15, restPoints: 3 } },
   },
   {
     id: 'code-404',
     tag: 'code',
-    input: { title: 'code drop: page not found', blurb: 'look up, type what you see. first 15 win.', durationSec: 40, config: { kind: 'code', code: 'ERR404', display: 'plain', winners: 15, winPoints: 15, restPoints: 3 } },
+    input: { title: 'code drop: page not found', blurb: 'look up, type what you see. first {winners} win.', durationSec: 40, config: { kind: 'code', code: 'ERR404', display: 'plain', winners: 15, winPoints: 15, restPoints: 3 } },
   },
   {
     id: 'morse-ping',
@@ -77,12 +79,12 @@ const RAW: Raw[] = [
   {
     id: 'room-200',
     tag: 'room',
-    input: { title: 'the room did it', blurb: '200 reactions in 60 seconds and everyone gets +5. mash it.', durationSec: 60, config: { kind: 'room', goal: 200, points: 5 } },
+    input: { title: 'the room did it', blurb: '{goal} reactions in 60 seconds and everyone gets +5. mash it.', durationSec: 60, config: { kind: 'room', goal: 200, points: 5 } },
   },
   {
     id: 'room-500',
     tag: 'room',
-    input: { title: 'make it rain', blurb: '500 reactions in 90 seconds, everyone gets +10. all hands.', durationSec: 90, config: { kind: 'room', goal: 500, points: 10 } },
+    input: { title: 'make it rain', blurb: '{goal} reactions in 90 seconds, everyone gets +10. all hands.', durationSec: 90, config: { kind: 'room', goal: 500, points: 10 } },
   },
 ];
 
@@ -92,10 +94,22 @@ export function libraryDrop(id: string): DropInput | undefined {
   return LIBRARY.find((l) => l.id === id)?.input;
 }
 
+/** Size a drop designed for 300 to `present` people: code winners and room goals, and the blurb's numbers. */
+export function scaleInput(input: DropInput, present: number): DropInput {
+  const c = input.config;
+  const config = c.kind === 'code' ? { ...c, winners: scaleWinners(c.winners, present) } : c.kind === 'room' ? { ...c, goal: scaleGoal(c.goal, present) } : c;
+  const blurb = input.blurb.replace('{winners}', String(config.kind === 'code' ? config.winners : '')).replace('{goal}', String(config.kind === 'room' ? config.goal : ''));
+  return { ...input, blurb, config };
+}
+
+export function scaledLibrary(present: number): LibraryDrop[] {
+  return LIBRARY.map((l) => ({ ...l, input: scaleInput(l.input, present) }));
+}
+
 /** What the hype meter fires by itself when the room maxes out. */
 export const AUTO_ROOM: DropInput = DropInputSchema.parse({
   title: 'the room is on fire',
-  blurb: 'you lot maxed the meter. 150 more reactions in 45 seconds and everyone gets +5.',
+  blurb: 'you lot maxed the meter. {goal} more reactions in 45 seconds and everyone gets +5.',
   durationSec: 45,
   config: { kind: 'room', goal: 150, points: 5 },
 });

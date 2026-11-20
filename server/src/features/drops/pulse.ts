@@ -13,9 +13,9 @@ import { type FeatureContext, one } from '../../core';
 import type { Viewer } from '../../core/live/bus';
 import { buildState } from '../schedule/service';
 import { names, nick, push as feed } from './feed';
-import { AUTO_ROOM } from './library';
+import { AUTO_ROOM, scaleInput } from './library';
 import { addRoom, bump, createDrop, fireDrop, liveDrop, mem as dropMem } from './service';
-import { getSettings } from './settings';
+import { getSettings, hypeTargetOf, presentCount, sizingOf } from './settings';
 
 const STAFF: Viewer = { attendeeId: null, admin: true, screen: true };
 
@@ -24,6 +24,7 @@ export const HYPE_COOLDOWN_MS = 5 * 60_000;
 export const SCHEDULE_EVERY_MS = 5000;
 export const CROWD_EVERY_MS = 90_000;
 export const LOUD_EVERY_MS = 120_000;
+/** Designed for 300 people; scaled to the room (roomSizing().loudAt). */
 export const LOUD_AT = 60;
 
 const Stamp = z.object({ trailId: z.number(), nickname: z.string(), solved: z.number() });
@@ -205,7 +206,7 @@ export function pump(ctx: FeatureContext): void {
   // "the room is loud"
   m.loud = m.loud.filter((x) => x.at > now - 10_000);
   const loud = m.loud.reduce((a, b) => a + b.n, 0);
-  if (loud >= LOUD_AT && now - m.lastLoudAt > LOUD_EVERY_MS) {
+  if (loud >= sizingOf(ctx).loudAt && now - m.lastLoudAt > LOUD_EVERY_MS) {
     m.lastLoudAt = now;
     feed(ctx, { key: 'loud', priority: 1, tone: 'hype', icon: 'flame', text: `the room is loud: ${loud} reactions in 10s` });
   }
@@ -252,7 +253,7 @@ export function activityPerMin(ctx: FeatureContext): number {
 export function hypeState(ctx: FeatureContext): HypeState {
   const m = mem(ctx);
   const s = getSettings(ctx);
-  return { ...m.hype, enabled: s.hypeEnabled, target: s.hypeTarget };
+  return { ...m.hype, enabled: s.hypeEnabled, target: hypeTargetOf(ctx) };
 }
 
 /** Tick: move the meter, and when it maxes out, set the room on fire (and maybe fire an everyone-wins drop). */
@@ -270,14 +271,15 @@ export function hypeStep(ctx: FeatureContext, force = false): void {
     return;
   }
   const perMin = activityPerMin(ctx);
-  const level = Math.min(1, perMin / s.hypeTarget);
-  m.hype = { enabled: true, level, perMin, target: s.hypeTarget, onFireAt: m.hype.onFireAt };
+  const target = hypeTargetOf(ctx);
+  const level = Math.min(1, perMin / target);
+  m.hype = { enabled: true, level, perMin, target, onFireAt: m.hype.onFireAt };
 
   if (level >= 1 && (m.hype.onFireAt === null || now - m.hype.onFireAt >= HYPE_COOLDOWN_MS)) {
     m.hype.onFireAt = now;
     let dropId: number | null = null;
     if (s.hypeAuto && !liveDrop(ctx)) {
-      const d = createDrop(ctx, AUTO_ROOM, { library: 'auto-room' });
+      const d = createDrop(ctx, scaleInput(AUTO_ROOM, presentCount(ctx)), { library: 'auto-room' });
       dropId = fireDrop(ctx, d.id).id;
     }
     ctx.live.publish('drops.on-fire', { at: now, dropId }, 'all');

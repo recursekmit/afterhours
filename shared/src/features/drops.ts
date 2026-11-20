@@ -39,6 +39,48 @@ export function speedPoints(rank: number, top: number, floor: number): number {
   return Math.max(floor, Math.round(top * 0.75 ** Math.max(0, rank - 1)));
 }
 
+// ---- sizing for the room ------------------------------------------------------
+// The library and the hype meter were tuned for a hall of 300. The real room is whoever has signed in
+// (60-70 people on the day), so the defaults scale to that, with floors so a small room still has a race.
+
+export const DESIGN_ROOM = 300;
+
+/** First-N winners for a code drop designed with `base` winners for 300: 20 -> 7 at 65 people, never under 3. */
+export function scaleWinners(base: number, present: number): number {
+  const floor = Math.min(3, base);
+  return Math.max(floor, Math.min(base, Math.round((base * 1.5 * Math.max(0, present)) / DESIGN_ROOM)));
+}
+
+/** A room goal designed for 300 (reactions + taps in the window): 200 -> 43 at 65 people, never under 30. */
+export function scaleGoal(base: number, present: number): number {
+  return Math.max(30, Math.round((base * Math.max(0, present)) / DESIGN_ROOM));
+}
+
+export const RoomSizingSchema = z.object({
+  /** People signed in (event attendance). */
+  present: z.number().int(),
+  /** Suggested first-N for a code drop. */
+  codeWinners: z.number().int(),
+  /** Suggested goal for a 60 s everyone-wins drop. */
+  roomGoal: z.number().int(),
+  /** Activity a minute that fills the hype meter when it is on auto. */
+  hypeTarget: z.number().int(),
+  /** Reactions in 10 s that make "the room is loud". */
+  loudAt: z.number().int(),
+});
+export type RoomSizing = z.infer<typeof RoomSizingSchema>;
+
+export function roomSizing(present: number): RoomSizing {
+  const p = Math.max(0, Math.floor(present));
+  return {
+    present: p,
+    codeWinners: scaleWinners(20, p),
+    roomGoal: scaleGoal(200, p),
+    hypeTarget: Math.max(30, Math.round(p * 0.5)),
+    loudAt: Math.max(15, Math.round((60 * p) / DESIGN_ROOM)),
+  };
+}
+
 const text = (max: number) =>
   z
     .string()
@@ -307,8 +349,10 @@ export const DropSettingsSchema = z.object({
   hypeEnabled: z.boolean(),
   /** When the meter maxes out, fire an "everyone wins" drop by itself. */
   hypeAuto: z.boolean(),
-  /** Activity per minute that fills the meter. */
+  /** Activity per minute that fills the meter (used when hypeTargetAuto is off). */
   hypeTarget: z.number().int().min(20).max(5000),
+  /** Size the meter to the people signed in (roomSizing). Setting hypeTarget turns this off. */
+  hypeTargetAuto: z.boolean(),
 });
 export type DropSettings = z.infer<typeof DropSettingsSchema>;
 export const DropSettingsPatchSchema = DropSettingsSchema.partial().strict();
@@ -343,6 +387,8 @@ export const DropsAdminStateSchema = z.object({
   feed: z.array(AdminFeedItemSchema),
   hype: HypeStateSchema,
   tally: DropTallySchema.nullable(),
+  /** Defaults sized to who is signed in; the library above is already scaled with them. */
+  room: RoomSizingSchema,
   serverNow: z.number().int(),
 });
 export type DropsAdminState = z.infer<typeof DropsAdminStateSchema>;

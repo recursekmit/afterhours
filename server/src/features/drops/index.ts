@@ -17,6 +17,7 @@ import {
   ScheduleDropRequestSchema,
   type ScreenDropResponse,
   TapRequestSchema,
+  roomSizing,
 } from '@afterhours/shared/features/drops';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -36,7 +37,7 @@ import {
   requireScreen,
 } from '../../core';
 import { clearFeed, feedStateChanged, flushFeed, hideLine, recentFeed, say } from './feed';
-import { LIBRARY, libraryDrop } from './library';
+import { libraryDrop, scaleInput, scaledLibrary } from './library';
 import { hypeState, hypeStep, pump, scheduleLines } from './pulse';
 import {
   cancelDrop,
@@ -61,7 +62,7 @@ import {
   toPublic,
   type DropRow,
 } from './service';
-import { getSettings, saveSettings } from './settings';
+import { getSettings, presentCount, saveSettings } from './settings';
 import { streakOf } from './streak';
 
 interface Limits {
@@ -112,9 +113,11 @@ function adminState(ctx: FeatureContext): DropsAdminState {
     `SELECT * FROM drops_drops ORDER BY CASE status WHEN 'live' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END, COALESCE(fire_at, closed_at, created_at) DESC, id DESC LIMIT 60`,
   );
   const live = liveDrop(ctx);
+  const present = presentCount(ctx);
   return {
     drops: rows.map((r) => toAdmin(ctx, r)),
-    library: LIBRARY,
+    library: scaledLibrary(present),
+    room: roomSizing(present),
     settings: getSettings(ctx),
     feed: recentFeed(ctx, true),
     hype: hypeState(ctx),
@@ -229,8 +232,9 @@ export const drops = defineFeature({
     app.post('/admin/library/:lib', async (req) => {
       requireAdmin(req);
       const { lib } = parse(LibParams, req.params);
-      const input = libraryDrop(lib);
-      if (!input) throw notFound('No such library drop.');
+      const base = libraryDrop(lib);
+      if (!base) throw notFound('No such library drop.');
+      const input = scaleInput(base, presentCount(ctx));
       const { when } = parse(LibFire, req.body ?? {});
       if (when === 'now' && liveDrop(ctx)) throw new HttpError(409, 'conflict', 'One drop at a time. Wait for the live one or cancel it.');
       if (typeof when === 'object' && when.at <= ctx.now()) throw badRequest('Pick a time in the future.');
@@ -318,10 +322,11 @@ export const drops = defineFeature({
 
   seed(ctx) {
     // Two drafts so the console is not empty on a demo; the library has the rest.
+    const present = presentCount(ctx);
     const a = libraryDrop('code-sudo');
     const b = libraryDrop('room-200');
-    if (a) createDrop(ctx, a, { library: 'code-sudo' });
-    if (b) createDrop(ctx, b, { library: 'room-200' });
+    if (a) createDrop(ctx, scaleInput(a, present), { library: 'code-sudo' });
+    if (b) createDrop(ctx, scaleInput(b, present), { library: 'room-200' });
     say(ctx, 'welcome to after hours. drops land without warning, keep your phone close');
   },
 });

@@ -12,6 +12,7 @@ import {
   DropSettingsSchema,
   type DropsAdminState,
   type LibraryDrop,
+  type RoomSizing,
 } from '@afterhours/shared/features/drops';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -63,10 +64,12 @@ function LiveNow({ st, act }: { st: DropsAdminState; act: ReturnType<typeof useA
   );
 }
 
-function Library({ items, busy, act }: { items: LibraryDrop[]; busy: boolean; act: ReturnType<typeof useAct> }) {
+function Library({ items, room, busy, act }: { items: LibraryDrop[]; room: RoomSizing; busy: boolean; act: ReturnType<typeof useAct> }) {
   return (
     <Section title="drop library" tilt={0.2}>
-      <p className={ui.hand}>ready-made. "fire" starts the siren on every phone and the projector now. "in 5 min" teases phones first.</p>
+      <p className={ui.hand}>
+        ready-made. "fire" starts the siren on every phone and the projector now. "in 5 min" teases phones first. winners and goals are sized for the <b>{room.present}</b> people signed in; build your own below to pick other numbers.
+      </p>
       <ul className={s.lib}>
         {items.map((l) => (
           <li key={l.id} className={s.libCard} data-kind={l.input.config.kind}>
@@ -74,7 +77,14 @@ function Library({ items, busy, act }: { items: LibraryDrop[]; busy: boolean; ac
             <b className={s.libTitle}>{l.input.title}</b>
             <span className={s.libBlurb}>{l.input.blurb}</span>
             <span className={s.libMeta}>
-              {l.input.durationSec}s{l.input.config.kind === 'code' ? `, code ${l.input.config.code}` : l.input.config.kind === 'golden' ? `, word ${l.input.config.token}` : ''}
+              {l.input.durationSec}s
+              {l.input.config.kind === 'code'
+                ? `, code ${l.input.config.code}, first ${l.input.config.winners} win`
+                : l.input.config.kind === 'golden'
+                  ? `, word ${l.input.config.token}`
+                  : l.input.config.kind === 'room'
+                    ? `, goal ${l.input.config.goal}`
+                    : ''}
             </span>
             <span className={ui.row}>
               <Button size="sm" tone="lime" icon="bolt" disabled={busy} onClick={() => act(() => api.post(`/api/drops/admin/library/${l.id}`, { when: 'now' }, AdminDropSchema))}>
@@ -157,8 +167,9 @@ function configOf(f: Form) {
   }
 }
 
-function Builder({ act }: { act: ReturnType<typeof useAct> }) {
-  const [f, setF] = useState<Form>(blank);
+function Builder({ room, act }: { room: RoomSizing; act: ReturnType<typeof useAct> }) {
+  const sized = (): Form => ({ ...blank, winners: String(room.codeWinners), goal: String(room.roomGoal) });
+  const [f, setF] = useState<Form>(sized);
   const set = (k: keyof Form) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }));
   const send = (when: 'now' | 'draft' | 'at') => {
     let w: unknown = when;
@@ -169,7 +180,7 @@ function Builder({ act }: { act: ReturnType<typeof useAct> }) {
     }
     act(async () => {
       await api.post('/api/drops/admin', { title: f.title, blurb: f.blurb, durationSec: Number(f.duration) || 60, config: configOf(f), when: w }, AdminDropSchema);
-      setF((x) => ({ ...blank, kind: x.kind }));
+      setF((x) => ({ ...sized(), kind: x.kind }));
     });
   };
   return (
@@ -351,7 +362,24 @@ function Feed({ st, act }: { st: DropsAdminState; act: ReturnType<typeof useAct>
       </div>
       <div className={ui.statGrid}>
         <Stat label="activity a minute" value={st.hype.perMin} />
-        <Stat label={`meter (fills at ${st.settings.hypeTarget})`} value={`${Math.round(st.hype.level * 100)}%`} />
+        <Stat label={`meter (fills at ${st.hype.target})`} value={`${Math.round(st.hype.level * 100)}%`} />
+      </div>
+      <div className={ui.row}>
+        <label className={ui.toggle}>
+          <input type="checkbox" checked={st.settings.hypeTargetAuto} onChange={(e) => patch({ hypeTargetAuto: e.target.checked })} />
+          size the meter to the room ({st.room.hypeTarget} a minute for {st.room.present} people)
+        </label>
+        <TextField
+          key={`${st.settings.hypeTarget}-${st.settings.hypeTargetAuto}`}
+          label="or fill it at (a minute)"
+          inputMode="numeric"
+          defaultValue={st.settings.hypeTargetAuto ? '' : String(st.settings.hypeTarget)}
+          placeholder={String(st.room.hypeTarget)}
+          onBlur={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isInteger(n) && n >= 20 && n <= 5000 && (st.settings.hypeTargetAuto || n !== st.settings.hypeTarget)) patch({ hypeTarget: n });
+          }}
+        />
       </div>
       <form
         className={ui.row}
@@ -412,8 +440,8 @@ export default function DropsConsole() {
   return (
     <div className={ui.stack}>
       <LiveNow st={st} act={act} />
-      <Library items={st.library} busy={live} act={act} />
-      <Builder act={act} />
+      <Library items={st.library} room={st.room} busy={live} act={act} />
+      <Builder room={st.room} act={act} />
       <Section title="drops" tilt={-0.3}>
         {st.drops.length === 0 ? (
           <p className={ui.hand}>nothing yet. fire one from the library.</p>

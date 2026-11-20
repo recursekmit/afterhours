@@ -174,8 +174,8 @@ export function WalletPage() {
   const cart = useCart();
   const setCart = useSetCart();
   const [pick, setPick] = useState<number | null>(null);
-  const lines = cart.data?.lines ?? [];
-  const stalls: StallMenu[] = menu.data?.stalls ?? [];
+  const lines = useMemo(() => cart.data?.lines ?? [], [cart.data]);
+  const stalls: StallMenu[] = useMemo(() => menu.data?.stalls ?? [], [menu.data]);
   const active = stalls.find((st) => st.id === pick) ?? stalls[0];
   const balance = wallet.data?.balance ?? 0;
   const freeLeft = wallet.data?.allowance.left ?? 0;

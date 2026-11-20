@@ -10,6 +10,7 @@ import { morse } from './morse';
 import { polls } from './polls';
 import { reactions } from './reactions';
 import { schedule } from './schedule';
+import { stalls } from './stalls';
 
 export const features: ServerFeature[] = [
   alerts,
@@ -21,4 +22,5 @@ export const features: ServerFeature[] = [
   polls,
   reactions,
   schedule,
+  stalls,
 ];

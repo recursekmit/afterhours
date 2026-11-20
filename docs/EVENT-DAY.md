@@ -19,7 +19,8 @@ Saturday 21 November 2026, about 60-70 participants, 2 stalls. Console at `/admi
 
 ## Doors
 
-8. **kits.** About 80 printed (headcount plus spares). Hand out kit cards. Sign-in is attendance. Help with the avatar; suggest "add to home screen" and alerts.
+8. **participants (student ID).** Registered people tap "scan your student ID" on the sign-in screen and hold their college ID QR to the camera. One person with that card number: "hi Kavya! that's you?", yes, profile, done. Two people share the number: a "who are you?" picker (name, year, section); they tap themselves. No camera or no QR: "type your roll number" with their full roll and the last 4 digits of the phone they registered with. Keep the console on **desk** at the entry table: scan the card with the laptop camera or type the roll to see on the list / signed in, unbind, or add a walk-in in seconds.
+9. **kits (walk-ins and spares).** About 80 printed (headcount plus spares). Hand out kit cards. Sign-in is attendance. Help with the avatar; suggest "add to home screen" and alerts.
 
 ## During the afternoon
 
@@ -41,6 +42,11 @@ Saturday 21 November 2026, about 60-70 participants, 2 stalls. Console at `/admi
 
 | Problem | Fix |
 |---|---|
+| **"This ID is already signed in on another phone"** | desk: scan their card or type their roll, check it is really them (name, class, phone ending), "unbind phone". They scan again on their phone. Points stay. |
+| **"You're not on the list"** | desk: type their full roll; if not found, add them right there (name, roll, phone) and they scan again. Or hand them an entry kit. |
+| **Picker shows someone already signed in** | That person is disabled in the picker. If the one signed in is the wrong person, desk: unbind them, and the right one taps themselves. |
+| **Roll noted "roll also given by ..."** | Two registrations used the same roll. Ask for the ID card; fix the roll with "edit" on the right person, add the other with their real roll. |
+| **Camera denied on the phone** | "type my roll instead": full roll + last 4 phone digits. |
 | **Lost or broken phone** | kits: find their kit, "reset", "reset, same password". They sign in on the new phone with the same card. Points, stickers, free mocktails and receipts stay with them. |
 | **Lost the kit card** | kits: find them by name, "reset with a new password", read it out once. |
 | **"My kit is already in use"** | The kit is bound to another phone. Reset it (above). |

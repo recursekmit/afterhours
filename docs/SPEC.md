@@ -98,6 +98,15 @@ Passwords are handed out on a card in the **entry kit**. Organisers help people 
 - Organisers: a console PIN from env (`ADMIN_PIN`), separate cookie. Projector: `SCREEN_PIN`.
 - **First sign-in is the event attendance record** (timestamped).
 
+### 4.1 Student-ID login
+
+- The registered list (Google Form) is imported in the console **participants** panel or with `npm run import-participants -w server -- --db <db> --csv <csv>` (same code). Rolls are normalised (uppercase, O to 0 where a roll has digits) and deduped by roll; duplicates and conflicts (same roll, different name or phone) are reported, the first is kept, conflicts are noted for the desk.
+- Each participant owns a synthetic **roster kit** (`kits.kind = 'roster'`, id = their roll). The phone binds to it exactly like a printed kit and the first sign-in creates a normal attendee, so `attendeeId` and `kit_id` work everywhere downstream. Roster kits have no usable password and are hidden from the kits panel.
+- The ID card QR (e.g. `055W-12600-C-NAME-CSE-250908`) is read by its first segment, the roll's last four. Names and dates are not used. One match: "that's you?". Several: a "who are you?" picker with name, year and section only (bound people disabled). None: "not on the list, show this at the desk". The server checks a pick belongs to the card and is not bound elsewhere.
+- Typed fallback: full roll + last 4 digits of the registered phone; one reply for unknown roll and wrong digits; limited per roll and per network. Name-returning lookups are limited per network.
+- One phone per ID (first wins; the console's participants panel and desk mode unbind). Optional console setting, off by default: also ask the last 4 phone digits after a scan.
+- Browsers without BarcodeDetector (iPhone Safari, desk laptops) decode with jsQR, lazy-loaded and kept out of the precache.
+
 ## 5. Features
 
 ### 5.1 Home: now and next

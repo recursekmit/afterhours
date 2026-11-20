@@ -3,8 +3,9 @@
 // Needs the admin PIN (ADMIN_PIN env, default 2468) and a server started with a high
 // LOGIN_IP_PER_MIN, because every bot signs in from the same IP.
 // Each bot: signs in, saves a profile, holds an SSE stream open, votes in the live poll,
-// checks in with the projector code, starts the hunt and stamps its first stop, plays a full
-// Lag Spike arcade run. Reports errors and latency per step.
+// checks in with the projector code, starts the hunt and stamps its first stop, claims the live flash
+// drop, shows its stall QR and gets a free mocktail handed over by a shopkeeper (10 stalls, one
+// shopkeeper session each), plays a full Lag Spike arcade run. Reports errors and latency per step.
 const BASE = (process.argv[2] ?? 'http://127.0.0.1:4500').replace(/\/$/, '');
 const N = Number(process.argv[3] ?? 300);
 const PIN = process.env.ADMIN_PIN ?? '2468';
@@ -115,7 +116,32 @@ async function setup() {
   if (existing.status !== 'open') await admin.call('hunt open', 'PUT', '/api/hunt/admin/state', { status: 'open' });
   const hunt = (await admin.call('hunt admin', 'GET', '/api/hunt/admin')).json;
   await admin.call('arcade on', 'POST', '/api/arcade/admin/settings', { enabled: true, games: { reaction: true } });
-  return { admin, kits, activityId, pollId: poll.poll.id, tokens: new Map(hunt.stops.map((s) => [s.id, s.token])) };
+
+  // stalls: 10 bars with a free-mocktail item, a signed-in shopkeeper at each
+  const shops = [];
+  const tag = Date.now().toString(36);
+  for (let s = 0; s < 10; s++) {
+    const id = (await admin.call('stall create', 'POST', '/api/stalls/admin/stalls', { name: `lt bar ${tag}-${s}`, emoji: '\u{1F379}', location: '' })).json.id;
+    const itemId = (await admin.call('stall item', 'POST', '/api/stalls/admin/items', { stallId: id, name: 'mocktail', price: 50, freeDrink: true })).json.id;
+    const code = (await admin.call('stall overview', 'GET', '/api/stalls/admin/overview')).json.stalls.find((x) => x.id === id).code;
+    const shop = new Client();
+    await shop.call('shop sign in', 'POST', '/api/stalls/shop/signin', { code });
+    shops.push({ shop, itemId });
+  }
+
+  // a code drop, live for the whole run: first 20 win big
+  const live = (await admin.call('drops admin', 'GET', '/api/drops/admin')).json;
+  for (const d of live.drops.filter((x) => x.status === 'live')) await admin.call('drop cancel', 'POST', `/api/drops/admin/${d.id}/cancel`, {});
+  const drop = (
+    await admin.call('drop fire', 'POST', '/api/drops/admin', {
+      title: 'load test drop',
+      durationSec: 600,
+      config: { kind: 'code', code: 'LOAD', display: 'plain', winners: 20, winPoints: 15, restPoints: 3 },
+      when: 'now',
+    })
+  ).json;
+  await wait(3500); // the siren lead-in before claims open
+  return { admin, kits, activityId, pollId: poll.poll.id, tokens: new Map(hunt.stops.map((s) => [s.id, s.token])), shops, dropId: drop.id };
 }
 
 async function bot(i, env) {
@@ -138,6 +164,15 @@ async function bot(i, env) {
   const me = (await c.call('hunt start', 'POST', '/api/hunt/start', {})).json;
   const token = me?.current ? env.tokens.get(me.current.stopId) : null;
   if (token) await c.call('hunt scan', 'POST', '/api/hunt/scan', { code: token });
+  // the flash drop
+  await c.call('drop current', 'GET', '/api/drops/current');
+  await c.call('drop claim', 'POST', `/api/drops/${env.dropId}/claim`, { answer: 'load' });
+  // the mocktail bar: show the QR, the shopkeeper scans it and hands one over
+  await c.call('wallet', 'GET', '/api/stalls/wallet');
+  const qr = (await c.call('stall qr', 'GET', '/api/stalls/qr')).json;
+  const { shop, itemId } = env.shops[i % env.shops.length];
+  const scan = qr ? (await shop.call('stall scan', 'POST', '/api/stalls/shop/scan', { input: qr.url })).json : null;
+  if (scan?.ticket) await shop.call('stall commit', 'POST', '/api/stalls/shop/commit', { ticket: scan.ticket, key: `lt-${kit.kitId}-mocktail`, lines: [{ itemId, qty: 1 }] });
   const started = await c.call('arcade run', 'POST', '/api/arcade/runs', { game: 'reaction' });
   const run = started.ok ? started.json : null;
   if (run?.spec?.delaysMs) {
@@ -162,8 +197,14 @@ const lives = await Promise.all(Array.from({ length: N }, (_, i) => wait((i / N)
 await env.admin.call('announce', 'POST', '/api/alerts/announce', { title: 'load test', body: 'hello 300 phones', push: false });
 await wait(3000);
 const got = lives.filter((l) => l && l.frames() > 0).length;
+const dropAfter = (await env.admin.call('drops admin', 'GET', '/api/drops/admin')).json;
+const tally = dropAfter.tally;
+const stallTotals = (await env.admin.call('stall overview', 'GET', '/api/stalls/admin/overview')).json.stalls.filter((x) => x.name.startsWith('lt bar'));
+const handed = stallTotals.reduce((a, x) => a + x.sales.freeUnits, 0);
+await env.admin.call('drop cancel', 'POST', `/api/drops/admin/${env.dropId}/cancel`, {});
 for (const l of lives) l?.close();
-console.log(`\n${N} bots in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${got}/${N} streams received live frames\n`);
+console.log(`\n${N} bots in ${((performance.now() - t0) / 1000).toFixed(1)} s; ${got}/${N} streams received live frames`);
+console.log(`drop: ${tally ? `${tally.claimed} right answers, ${Math.min(tally.claimed, tally.slots ?? 0)}/${tally.slots} top spots` : 'closed'}; stalls: ${handed} free mocktails handed over at 10 bars\n`);
 console.log('step'.padEnd(18), 'n'.padStart(5), 'fail'.padStart(5), 'p50'.padStart(7), 'p95'.padStart(7), 'max'.padStart(7));
 for (const [step, s] of stats) {
   console.log(step.padEnd(18), String(s.n).padStart(5), String(s.fail).padStart(5), `${pct(s.ms, 50).toFixed(0)}ms`.padStart(7), `${pct(s.ms, 95).toFixed(0)}ms`.padStart(7), `${Math.max(...s.ms).toFixed(0)}ms`.padStart(7));

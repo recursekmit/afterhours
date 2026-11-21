@@ -141,6 +141,24 @@ export function findByRoll(ctx: AppContext, roll: string): RosterEntry | null {
   return roster(ctx).find((p) => rollKey(p.roll) === key) ?? null;
 }
 
+/**
+ * 1st-year cards print the roll as KMBD1A053G ("KM" where the batch digits go). A typed roll matches a
+ * registered one exactly, or, when either side is KM-prefixed, on everything after the first two characters.
+ */
+export function typedRollMatches(typed: string, registered: string): boolean {
+  const a = rollKey(typed);
+  const b = rollKey(registered);
+  if (a === b) return true;
+  return a.length === 10 && b.length === 10 && (a.startsWith('KM') || b.startsWith('KM')) && a.slice(2) === b.slice(2);
+}
+
+/** Everyone a typed roll could be: the exact roll, else the KM-prefixed matches (see typedRollMatches). */
+export function findAllByTypedRoll(ctx: AppContext, roll: string): RosterEntry[] {
+  const exact = findByRoll(ctx, roll);
+  if (exact) return [exact];
+  return roster(ctx).filter((p) => typedRollMatches(roll, p.roll));
+}
+
 /* ------------------------------------------------------------ settings */
 
 const STRICT_KEY = 'idlogin.strictPhone';
@@ -437,7 +455,8 @@ export function deskLookup(ctx: AppContext, q: string): DeskLookupResponse {
     };
   }
   const key = rollKey(q);
-  const exact = everyone.filter((p) => rollKey(p.roll) === key);
+  let exact = everyone.filter((p) => rollKey(p.roll) === key);
+  if (exact.length === 0) exact = everyone.filter((p) => typedRollMatches(q, p.roll));
   if (exact.length) return { read: 'roll', qr: null, pickId: exact.length === 1 ? (exact[0]?.id ?? null) : null, matches: exact };
   const needle = q.toLowerCase().replace(/\s+/g, ' ').trim();
   const matches = everyone

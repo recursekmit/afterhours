@@ -248,12 +248,35 @@ export function claimCopy(ctx: FeatureContext, attendeeId: number, copyId: numbe
   });
 }
 
-/** A lost slip or a mistake: the copy is free again (its words do not change). */
-export function releaseCopy(ctx: FeatureContext, copyId: number): number {
-  const c = one<{ set_id: number }>(ctx.db, 'SELECT s.set_id FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id WHERE c.id = ?', copyId);
+export interface SerialRelease {
+  setId: number;
+  serial: number;
+  /** Who held copies of that serial before the release. */
+  holders: number[];
+}
+type ReleaseListener = (ctx: FeatureContext, e: SerialRelease) => void;
+const releaseListeners = new WeakMap<FeatureContext['db'], ReleaseListener[]>();
+
+/** Other features (cipher) hear when a serial is freed, inside the same transaction. */
+export function onSerialReleased(ctx: FeatureContext, fn: ReleaseListener): void {
+  releaseListeners.set(ctx.db, [...(releaseListeners.get(ctx.db) ?? []), fn]);
+}
+
+/**
+ * A lost set or a mistake ("my friend scanned my slips"): every copy of that serial in the set is free
+ * again (its words do not change). A serial is one person's set, so it is released as a whole.
+ */
+export function releaseCopy(ctx: FeatureContext, copyId: number): SerialRelease {
+  const c = one<{ set_id: number; serial: number }>(ctx.db, 'SELECT s.set_id, c.serial FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id WHERE c.id = ?', copyId);
   if (!c) throw notFound('No such copy.');
-  run(ctx.db, 'UPDATE hunt_slip_copies SET claimed_by = NULL, claimed_at = NULL WHERE id = ?', copyId);
-  return c.set_id;
+  return tx(ctx.db, () => {
+    const inSerial = 'serial = ? AND slip_id IN (SELECT id FROM hunt_slips WHERE set_id = ?)';
+    const holders = all<{ h: number }>(ctx.db, `SELECT DISTINCT claimed_by AS h FROM hunt_slip_copies WHERE claimed_by IS NOT NULL AND ${inSerial}`, c.serial, c.set_id).map((r) => r.h);
+    run(ctx.db, `UPDATE hunt_slip_copies SET claimed_by = NULL, claimed_at = NULL WHERE ${inSerial}`, c.serial, c.set_id);
+    const e = { setId: c.set_id, serial: c.serial, holders };
+    for (const fn of releaseListeners.get(ctx.db) ?? []) fn(ctx, e);
+    return e;
+  });
 }
 
 /** Trail reset: every copy of the trail's unique sets is free again. */

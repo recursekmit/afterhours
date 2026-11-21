@@ -31,9 +31,10 @@ import {
   SignalFireSchema,
 } from '@afterhours/shared/features/cipher';
 import { z } from 'zod';
-import { defineFeature, parse, requireAdmin, requireAttendee, requireScreen } from '../../core';
+import { defineFeature, isAdmin, parse, requireAdmin, requireAttendee, requireScreen } from '../../core';
 import { breakPact, goOracle, repair } from './pact';
-import { STICKERS, adminView, answerKeyCsv, buildMe, echo, printSheet, reset, riddleGuess, riddleHint, saveSettings, scan, screenView, setVisible, state, swear, whisperGuess, whisperHint } from './service';
+import { morseTicketSet, onSetReleased } from './adapter';
+import { STICKERS, adminView, answerKeyCsv, buildMe, dropPlayer, echo, getPlayer, printSheet, reset, riddleGuess, riddleHint, saveSettings, scan, screenView, setVisible, state, swear, whisperGuess, whisperHint } from './service';
 import { answerSignal, signalAction, signalTick } from './signal';
 
 export const cipher = defineFeature({
@@ -51,6 +52,13 @@ export const cipher = defineFeature({
   ],
 
   routes(app, ctx) {
+    // The console released a set (lost, or a friend scanned it): whoever played on it starts over, so the
+    // set's owner can claim it fresh and the previous holder can claim their own.
+    onSetReleased(ctx, (e) => {
+      if (e.setId !== morseTicketSet(ctx)) return;
+      for (const id of e.holders) if (getPlayer(ctx, id)?.serial === e.serial) dropPlayer(ctx, id);
+    });
+
     app.get('/me', async (req) => buildMe(ctx, requireAttendee(req).attendeeId));
     app.post('/scan', async (req) => scan(ctx, requireAttendee(req).attendeeId, parse(CipherReadSchema, req.body)));
     app.post('/oath', async (req) => swear(ctx, requireAttendee(req).attendeeId));
@@ -65,7 +73,7 @@ export const cipher = defineFeature({
 
     app.get('/screen', async (req) => {
       requireScreen(req);
-      return screenView(ctx);
+      return screenView(ctx, { admin: isAdmin(req) });
     });
 
     app.get('/admin', async (req) => {

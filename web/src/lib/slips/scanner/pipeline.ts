@@ -160,7 +160,121 @@ function run(gray: Gray, at: number, opts: ScanOptions): FrameResult {
     if (!best || rank(r) > rank(best)) best = r;
     if (best.status === 'ok') break;
   }
+  if (best?.status === 'ok') return best;
+
+  // Fallback for full-bleed cards (the ticket cut at its dark border, no cream quiet zone): the frame's
+  // outer edge then meets the table, which can bleed into the ring. Its INNER edge always meets the cream
+  // ribbon, so take the light region the frame encloses: its outer boundary is the frame's inner edge.
+  // readSlip finds the finders from it (they sit ~0.67 finder diameters in, inside its 0.55-1.45 window).
+  const inv = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) inv[i] = bin[i] ? 0 : 1;
+  const lc = components(inv, det.width, det.height);
+  const light: number[] = [];
+  for (let id = 1; id <= lc.count; id++) {
+    const x0 = lc.minX[id] as number;
+    const y0 = lc.minY[id] as number;
+    const x1 = lc.maxX[id] as number;
+    const y1 = lc.maxY[id] as number;
+    if (x0 <= 0 || y0 <= 0 || x1 >= det.width - 1 || y1 >= det.height - 1) continue; // the table or the room, not a slip
+    const bw = x1 - x0 + 1;
+    const bh = y1 - y0 + 1;
+    if (Math.max(bw, bh) < minDim * 0.16 || Math.min(bw, bh) < minDim * 0.06) continue;
+    light.push(id);
+  }
+  light.sort((a, b) => (lc.area[b] as number) - (lc.area[a] as number));
+  for (const id of light.slice(0, 4)) {
+    const quadDet = ribbonQuad(lc, id, det.width, det.height, bin);
+    if (!quadDet) continue;
+    // stricter on this path: small full-bleed cards held far away blur their finders, which pulls the band
+    // ends in and can clip an end dot. Below RIBBON_MIN_FINDER_PX it says "closer" instead of guessing.
+    const r = readSlip(levels, quadDet.map(toFull), at, ambiguity, minSlip, Math.max(minConf, RIBBON_MIN_CONF), RIBBON_MIN_FINDER_PX);
+    if (!r) continue;
+    if (!best || rank(r) > rank(best)) best = r;
+    if (best.status === 'ok') break;
+  }
   return best ?? empty(gray);
+}
+
+/**
+ * The outer quad of a light region that a dark frame encloses on all four sides (the cream ribbon of a
+ * full-bleed card), in detection pixels. Null unless it is a clean quadrilateral ringed by ink.
+ */
+function ribbonQuad(cc: ReturnType<typeof components>, id: number, w: number, h: number, bin: Uint8Array): Pt[] | null {
+  const x0 = cc.minX[id] as number;
+  const x1 = cc.maxX[id] as number;
+  const y0 = cc.minY[id] as number;
+  const y1 = cc.maxY[id] as number;
+  const L = cc.labels;
+  const boundary: Pt[] = [];
+  for (let y = y0; y <= y1; y++) {
+    const row = y * w;
+    let a = -1;
+    let b = -1;
+    for (let x = x0; x <= x1; x++)
+      if (L[row + x] === id) {
+        a = x;
+        break;
+      }
+    if (a < 0) continue;
+    for (let x = x1; x >= a; x--)
+      if (L[row + x] === id) {
+        b = x;
+        break;
+      }
+    boundary.push({ x: a, y: y + 0.5 }, { x: b + 1, y: y + 0.5 });
+  }
+  for (let x = x0; x <= x1; x++) {
+    let a = -1;
+    let b = -1;
+    for (let y = y0; y <= y1; y++)
+      if (L[y * w + x] === id) {
+        a = y;
+        break;
+      }
+    if (a < 0) continue;
+    for (let y = y1; y >= a; y--)
+      if (L[y * w + x] === id) {
+        b = y;
+        break;
+      }
+    boundary.push({ x: x + 0.5, y: a }, { x: x + 0.5, y: b + 1 });
+  }
+  const hull = convexHull(boundary);
+  const rough = quadFromHull(hull);
+  if (!rough || !isConvex(rough)) return null;
+  const quad = refineQuad(rough, boundary);
+  if (!isConvex(quad)) return null;
+  const qa = polygonArea(quad);
+  const ha = polygonArea(hull);
+  if (qa < 0.85 * ha || qa > 1.12 * ha) return null;
+  let minSide = Infinity;
+  for (let i = 0; i < 4; i++) minSide = Math.min(minSide, dist(quad[i] as Pt, quad[(i + 1) % 4] as Pt));
+  if (minSide < 12) return null;
+  // the frame: ink just OUTSIDE every edge of the light region
+  const c = { x: quad.reduce((t, q) => t + q.x, 0) / 4, y: quad.reduce((t, q) => t + q.y, 0) / 4 };
+  const step = Math.max(1, minSide * 0.02);
+  for (let i = 0; i < 4; i++) {
+    const a = quad[i] as Pt;
+    const b = quad[(i + 1) % 4] as Pt;
+    let hit = 0;
+    let n = 0;
+    const N = 24;
+    for (let k = 2; k < N - 1; k++) {
+      const t = k / N;
+      const px = a.x + (b.x - a.x) * t;
+      const py = a.y + (b.y - a.y) * t;
+      const dx = px - c.x;
+      const dy = py - c.y;
+      const dl = Math.hypot(dx, dy) || 1;
+      const sx = Math.round(px + (dx / dl) * step - 0.5);
+      const sy = Math.round(py + (dy / dl) * step - 0.5);
+      if (sx < 0 || sy < 0 || sx >= w || sy >= h) return null;
+      n++;
+      if (bin[sy * w + sx]) hit++;
+    }
+    if (hit < n * 0.7) return null;
+  }
+  return quad;
 }
 
 const rank = (r: FrameResult) => ({ none: 0, far: 1, ambiguous: 2, unreadable: 3, blank: 4, ok: 5 })[r.status];
@@ -260,7 +374,12 @@ function sampleAt(levels: Gray[], level: number, p: Pt): number {
   return sample(levels[level] as Gray, p.x / f - 0.5, p.y / f - 0.5);
 }
 
-function readSlip(levels: Gray[], quadIn: Pt[], at: number, ambiguity: number, minSlip: number, minConf: number): FrameResult | null {
+/** The full-bleed fallback reads only finders at least this many pixels across (else: 'far', come closer). */
+const RIBBON_MIN_FINDER_PX = 26;
+/** ...and only bottom strips at least this confident. */
+const RIBBON_MIN_CONF = 0.5;
+
+function readSlip(levels: Gray[], quadIn: Pt[], at: number, ambiguity: number, minSlip: number, minConf: number, minFinderPx = 0): FrameResult | null {
   const full = levels[0] as Gray;
   const q = quadIn; // clockwise on screen
   // 4. which quad edge faces the bottom of the view (direction from the opposite edge's midpoint)
@@ -343,6 +462,7 @@ function readSlip(levels: Gray[], quadIn: Pt[], at: number, ambiguity: number, m
   );
   if (!G) return null;
   const Dsrc = ((fw * Wq) / rw + (fh * Hq) / rh) / 2; // finder diameter in frame pixels
+  if (Dsrc < minFinderPx) return base; // 'far': come closer
   const s = Math.max(22, Math.min(56, Math.round(Dsrc * 1.1)));
   const blvl = pickLevel(levels, Dsrc / s);
 
@@ -475,7 +595,7 @@ export function readStrip(img: Gray, s: number, endPad = 0): StripRead | null {
   const bin = adaptiveThreshold(img, Math.round(s * 1.6) | 1, 0.12, Math.max(8, contrast * 0.22));
   const cc = components(bin, w, h);
   const minArea = Math.max(4, 0.006 * s * s);
-  let blobs: Blob[] = [];
+  const all: (Blob & { pad: boolean })[] = [];
   for (let id = 1; id <= cc.count; id++) {
     const x0 = cc.minX[id] as number;
     const x1 = cc.maxX[id] as number;
@@ -484,19 +604,33 @@ export function readStrip(img: Gray, s: number, endPad = 0): StripRead | null {
     if ((cc.area[id] as number) < minArea) continue;
     if (y0 === 0 || y1 === h - 1) continue;
     const cx = (x0 + x1 + 1) / 2;
-    if (cx < endPad || cx > w - endPad) continue;
-    if ((x0 === 0 || x1 === w - 1) && endPad === 0) continue;
+    // touching the sampled window's ends: a partial finder, never a symbol
+    if (x0 === 0 || x1 === w - 1) continue;
     const T = y1 - y0 + 1;
     const cyy = (y0 + y1 + 1) / 2;
     if (T > 0.75 * s || T < 0.08 * s) continue;
     if (cyy < 0.25 * s || cyy > 0.75 * s) continue;
-    blobs.push({ c: cx, L: x1 - x0 + 1, T });
+    all.push({ c: cx, L: x1 - x0 + 1, T, pad: cx < endPad || cx > w - endPad });
   }
+  // Blobs centred in the end pads are usually finder bleed, but when blur makes the finders look bigger
+  // the band ends are placed too far in and a real end symbol lands there. Read it both ways and keep the
+  // better reading: the centring test sinks a reading with a stray blob at one end, and one that lost an
+  // end symbol on one side.
+  const core = evalBlobs(all.filter((b) => !b.pad), w, endPad);
+  const withPads = all.some((b) => b.pad) ? evalBlobs(all, w, endPad) : null;
+  if (!core) return withPads;
+  if (!withPads) return core;
+  return withPads.fit > core.fit + 0.05 ? withPads : core;
+}
+
+/** Fit the Morse unit to a strip's blobs and decode them. */
+function evalBlobs(found: Blob[], w: number, endPad: number): StripRead | null {
+  let blobs = found;
   if (blobs.length === 0) return null;
   const T = median(blobs.map((b) => b.T));
   blobs = blobs.filter((b) => b.T >= 0.5 * T && b.T <= 1.6 * T);
   if (blobs.length === 0) return null;
-  blobs.sort((a, b) => a.c - b.c);
+  blobs = [...blobs].sort((a, b) => a.c - b.c);
 
   // 8. fit the unit
   let bestU = T;
@@ -526,7 +660,9 @@ export function readStrip(img: Gray, s: number, endPad = 0): StripRead | null {
     const span0 = first.c - (first.L - (T - bestU)) / 2;
     const span1 = last.c + (last.L - (T - bestU)) / 2;
     const off = Math.abs((span0 + span1) / 2 - w / 2) / bestU;
-    fit *= Math.max(0, Math.min(1, 1 - (off - 0.6) / 0.8));
+    // a lost end dot moves the centre by a whole unit (dot + gap = 2 units off one end): that reads as
+    // nothing, never as a shorter word
+    fit *= Math.max(0, Math.min(1, 1 - (off - 0.45) / 0.4));
   }
   return { morse, text: decode(morse), fit, n: blobs.length };
 }

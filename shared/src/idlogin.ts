@@ -98,22 +98,70 @@ function dateBatch(tok: string): { date: string; batch: string } | null {
  * roll anywhere, segments in the expected order or not. Returns null for
  * anything that is not a student ID (a URL, a kit QR, a stall code, junk).
  */
+/**
+ * A KMIT roll written anywhere in a longer text ("ROLL NO:26BD1A053G", "...?roll=26bd1a053g&..."), including
+ * the letter O typed for a zero in the digit positions. Returns the normalised roll or null.
+ */
+export function findEmbeddedRoll(upperText: string): string | null {
+  const re = /(?:^|[^A-Z0-9])([0-9O]{2}[A-Z]{2}[0-9O][A-Z][0-9O]{2}[A-Z0-9]{2})(?=$|[^A-Z0-9])/g;
+  for (const m of upperText.matchAll(re)) {
+    const r = normaliseRoll(m[1] ?? '');
+    if (KMIT_ROLL_RE.test(r)) return r;
+  }
+  return null;
+}
+
 export function parseIdQr(raw: string): IdQr | null {
   if (typeof raw !== 'string') return null;
   const text = raw.trim().toUpperCase();
-  if (!text || text.length > 200) return null;
-  if (/^[A-Z][A-Z0-9+.-]*:\/\//.test(text)) return null; // a URL: our kit cards, stall QRs, anything else
+  if (!text || text.length > 4000) return null;
+  // ID cards differ by batch: 2nd year cards carry "055W-12600-C-NAME-CSE-250908"; other batches carry longer
+  // payloads (details, or a link). A full roll number anywhere in the payload always wins.
+  // 1st-year cards (2026 batch) carry a labelled, pipe-separated payload:
+  //   "S. No: 1 | Student Name: … | Father Name: … | Branch: CSE | Admin. No: 10000 | Roll No: KMBD1A0527 | Valid From: 2026 TO 2030"
+  // The roll there starts with "KM" instead of the batch digits, so read its last four, and take the batch from
+  // "Valid From". Nothing else from this payload (names, father's name) is kept.
+  const labelled = /ROLL\s*NO\.?\s*[:-]\s*([A-Z0-9]{6,12})/.exec(text);
+  if (labelled) {
+    const value = normaliseRoll(labelled[1] ?? '');
+    if (KMIT_ROLL_RE.test(value)) {
+      return { suffix: value.slice(-4), roll: value, number: null, section: null, surname: null, branch: null, date: null, batch: null };
+    }
+    const tail = value.slice(-4);
+    if (SUFFIX_RE.test(tail)) {
+      const from = /VALID\s*FROM\s*[:-]?\s*(20\d{2})/.exec(text);
+      const branch = /BRANCH\s*[:-]\s*([A-Z]{2,5})/.exec(text);
+      const admn = /ADMI?N\.?\s*NO\.?\s*[:-]\s*(\d{3,7})/.exec(text);
+      return {
+        suffix: fixSuffix(tail),
+        roll: null,
+        number: admn?.[1] ?? null,
+        section: null,
+        surname: null,
+        branch: branch?.[1] ?? null,
+        date: null,
+        batch: from?.[1] ? from[1].slice(2) : null,
+      };
+    }
+  }
+  const embedded = findEmbeddedRoll(text);
+  if (/^[A-Z][A-Z0-9+.-]*:\/\//.test(text) && !embedded) return null; // a URL with no roll: kit cards, stall QRs
   const tokens = text.split(/[^A-Z0-9]+/).filter(Boolean);
   if (tokens.length === 0) return null;
 
-  // A full roll anywhere wins.
-  let roll: string | null = null;
-  for (const t of tokens) {
-    const r = normaliseRoll(t);
-    if (KMIT_ROLL_RE.test(r)) {
-      roll = r;
-      break;
+  let roll: string | null = embedded;
+  if (!roll) {
+    for (const t of tokens) {
+      const r = normaliseRoll(t);
+      if (KMIT_ROLL_RE.test(r)) {
+        roll = r;
+        break;
+      }
     }
+  }
+  if (roll) {
+    // A payload that names the roll outright: no guessing from the first segment.
+    return { suffix: roll.slice(-4), roll, number: null, section: null, surname: null, branch: null, date: null, batch: null };
   }
 
   let suffix: string | null = null;
@@ -182,6 +230,13 @@ export function resolveIdQr<T extends RosterCandidate>(qr: IdQr, roster: readonl
   const cands = qr.roll ? roster.filter((p) => rollKey(p.roll) === rollKey(qr.roll ?? '')) : roster.filter((p) => rollSuffix(p.roll) === rollKey(qr.suffix));
   if (cands.length === 0) return { kind: 'none' };
   if (cands.length === 1) return { kind: 'one', who: cands[0] as T };
+  // The card's format tells the batch: the short "055W-12600-C-NAME-CSE-250908" cards end in their issue
+  // date (25... = the 25BD1A batch). When that narrows a shared last-four to one person, no picker is needed.
+  if (qr.batch) {
+    const sameBatch = cands.filter((p) => rollKey(p.roll).startsWith(qr.batch ?? ''));
+    if (sameBatch.length === 1) return { kind: 'one', who: sameBatch[0] as T };
+    if (sameBatch.length > 1) return { kind: 'many', candidates: sameBatch };
+  }
   return { kind: 'many', candidates: cands };
 }
 
@@ -229,7 +284,7 @@ const Phone4Schema = z
 
 /** Phone: a scanned ID card. `pick` is the participant tapped in the "who are you?" picker. */
 export const IdResolveRequestSchema = z.object({
-  payload: z.string().min(1).max(300),
+  payload: z.string().min(1).max(4000),
   pick: z.number().int().positive().optional(),
 });
 export type IdResolveRequest = z.input<typeof IdResolveRequestSchema>;
@@ -263,7 +318,7 @@ export const IdResolveResponseSchema = z.discriminatedUnion('kind', [
 export type IdResolveResponse = z.infer<typeof IdResolveResponseSchema>;
 
 export const IdSignInRequestSchema = z.object({
-  payload: z.string().min(1).max(300),
+  payload: z.string().min(1).max(4000),
   pick: z.number().int().positive().optional(),
   phone4: Phone4Schema.optional(),
 });
@@ -359,7 +414,7 @@ export const ParticipantSettingsSchema = z.object({ strictPhone: z.boolean() });
 export type ParticipantSettings = z.infer<typeof ParticipantSettingsSchema>;
 
 /** Desk lookup: a scanned card, a roll, part of a roll or a name. */
-export const DeskLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(300) });
+export const DeskLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(4000) });
 export const DeskLookupResponseSchema = z.object({
   /** How the query was read. */
   read: z.enum(['qr', 'roll', 'search']),
@@ -427,7 +482,7 @@ export const GateStatsSchema = z.object({
 });
 export type GateStats = z.infer<typeof GateStatsSchema>;
 
-export const GateLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(300) });
+export const GateLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(4000) });
 export const GateLookupResponseSchema = z.object({
   read: z.enum(['qr', 'roll', 'search']),
   qrSuffix: z.string().nullable(),

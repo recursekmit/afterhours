@@ -61,7 +61,7 @@ import {
   type RosterEntry,
   addParticipant,
   deskLookup,
-  findByRoll,
+  findAllByTypedRoll,
   gateLookup,
   gateStats,
   getIdLoginSettings,
@@ -214,9 +214,12 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
     // Checked before looking the roll up: a limit says nothing about whether the roll exists.
     if (!rollFailLimiter.allowed(rollKeyName)) throw tooMany(rollKeyName, rollFailLimiter);
     if (!ipFailLimiter.allowed(ipKey)) throw tooMany(ipKey, ipFailLimiter);
-    const who = findByRoll(ctx, body.roll);
-    const ok = phoneMatches(who?.phone ?? null, body.phone4) && who !== null;
-    if (!ok || !who) {
+    // A KM-prefixed 1st-year roll can stand for more than one registered roll: the phone digits pick.
+    const cands = findAllByTypedRoll(ctx, body.roll);
+    const matched = cands.map((p) => (phoneMatches(p.phone, body.phone4) ? p : null));
+    if (cands.length === 0) phoneMatches(null, body.phone4); // same work for a roll that is not on the list
+    const who = matched.find((p) => p !== null) ?? null;
+    if (!who) {
       rollFailLimiter.hit(rollKeyName);
       ipFailLimiter.hit(ipKey);
       // One message for "no such roll" and "wrong digits": nothing leaks before the digits match.

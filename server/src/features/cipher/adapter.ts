@@ -4,7 +4,7 @@ import { type Guild, designFor } from '@afterhours/shared/features/cipher';
 import { SLIP_TICKETS } from '@afterhours/shared/morse-slip';
 import { type FeatureContext, all, one, tx } from '../../core';
 import { getMorseTicketSet } from '../hunt/morseSlip';
-import { claimCopy, serialInSet } from '../hunt/unique';
+import { type SerialRelease, claimCopy, onSerialReleased, serialInSet } from '../hunt/unique';
 import { notOpen, setVisibility, visibility } from '../hunt/visibility';
 
 /** The slip set of the morse tickets (slips I-IV x 80, unique), or null before it is created. */
@@ -18,6 +18,11 @@ export function morseTicketSlips(ctx: FeatureContext, setId: number): number[] {
 /** The copy id of slip `slipId`, serial `serial` (hunt's table, read only). */
 export function copyIdOf(ctx: FeatureContext, slipId: number, serial: number): number | null {
   return one<{ id: number }>(ctx.db, 'SELECT id FROM hunt_slip_copies WHERE slip_id = ? AND serial = ?', slipId, serial)?.id ?? null;
+}
+
+/** Who holds a copy right now (hunt's table, read only), or null. */
+export function copyHolder(ctx: FeatureContext, copyId: number): number | null {
+  return one<{ claimed_by: number | null }>(ctx.db, 'SELECT claimed_by FROM hunt_slip_copies WHERE id = ?', copyId)?.claimed_by ?? null;
 }
 
 /** The serial an attendee holds on any slip of the set, or null. */
@@ -67,3 +72,6 @@ export function copyDesign(ctx: FeatureContext, copyId: number, serial: number, 
 export const morseChallengeVisible = (ctx: FeatureContext): boolean => visibility(ctx).morse;
 export const setMorseChallengeVisible = (ctx: FeatureContext, on: boolean): void => void setVisibility(ctx, { morse: on });
 export { notOpen };
+
+/** Hunt frees a whole serial (console "release"): calls `fn` in the same transaction. */
+export const onSetReleased = (ctx: FeatureContext, fn: (e: SerialRelease) => void): void => onSerialReleased(ctx, (_c, e) => fn(e));

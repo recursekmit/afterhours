@@ -92,7 +92,7 @@ describe('student-ID login', () => {
 
     it('a shared last four shows a picker: names, year and section only, never a roll, phone or email', async () => {
       // even with a surname and a date that would point at one of them: names and dates are not used
-      const r = await resolve(phone(), '0533-1-B-DATTA-CSE-260801');
+      const r = await resolve(phone(), '0533-1-B-DATTA-CSE');
       expect(r.statusCode, r.body).toBe(200);
       const body = r.json() as J;
       expect(body.kind).toBe('pick');

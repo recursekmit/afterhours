@@ -14,6 +14,8 @@ import {
   TRIALS,
   TRIAL_INFO,
 } from '@afterhours/shared/features/cipher';
+import { HuntVisibilitySchema, SlipCopiesSchema } from '@afterhours/shared/features/hunt';
+import { MORSE_RESET_PHRASE } from '@afterhours/shared/features/morse';
 import { SLIP_SIZES } from '@afterhours/shared/morse-slip';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -48,6 +50,77 @@ const POINTS: [keyof CipherSettings['points'], string][] = [
   ['speed', 'speed bonus'],
 ];
 
+/**
+ * The whole Morse game in two buttons (event day): "stop + reset" hides it from every phone, wipes all Cipher and
+ * Morse progress (points and stickers too) and frees every claimed card set; "start" shows it again, fresh.
+ * Same endpoints, same order as the organisers' runbook. Sign-ins, other points, mocktails and the gate stay.
+ */
+function GameControl({ o, onDone }: { o: CipherAdmin; onDone: () => void }) {
+  const toast = useToast();
+  const [arm, setArm] = useState(false);
+  const [step, setStep] = useState('');
+  useEffect(() => {
+    if (!arm) return;
+    const t = setTimeout(() => setArm(false), 6000);
+    return () => clearTimeout(t);
+  }, [arm]);
+  const stopReset = useMutation({
+    mutationFn: async () => {
+      setStep('hiding it from every phone...');
+      await api.put('/api/hunt/admin/visibility', { morse: false }, HuntVisibilitySchema);
+      setStep('wiping cipher progress...');
+      await api.post('/api/cipher/admin/reset', { confirm: CIPHER_RESET_PHRASE }, OkSchema);
+      setStep('wiping morse scores...');
+      await api.post('/api/morse/admin/reset', { confirm: MORSE_RESET_PHRASE }, OkSchema);
+      if (o.set) {
+        const copies = await api.get(`/api/hunt/admin/slip-sets/${o.set.id}/copies`, SlipCopiesSchema);
+        const claimed = copies.rows.map((r) => r.cells.find((c) => c.claimedBy)).filter((c): c is NonNullable<typeof c> => Boolean(c));
+        let n = 0;
+        for (const c of claimed) {
+          setStep(`freeing card sets... ${++n}/${claimed.length}`);
+          await api.post(`/api/hunt/admin/slip-copies/${c.copyId}/release`, {}, SlipCopiesSchema);
+        }
+      }
+    },
+    onSuccess: () => {
+      setStep('');
+      setArm(false);
+      toast('Stopped and reset: hidden from phones, all progress wiped, every card set free.', { kind: 'good', title: 'morse game reset' });
+      onDone();
+    },
+    onError: (e: Error) => {
+      setStep('');
+      toast(e.message, { kind: 'bad', title: 'reset stopped part way: tap it again' });
+      onDone();
+    },
+  });
+  const start = useMutation({
+    mutationFn: () => api.put('/api/hunt/admin/visibility', { morse: true }, HuntVisibilitySchema),
+    onSuccess: () => {
+      toast('The Morse game is live on every phone.', { kind: 'good', title: 'started' });
+      onDone();
+    },
+    onError: (e: Error) => toast(e.message, { kind: 'bad' }),
+  });
+  const busy = stopReset.isPending || start.isPending;
+  return (
+    <Section title="morse game: start, stop, reset" tape action={<Stamp tone={o.visible ? 'live' : 'done'}>{o.visible ? 'live' : 'stopped'}</Stamp>}>
+      <p className={ui.hand}>
+        {o.visible ? `live: ${o.players.length} playing, ${o.set?.claimed ?? 0} card sets claimed.` : `stopped: players can't see it. ${o.players.length} with progress, ${o.set?.claimed ?? 0} card sets claimed.`} stop + reset wipes every cipher and morse result and frees all card sets; sign-ins, other points, mocktails and the gate stay.
+      </p>
+      <div className={ui.row}>
+        <Button tone="lime" size="lg" icon="play" disabled={busy || o.visible} loading={start.isPending} onClick={() => start.mutate()} data-testid="morse-game-start">
+          {o.visible ? 'it is live' : 'start the game'}
+        </Button>
+        <Button tone="pink" size="lg" icon="lock" disabled={busy} loading={stopReset.isPending} onClick={() => (arm ? stopReset.mutate() : setArm(true))} data-testid="morse-game-stop-reset">
+          {arm ? 'tap again: stop + wipe everything' : 'stop + reset'}
+        </Button>
+      </div>
+      {step && <p className={ui.hand}>{step}</p>}
+    </Section>
+  );
+}
+
 export default function CipherConsole() {
   const toast = useToast();
   const q = useCipherAdmin();
@@ -60,6 +133,7 @@ export default function CipherConsole() {
   if (!o) return <Section title="the cipher">loading...</Section>;
   return (
     <div className={ui.stack} data-testid="cipher-console">
+      <GameControl o={o} onDone={() => void q.refetch()} />
       <Section
         title="the cipher"
         tape

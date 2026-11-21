@@ -79,11 +79,16 @@ import { COOKIES } from './sessions';
 
 export interface IdLoginDeps {
   ipLimiter: RateLimiter;
-  signInToKit: (req: FastifyRequest, reply: FastifyReply, kitId: string, bound: () => HttpError) => MeResponse;
+  signInToKit: (req: FastifyRequest, reply: FastifyReply, kitId: string, bound: () => HttpError, opts?: { rebind?: boolean }) => MeResponse;
 }
 
 const idBound = () =>
   new HttpError(409, 'id_bound', 'This ID is already signed in on another phone. If that was not you, show this screen at the entry desk and they will sort it out.');
+/**
+ * Mock testers (rolls 99BD1A90T1, 99BD1A90T2, ...: batch 99 is no real batch) are never held to one
+ * phone, so they can sign in again and again, on any phone. Real students keep the one-phone rule.
+ */
+export const isTestRoll = (roll: string | null | undefined): boolean => /^99BD1A90T\d+$/i.test((roll ?? '').trim());
 const notRegistered = () => new HttpError(404, 'not_registered', "You're not on the list. Show this screen at the entry desk and they'll add you.");
 
 /** "S Hemanth Rao" -> "Hemanth", "THOTA ROSHINI" -> "Thota". */
@@ -134,7 +139,7 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
     const k = one<{ device_hash: string | null }>(ctx.db, 'SELECT device_hash FROM kits WHERE id = ?', who.kitId);
     const mine = thisDevice(req);
     const here = Boolean(k?.device_hash && mine && k.device_hash === mine);
-    return { elsewhere: Boolean(k?.device_hash) && !here, here };
+    return { elsewhere: Boolean(k?.device_hash) && !here && !isTestRoll(who.roll), here };
   }
 
   /**
@@ -203,7 +208,7 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
       }
       rollFailLimiter.reset(key);
     }
-    return signInToKit(req, reply, who.kitId, idBound);
+    return signInToKit(req, reply, who.kitId, idBound, { rebind: isTestRoll(who.roll) });
   });
 
   app.post('/api/auth/roll/signin', async (req, reply): Promise<MeResponse> => {
@@ -226,7 +231,7 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
       throw new HttpError(401, 'bad_credentials', "That roll number and those phone digits don't match our list. Check both, or show this screen at the entry desk.");
     }
     rollFailLimiter.reset(rollKeyName);
-    return signInToKit(req, reply, who.kitId, idBound);
+    return signInToKit(req, reply, who.kitId, idBound, { rebind: isTestRoll(who.roll) });
   });
 
   /* ------------------------------------------------------------ console */

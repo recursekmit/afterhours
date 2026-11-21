@@ -74,9 +74,10 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
   /**
    * Bind a kit (printed card or a participant's roster kit) to this phone and
    * sign in. First sign-in creates the attendee: that is the attendance record.
-   * Throws `bound()` if the kit is already bound to another phone.
+   * Throws `bound()` if the kit is already bound to another phone, unless
+   * `rebind` is set (mock testers): then this phone simply takes the kit over.
    */
-  function signInToKit(req: FastifyRequest, reply: FastifyReply, kitId: string, bound: () => HttpError): MeResponse {
+  function signInToKit(req: FastifyRequest, reply: FastifyReply, kitId: string, bound: () => HttpError, opts: { rebind?: boolean } = {}): MeResponse {
     let deviceToken = req.cookies[COOKIES.device];
     if (!deviceToken || !/^[A-Za-z0-9_-]{20,100}$/.test(deviceToken)) deviceToken = newToken();
     const deviceHash = sha256(deviceToken);
@@ -87,11 +88,12 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
       const bind = run(
         ctx.db,
         `UPDATE kits SET device_hash = ?, bound_at = COALESCE(bound_at, ?)
-          WHERE id = ? AND (device_hash IS NULL OR device_hash = ?)`,
+          WHERE id = ? AND (device_hash IS NULL OR device_hash = ? OR ?)`,
         deviceHash,
         now,
         kitId,
         deviceHash,
+        opts.rebind ? 1 : 0,
       );
       if (bind.changes === 0) return null;
       const kit = one<{ preset_name: string | null; preset_roll: string | null }>(ctx.db, 'SELECT preset_name, preset_roll FROM kits WHERE id = ?', kitId);

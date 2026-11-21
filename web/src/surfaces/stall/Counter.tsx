@@ -1,8 +1,10 @@
 /*
-  The scan view. A big camera window where the browser can scan QR codes (BarcodeDetector + getUserMedia);
-  otherwise, or in addition, the short code typed from the customer's screen. Keeps the screen awake.
+  The scan view. A big camera window that scans QR codes in EVERY browser: the built-in BarcodeDetector where
+  there is one (Android Chrome), otherwise jsQR on camera frames (iPhone Safari, desktop Chrome on Windows,
+  Firefox). Or, in addition, the short code typed from the customer's screen. Keeps the screen awake.
 */
 import type { Tally } from '@afterhours/shared/features/stalls';
+import jsQR from 'jsqr';
 import { useEffect, useRef, useState } from 'react';
 import { haptics, sfx } from '../../fun';
 import { Button, Doodle } from '../../kit';
@@ -13,7 +15,37 @@ interface Detector {
 }
 type DetectorCtor = new (opts: { formats: string[] }) => Detector;
 
-const canScan = () => typeof window !== 'undefined' && 'BarcodeDetector' in window && Boolean(navigator.mediaDevices?.getUserMedia);
+/** Any browser with a camera can scan: jsQR covers the ones without BarcodeDetector. */
+const canScan = () => typeof window !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
+
+/** The built-in detector when the browser has one that reads QR codes, else null (use jsQR). */
+async function nativeDetector(): Promise<Detector | null> {
+  try {
+    const w = window as unknown as { BarcodeDetector?: DetectorCtor & { getSupportedFormats?: () => Promise<string[]> } };
+    if (!w.BarcodeDetector) return null;
+    const formats = (await w.BarcodeDetector.getSupportedFormats?.()) ?? ['qr_code'];
+    return formats.includes('qr_code') ? new w.BarcodeDetector({ formats: ['qr_code'] }) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** jsQR on one video frame, scaled down so a phone keeps up (about 640 px across). */
+function jsqrFrame(v: HTMLVideoElement, canvas: HTMLCanvasElement): string | null {
+  const vw = v.videoWidth;
+  const vh = v.videoHeight;
+  if (!vw || !vh) return null;
+  const scale = Math.min(1, 640 / Math.max(vw, vh));
+  const w = Math.round(vw * scale);
+  const h = Math.round(vh * scale);
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  const g = canvas.getContext('2d', { willReadFrequently: true });
+  if (!g) return null;
+  g.drawImage(v, 0, 0, w, h);
+  const img = g.getImageData(0, 0, w, h);
+  return jsQR(img.data, w, h, { inversionAttempts: 'attemptBoth' })?.data ?? null;
+}
 
 function useWakeLock() {
   useEffect(() => {
@@ -54,10 +86,10 @@ function Camera({ onCode, paused }: { onCode: (text: string) => void; paused: bo
     let stream: MediaStream | null = null;
     let raf = 0;
     let stopped = false;
-    const Ctor = (window as unknown as { BarcodeDetector: DetectorCtor }).BarcodeDetector;
-    const detector = new Ctor({ formats: ['qr_code'] });
+    const canvas = document.createElement('canvas');
     void (async () => {
       try {
+        const detector = await nativeDetector();
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         const v = video.current;
         if (stopped || !v) return;
@@ -69,10 +101,10 @@ function Camera({ onCode, paused }: { onCode: (text: string) => void; paused: bo
         let lastAt = 0;
         const loop = async (t: number) => {
           if (stopped) return;
-          if (t - last > 160 && v.readyState >= 2 && !hold.current) {
+          if (t - last > (detector ? 160 : 220) && v.readyState >= 2 && !hold.current) {
             last = t;
             try {
-              const hit = (await detector.detect(v))[0]?.rawValue;
+              const hit = detector ? (await detector.detect(v))[0]?.rawValue : jsqrFrame(v, canvas);
               // The same code in front of the lens must not fire again for a few seconds.
               if (hit && (hit !== lastHit || t - lastAt > 4000)) {
                 lastHit = hit;

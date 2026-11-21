@@ -1,7 +1,26 @@
 // Stalls end to end: the console builds a stall and its menu, a shopkeeper signs in at /stall and hands over
 // two free mocktails (typed code, then the /stall/r/<token> link), the third is not free any more and goes
 // through on points, and the attendee's phone celebrates each one. Screenshots go to docs/screens/stalls-*.png.
-import { type APIRequestContext, type Browser, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, type Browser, chromium, expect, type Page, test } from '@playwright/test';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { encode } from 'uqr';
+
+/** One frame with the customer's phone screen (a QR) in the middle, as Chromium's fake camera plays it. */
+function writeQrY4m(path: string, payload: string) {
+  const W = 640;
+  const H = 480;
+  const y = new Uint8Array(W * H).fill(90);
+  const { data } = encode(payload, { ecc: 'M', border: 4 });
+  const n = data.length;
+  const mod = Math.floor(420 / n);
+  const ox = Math.round(W / 2 - (n * mod) / 2);
+  const oy = Math.round(H / 2 - (n * mod) / 2);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let a = 0; a < mod; a++) y.fill(data[i]?.[j] ? 16 : 240, (oy + i * mod + a) * W + ox + j * mod, (oy + i * mod + a) * W + ox + (j + 1) * mod);
+  const chroma = Buffer.alloc((W / 2) * (H / 2), 128);
+  const frame = Buffer.concat([Buffer.from('FRAME\n'), Buffer.from(y), chroma, chroma]);
+  writeFileSync(path, Buffer.concat([Buffer.from(`YUV4MPEG2 W${W} H${H} F15:1 Ip A1:1 C420jpeg\n`), frame, frame, frame]));
+}
 
 // believable nicknames for the screenshots
 const NICKS = ['anika', 'rahul', 'maya', 'krish', 'sneha', 'aryan', 'jiya', 'om'];
@@ -224,6 +243,36 @@ test.describe.serial('stalls', () => {
     const w2 = (await (await phone.request.get('/api/stalls/wallet')).json()) as { balance: number };
     expect(w2.balance).toBe(20);
     await sctx.close();
+    await phone.context().close();
+  });
+
+  test('the stall camera reads the customer QR in a browser without BarcodeDetector (iPhone, Windows)', async ({ browser }) => {
+    const phone = await attendee(browser);
+    const who = nick(next);
+    const q = (await (await phone.request.get('/api/stalls/qr')).json()) as { url: string };
+    const dir = join('.playwright', 'stalls');
+    mkdirSync(dir, { recursive: true });
+    const y4m = join(dir, 'customer-qr.y4m');
+    writeQrY4m(y4m, q.url);
+    const b = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-video-capture=${y4m}`] });
+    try {
+      const sctx = await b.newContext({ ...TABLET, baseURL, permissions: ['camera'] });
+      // like Safari or desktop Chrome on Windows: no built-in QR detector, so jsQR has to do it
+      await sctx.addInitScript(() => {
+        delete (window as unknown as { BarcodeDetector?: unknown }).BarcodeDetector;
+      });
+      const shop = await sctx.newPage();
+      await shop.goto('/stall');
+      await shop.getByLabel('stall code').fill(code);
+      await shop.getByRole('button', { name: 'sign in' }).click();
+      await expect(shop.getByRole('heading', { name: 'scan the next person' })).toBeVisible();
+      await expect(shop.getByText("this browser can't scan inside the page")).toHaveCount(0);
+      // the camera sees their QR: their sheet opens with no typing
+      await expect(shop.getByRole('heading', { name: who })).toBeVisible({ timeout: 15_000 });
+      await sctx.close();
+    } finally {
+      await b.close();
+    }
     await phone.context().close();
   });
 

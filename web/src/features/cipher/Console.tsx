@@ -115,6 +115,7 @@ export default function CipherConsole() {
         </table>
       </Section>
       <Players o={o} />
+      <Pacts o={o} onDone={() => void q.refetch()} />
       <Settings o={o} onSaved={() => void q.refetch()} />
       <Section title="danger zone" tilt={-0.2}>
         <p className={ui.hand}>wipes every cipher trial, pact and signal, and takes back cipher points and stickers. the slips stay claimed.</p>
@@ -194,6 +195,58 @@ function Players({ o }: { o: CipherAdmin }) {
           </tbody>
         </table>
       </div>
+    </Section>
+  );
+}
+
+function Pacts({ o, onDone }: { o: CipherAdmin; onDone: () => void }) {
+  const toast = useToast();
+  const now = useServerNow(5000);
+  const brk = useMutation({ mutationFn: (id: number) => api.post(`/api/cipher/admin/pacts/${id}/break`, {}, CipherAdminSchema), onSuccess: onDone, onError: (e: Error) => toast(e.message, { kind: 'bad' }) });
+  const open = o.pacts.filter((p) => p.status === 'open');
+  const sealed = o.pacts.filter((p) => p.status === 'sealed').length;
+  return (
+    <Section title="pacts" tilt={0.2} action={<Stamp tone="info">{sealed} sealed</Stamp>}>
+      <p className={ui.hand}>
+        waiting for a partner: {o.waiting.length ? o.waiting.map((w) => `${w.nickname} (${GUILD_INFO[w.guild].short}, ${mmss(now - w.since)})`).join(', ') : 'nobody'}. after the wait, players can re-pair or come to the Oracle (print its ticket above).
+      </p>
+      <table className={ui.table} data-testid="cipher-pacts">
+        <thead>
+          <tr>
+            <th>pact</th>
+            <th>scanned</th>
+            <th>open for</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {open.map((p) => (
+            <tr key={p.id}>
+              <td>
+                {p.a} and {p.oracle ? 'the oracle' : p.b}
+              </td>
+              <td>
+                {p.aScanned ? '✓' : '...'} / {p.bScanned ? '✓' : '...'}
+              </td>
+              <td className={ui.num}>{mmss(now - p.createdAt)}</td>
+              <td>
+                {!p.oracle && (
+                  <Button tone="paper" size="sm" icon="users" onClick={() => brk.mutate(p.id)}>
+                    re-pair both
+                  </Button>
+                )}
+              </td>
+            </tr>
+          ))}
+          {open.length === 0 && (
+            <tr>
+              <td colSpan={4} className={ui.hand}>
+                no open pacts
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </Section>
   );
 }

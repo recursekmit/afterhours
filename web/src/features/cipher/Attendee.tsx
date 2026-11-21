@@ -27,7 +27,7 @@ import { api } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { celebrate, haptics, sfx } from '../../fun';
 import { type SlipScan, SlipScanLauncher, readingKey } from '../../lib/slips';
-import { Button, Card, ErrorState, LinkButton, LoadingState, NumberTicker, TextField, WaxSeal, useToast } from '../../kit';
+import { Avatar, Button, Card, ErrorState, LinkButton, LoadingState, NumberTicker, TextField, WaxSeal, useToast } from '../../kit';
 import { PageHead, Stamp, ui } from '../common/ui';
 import { TelegraphKey } from '../morse/Key';
 import { freeDecode, playSignal } from '../morse/signal';
@@ -148,7 +148,7 @@ function Trial({ me }: { me: CipherMe }) {
     case 5:
       return <Riddle me={me} />;
     case 6:
-      return <Soon me={me} n={6} />;
+      return me.nextSoon ? <Soon me={me} n={6} /> : <Pact me={me} />;
     case 7:
       return <Soon me={me} n={7} />;
     default:
@@ -570,6 +570,86 @@ function Riddle({ me }: { me: CipherMe }) {
       </form>
       <Outcome r={res} />
       <MiniChart />
+    </TrialCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 6: the pact (slip IV)
+// ---------------------------------------------------------------------------
+
+function Pact({ me }: { me: CipherMe }) {
+  const setMe = useSetMe();
+  const toast = useToast();
+  const now = useServerNow(1000);
+  const [res, setRes] = useState<ScanResult | null>(null);
+  const scan = useScan(setRes);
+  const act = useMutation({
+    mutationFn: (what: 'repair' | 'oracle') => api.post(`/api/cipher/pact/${what}`, {}, CipherMeSchema),
+    onSuccess: (m) => {
+      setRes(null);
+      setMe(m);
+    },
+    onError: (e) => toast(e.message, { kind: 'bad' }),
+  });
+  const p = me.pact;
+  const waitedFor = p.since !== null ? now - p.since : 0;
+  const pg = p.partner ? GUILD_INFO[p.partner.guild] : null;
+  return (
+    <TrialCard me={me} n={6} how="swap">
+      {p.status === 'waiting' && (
+        <div className={s.pactWait} data-testid="pact-waiting">
+          <WaxSeal glyph="heart" size={64} />
+          <p className={ui.handBig}>finding you someone from another guild...</p>
+          <p className={ui.hand}>
+            {p.waiting} waiting for a pact. {mmss(waitedFor)} so far. keep slip IV in your hand.
+          </p>
+        </div>
+      )}
+      {(p.status === 'paired' || p.status === 'oracle') && (
+        <>
+          <div className={s.partner} data-guild={p.partner?.guild ?? 'armillary'} data-testid="pact-partner">
+            {p.partner ? <Avatar config={p.partner.avatar} size={72} /> : <WaxSeal glyph="eye" size={64} />}
+            <div>
+              <p className={s.partnerName}>{p.partner ? p.partner.nickname : 'the Oracle'}</p>
+              <p className={s.partnerGuild}>
+                <span className={s.dot} /> {pg ? `${pg.title}, ${pg.colour}` : 'an organiser with the Oracle’s ticket. ask at the desk.'}
+              </p>
+            </div>
+          </div>
+          <div className={s.pactSteps}>
+            <p className={`${s.pactStep} ${p.iScanned ? s.pactDone : ''}`} data-testid="pact-you">
+              <span className={s.slipBadge}>{p.iScanned ? '✓' : '1'}</span>
+              <span>
+                scan {p.partner ? 'their slip IV' : 'the Oracle’s ticket'} with its <b>{p.scanEdge}</b> edge at the bottom.
+              </span>
+            </p>
+            {p.status === 'paired' && (
+              <p className={`${s.pactStep} ${p.theyScanned ? s.pactDone : ''}`} data-testid="pact-them">
+                <span className={s.slipBadge}>{p.theyScanned ? '✓' : '2'}</span>
+                <span>
+                  hold out your slip IV: they read your <b>{p.showEdge}</b> edge.
+                </span>
+              </p>
+            )}
+          </div>
+          {!p.iScanned && <ScanBox label={p.partner ? 'scan their slip IV' : 'scan the oracle'} hint={`the ${p.scanEdge} edge at the bottom`} onRead={(r) => scan.mutate(r)} pending={scan.isPending} />}
+        </>
+      )}
+      <Outcome r={res} />
+      {p.canRepair && (
+        <div className={ui.row} data-testid="pact-options">
+          <p className={ui.hand}>no luck yet? no harm done.</p>
+          {p.status === 'paired' && (
+            <Button tone="paper" size="sm" icon="users" loading={act.isPending} onClick={() => act.mutate('repair')}>
+              find someone else
+            </Button>
+          )}
+          <Button tone="sun" size="sm" icon="eye" loading={act.isPending} onClick={() => act.mutate('oracle')} data-testid="pact-oracle">
+            go to the oracle
+          </Button>
+        </div>
+      )}
     </TrialCard>
   );
 }

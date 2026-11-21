@@ -123,9 +123,8 @@ test.describe.serial('after hours foundation', () => {
 
     await page.getByLabel('your name').fill('Sana Qureshi');
     await page.getByLabel('roll number').fill('23bd1a0506');
-    await page.getByLabel('nickname (shows on the leaderboard)').fill('sana');
     await page.getByRole('button', { name: "that's me" }).click();
-    await expect(page.getByRole('heading', { name: 'sana' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sana Qureshi' })).toBeVisible();
     await expect(page.getByRole('alertdialog')).toContainText('new face');
     await page.getByRole('button', { name: 'stick it in' }).click();
     await expect(page.getByText('hype the room')).toBeVisible();
@@ -157,7 +156,7 @@ test.describe.serial('after hours foundation', () => {
     await admin.ctx.close();
 
     await signIn();
-    await expect(second.page.getByRole('heading', { name: 'welcome back' }).or(second.page.getByRole('heading', { name: 'sana' }))).toBeVisible();
+    await expect(second.page.getByRole('heading', { name: 'welcome back' }).or(second.page.getByRole('heading', { name: 'Sana Qureshi' }))).toBeVisible();
     await second.ctx.close();
   });
 

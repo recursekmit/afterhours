@@ -1,5 +1,6 @@
 /*
-  First sign-in: confirm who you are, pick a nickname, build a face.
+  First sign-in: confirm who you are, build a face. No usernames: everyone is shown by their own name (for
+  people on the participant list, the registered name and roll, fixed).
   Saving it is the second celebration (the first is signing in).
 */
 import { type AvatarConfig, DEFAULT_AVATAR, type MeResponse, ProfileInputSchema, avatarFromSeed } from '@afterhours/shared';
@@ -7,23 +8,22 @@ import { useState } from 'react';
 import { isApiError } from '../../core/api';
 import { useSaveProfile } from '../../core/queries';
 import { celebrate, haptics, sfx } from '../../fun';
-import { Button, Card, Doodle, Scribble, TextField } from '../../kit';
+import { Button, Card, Scribble, TextField } from '../../kit';
 import { AvatarBuilder } from './AvatarBuilder';
 import s from './attendee.module.css';
 
-const NICKS = ['pixel_pirate', 'null_pointer', 'segfault_sam', 'ctrl_alt_dee', 'git_gud', 'byte_me', 'stack_overflow', 'tab_not_space', 'rubber_duck', 'sudo_sandwich', 'hello_world', 'off_by_one'];
-
 export function Profile({ me }: { me: MeResponse }) {
   const save = useSaveProfile();
-  const [name, setName] = useState(me.attendee.name ?? me.preset.name ?? '');
-  const [roll, setRoll] = useState(me.attendee.roll ?? me.preset.roll ?? '');
-  const [nickname, setNickname] = useState('');
+  // on the participant list: the registered name and roll are what everyone sees, and they are fixed
+  const fromList = Boolean(me.preset.name);
+  const [name, setName] = useState(me.preset.name ?? me.attendee.name ?? '');
+  const [roll, setRoll] = useState(me.preset.roll ?? me.attendee.roll ?? '');
   const [avatar, setAvatar] = useState<AvatarConfig>(() => ({ ...DEFAULT_AVATAR, ...avatarFromSeed(me.attendee.id * 31 + 7) }));
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = ProfileInputSchema.safeParse({ name, roll, nickname, avatar });
+    const parsed = ProfileInputSchema.safeParse({ name, roll, avatar });
     if (!parsed.success) {
       const next: Record<string, string> = {};
       for (const i of parsed.error.issues) next[String(i.path[0])] ??= i.message;
@@ -56,31 +56,9 @@ export function Profile({ me }: { me: MeResponse }) {
       <AvatarBuilder value={avatar} onChange={setAvatar} />
 
       <Card tone="paper" tilt={0.6} tape tapeColor="sky" className={s.fieldsCard}>
-        <TextField label="your name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" error={errors.name} />
-        <TextField label="roll number" value={roll} onChange={(e) => setRoll(e.target.value)} autoCapitalize="characters" autoComplete="off" error={errors.roll} style={{ textTransform: 'uppercase' }} />
-        <TextField
-          label="nickname (shows on the leaderboard)"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          placeholder="pixel_pirate"
-          autoComplete="off"
-          error={errors.nickname}
-          maxLength={16}
-          suffix={
-            <Button
-              tone="sun"
-              size="sm"
-              className={s.nickDice}
-              aria-label="suggest one"
-              onClick={() => {
-                sfx.rattle();
-                setNickname(NICKS[Math.floor(Math.random() * NICKS.length)] ?? 'hello_world');
-              }}
-            >
-              <Doodle name="dice" size={22} />
-            </Button>
-          }
-        />
+        <TextField label="your name (shows on the leaderboard)" value={name} onChange={(e) => setName(e.target.value)} readOnly={fromList} autoComplete="name" error={errors.name} data-testid="profile-name" />
+        <TextField label="roll number" value={roll} onChange={(e) => setRoll(e.target.value)} readOnly={fromList} autoCapitalize="characters" autoComplete="off" error={errors.roll} style={{ textTransform: 'uppercase' }} />
+        {fromList && <p className={s.handNote}>this is the name you registered with. wrong? tell the desk.</p>}
       </Card>
 
       {errors.form && (

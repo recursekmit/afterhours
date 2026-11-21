@@ -54,15 +54,25 @@ export function getMe(ctx: AppContext, attendeeId: number): MeResponse {
 
 /** Save the first-sign-in profile (or later edits). Returns whether this was the first completion. */
 export function saveProfile(ctx: AppContext, attendeeId: number, p: ProfileInput): { first: boolean } {
-  const before = one<{ profile_complete: number }>(ctx.db, 'SELECT profile_complete FROM attendees WHERE id = ?', attendeeId);
+  const before = one<{ profile_complete: number; preset_name: string | null; preset_roll: string | null }>(
+    ctx.db,
+    'SELECT a.profile_complete, k.preset_name, k.preset_roll FROM attendees a LEFT JOIN kits k ON k.id = a.kit_id WHERE a.id = ?',
+    attendeeId,
+  );
   if (!before) throw notFound('No such attendee.');
+  // Their own names, no usernames: someone on the participant list is shown by their registered name and
+  // roll, whatever the phone sends. Only people without one (printed kits) use what they typed.
+  const listed = before.preset_name?.trim() || null;
+  const name = listed ?? p.name;
+  const roll = before.preset_roll?.trim() || p.roll;
+  const shown = listed ?? p.nickname ?? p.name;
   run(
     ctx.db,
     `UPDATE attendees SET name = ?, roll = ?, nickname = ?, avatar = ?, profile_complete = 1,
             profile_at = COALESCE(profile_at, ?) WHERE id = ?`,
-    p.name,
-    p.roll,
-    p.nickname,
+    name,
+    roll,
+    shown,
     JSON.stringify(p.avatar),
     ctx.now(),
     attendeeId,

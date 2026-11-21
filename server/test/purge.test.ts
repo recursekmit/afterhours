@@ -61,7 +61,7 @@ describe('purge test player', () => {
     const r = await req(t.app, admin, 'POST', `/api/admin/participants/${p.id}/purge`, { confirm: '99bd1a90t1' });
     expect(r.statusCode, r.body).toBe(200);
     const report = r.json() as PurgeReport;
-    expect(report).toMatchObject({ roll: '99BD1A90T1', attendeeId: id, nickname: 'mock' });
+    expect(report).toMatchObject({ roll: '99BD1A90T1', attendeeId: id, nickname: 'Mock Tester' });
     expect(report.rows['hunt_slip_copies (released)']).toBe(1);
     for (const tbl of ['points_ledger', 'sticker_unlocks', 'sessions', 'hunt_players', 'hunt_progress', 'hunt_slip_finds', 'morse_rounds', 'stalls_txn']) expect(report.rows[tbl], tbl).toBeGreaterThan(0);
 

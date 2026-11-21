@@ -67,7 +67,7 @@ describe('student-ID login', () => {
       const p = await req(t.app, jar, 'PUT', '/api/me/profile', { name: 'Divya Kapoor', roll: '26BD1A660K', nickname: 'divz', avatar: AVATAR });
       expect(p.statusCode).toBe(200);
       const row = await byRoll('26BD1A660K');
-      expect(row).toMatchObject({ bound: true, attendee: { nickname: 'divz', profileComplete: true, points: 20 } });
+      expect(row).toMatchObject({ bound: true, attendee: { nickname: 'Divya Kapoor', profileComplete: true, points: 20 } });
       // signing in again on the same phone is fine and keeps one attendee
       expect((await idSignIn(jar, { payload: DIVYA_QR })).statusCode).toBe(200);
       expect(all(t.ctx.db, 'SELECT id FROM attendees')).toHaveLength(1);
@@ -395,7 +395,7 @@ describe('student-ID login', () => {
         const token = ((await req(t.app, d.jar, 'GET', '/api/stalls/qr')).json() as J).token;
         const s = await req(t.app, shop, 'POST', '/api/stalls/shop/scan', { input: token });
         expect(s.statusCode, s.body).toBe(200);
-        expect((s.json() as J).attendee.nickname).toBe('divz');
+        expect((s.json() as J).attendee.nickname).toBe('Divya Kapoor');
         return req(t.app, shop, 'POST', '/api/stalls/shop/commit', { ticket: (s.json() as J).ticket, key: k, lines: [{ itemId: mocktail, qty: 1 }] });
       };
       const r1 = await hand('key-000001-abcdefgh');
@@ -405,7 +405,7 @@ describe('student-ID login', () => {
       expect((r2.json() as J).pointsSpent).toBe(0);
       // the console's stall lookup by kit id takes the roll
       const look = await req(t.app, admin, 'GET', '/api/stalls/admin/lookup?kit=26bd1a660k');
-      expect(look.json()).toMatchObject({ nickname: 'divz', allowance: { used: 2, left: 0 } });
+      expect(look.json()).toMatchObject({ nickname: 'Divya Kapoor', allowance: { used: 2, left: 0 } });
     });
 
     it('appears on the leaderboard', async () => {
@@ -415,7 +415,7 @@ describe('student-ID login', () => {
       t.ctx.points.award({ attendeeId: d.id, source: 'test', ref: 'boost', points: 30 });
       const lb = t.ctx.points.leaderboard(10, d.id);
       expect(lb.entries.map((e) => [e.nickname, e.total])).toEqual([
-        ['divz', 50],
+        ['Divya Kapoor', 50],
         ['kitty', 20],
       ]);
       expect(lb.me?.rank).toBe(1);
@@ -524,5 +524,36 @@ describe('student-ID login', () => {
       expect(cap.events.filter((e) => e.type === 'gate.changed')).toHaveLength(2);
       cap.unsub();
     });
+  });
+});
+
+describe('their own names, no usernames', () => {
+  let t: TestApp;
+  let admin: Jar;
+  beforeEach(async () => {
+    t = await makeApp();
+    admin = await adminJar(t.app);
+    await req(t.app, admin, 'POST', '/api/admin/participants/import', { csv: ROSTER });
+  });
+  afterEach(async () => t.close());
+
+  it('someone on the list is shown by their registered name and roll, whatever the phone sends', async () => {
+    const jar = new JarClass();
+    expect((await req(t.app, jar, 'POST', '/api/auth/id/signin', { payload: DIVYA_QR })).statusCode).toBe(200);
+    const p = await req(t.app, jar, 'PUT', '/api/me/profile', { name: 'Someone Else', roll: '25BD1A0000', nickname: 'xx_slayer', avatar: AVATAR });
+    expect(p.statusCode, p.body).toBe(200);
+    expect((p.json() as J).attendee).toMatchObject({ name: 'Divya Kapoor', roll: '26BD1A660K', nickname: 'Divya Kapoor' });
+    // no nickname at all is fine too
+    const q = await req(t.app, jar, 'PUT', '/api/me/profile', { name: 'Divya Kapoor', roll: '26BD1A660K', avatar: AVATAR });
+    expect(q.statusCode, q.body).toBe(200);
+  });
+
+  it('a printed kit (not on the list) is shown by the name typed when no nickname is sent', async () => {
+    const [kit] = await makeKits(t.app, 1);
+    const jar = new JarClass();
+    expect((await req(t.app, jar, 'POST', '/api/auth/signin', { kitId: kit!.kitId, password: kit!.password })).statusCode).toBe(200);
+    const p = await req(t.app, jar, 'PUT', '/api/me/profile', { name: 'Walk In', roll: 'WALKIN1', avatar: AVATAR });
+    expect(p.statusCode, p.body).toBe(200);
+    expect((p.json() as J).attendee.nickname).toBe('Walk In');
   });
 });

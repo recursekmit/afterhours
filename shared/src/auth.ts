@@ -52,10 +52,15 @@ export const ProfileInputSchema = z.object({
     .max(20)
     .regex(/^[A-Za-z0-9-]+$/, 'letters and numbers only')
     .transform((v) => v.toUpperCase()),
+  /**
+   * Optional, and only used by people NOT on the participant list (printed kits): everyone signed in from
+   * the list is shown by their own registered name, whatever is sent here (event-day call, 2026-11-21).
+   */
   nickname: z
     .string()
     .trim()
-    .regex(NICKNAME_RE, '2 to 16 letters, numbers, spaces or _ . - \''),
+    .regex(NICKNAME_RE, '2 to 16 letters, numbers, spaces or _ . - \'')
+    .optional(),
   avatar: AvatarConfigSchema,
 });
 export type ProfileInput = z.infer<typeof ProfileInputSchema>;

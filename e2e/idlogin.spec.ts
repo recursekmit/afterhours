@@ -144,15 +144,14 @@ test.describe.serial('student-ID login', () => {
       await expect(page.getByLabel('your name')).toHaveValue('Kavya Iyer');
       await expect(page.getByLabel('roll number')).toHaveValue('26BD1A0581');
       await page.getByRole('button', { name: 'stick it in' }).click({ timeout: 8000 }).catch(() => undefined);
-      await page.getByLabel('nickname (shows on the leaderboard)').fill('kavz');
       await page.getByRole('button', { name: "that's me" }).click();
-      await expect(page.getByRole('heading', { name: 'kavz' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Kavya Iyer' })).toBeVisible();
       return ctx.storageState();
     });
     const admin = await chromium.launch();
     try {
       const { ctx, page } = await adminPage(admin, '/admin/participants');
-      await expect(page.getByTestId('participant-26BD1A0581')).toContainText('kavz');
+      await expect(page.getByTestId('participant-26BD1A0581')).toContainText('Kavya Iyer');
       await ctx.close();
     } finally {
       await admin.close();
@@ -238,7 +237,7 @@ test.describe.serial('student-ID login', () => {
     await page.getByRole('button', { name: 'look up' }).click();
     const person = page.getByTestId('desk-person-26BD1A0581');
     await expect(person).toContainText('signed in');
-    await expect(person).toContainText('kavz');
+    await expect(person).toContainText('Kavya Iyer');
     await settle(page);
     await page.screenshot({ path: `${SHOTS}/idlogin-desk.png` });
     await person.getByRole('button', { name: 'unbind phone' }).click();
@@ -261,7 +260,7 @@ test.describe.serial('student-ID login', () => {
       await page.getByTestId('scan-id').click();
       await expect(page.getByTestId('id-confirm')).toBeVisible({ timeout: 20_000 });
       await page.getByRole('button', { name: "yes, that's me" }).click();
-      await expect(page.getByRole('heading', { name: 'kavz' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Kavya Iyer' })).toBeVisible();
     });
     const old = await browser.newContext({ ...PHONE, baseURL: BASE, storageState: kavyaState });
     expect((await old.request.get('/api/me')).status()).toBe(401);

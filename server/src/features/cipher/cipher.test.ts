@@ -1,11 +1,11 @@
 // The Cipher Ticket: every trial's server rules, concurrency and the visibility gate.
-import { type CipherAdmin, type CipherMe, type EchoResult, type GuessResult, type ScanResult, DEFAULT_CIPHER_SETTINGS, GUILDS } from '@afterhours/shared/features/cipher';
+import { type CipherAdmin, type CipherMe, type CipherScreen, type EchoResult, type GuessResult, type ScanResult, DEFAULT_CIPHER_SETTINGS, GUILDS } from '@afterhours/shared/features/cipher';
 import { slipWordKey } from '@afterhours/shared/features/hunt';
 import { reverseReading } from '@afterhours/shared/morse-slip';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type TestApp, type Jar, adminJar, makeApp, makeKits, req, signedInAttendee } from '../../../test/helpers';
 import { all, one } from '../../core';
-import { judgeEcho, riddleAnswer } from './service';
+import { judgeEcho, riddleAnswer, standings } from './service';
 import { type Words, copyWords, makeTicketSet, tapsFor } from './testkit';
 
 let t: TestApp;
@@ -491,6 +491,88 @@ describe('the pact (slip IV)', () => {
     const m = await me(a!.jar);
     expect(m.nextSoon).toBe(false);
     expect(m.pact.status).toBe('paired');
+  });
+});
+
+describe('the last signal', () => {
+  /** Two players from two guilds through the pact (sealed with each other). */
+  async function toSignal(n: number) {
+    const ps = await players(n);
+    const serials = serialsByGuild().distinct;
+    for (const [i, p] of ps.entries()) await toPact(p.jar, p.id, serials[i % serials.length]! + (i >= serials.length ? 4 : 0));
+    // seal every open pact by scanning each other's slip IV
+    for (const p of ps) {
+      const m = await me(p.jar);
+      if (m.pact.status !== 'paired' || m.pact.iScanned) continue;
+      const partner = ps.find((x) => x.id !== p.id && m.pact.partner!.nickname === `player${ps.indexOf(x)}`)!;
+      await scanWord(p.jar, slip(getSerial(partner.id)!, 4)[m.pact.scanEdge!]);
+    }
+    return ps;
+  }
+  const getSerial = (id: number) => one<{ serial: number }>(t.ctx.db, 'SELECT serial FROM cipher_players WHERE attendee_id = ?', id)?.serial ?? null;
+  const fire = async (body: Record<string, unknown>) => req(t.app, await adminJar(t.app), 'POST', '/api/cipher/admin/signal', body);
+
+  it('warn, then it goes live by itself; only the projector gets its timing; first N win big, the rest something', async () => {
+    const admin = await adminJar(t.app);
+    const s = ((await req(t.app, admin, 'GET', '/api/cipher/admin')).json() as CipherAdmin).settings;
+    await req(t.app, admin, 'PUT', '/api/cipher/admin/settings', { ...s, signalFirstN: 1 });
+    const ps = await toSignal(2);
+    for (const p of ps) expect((await me(p.jar)).trial).toBe(7);
+    expect((await fire({ action: 'warn', inSec: 300, word: 'comet' })).statusCode).toBe(200);
+    const warned = await me(ps[0]!.jar);
+    expect(warned.signal.status).toBe('warned');
+    expect(warned.nextSoon).toBe(false);
+    expect((await call(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'COMET' })).status).toBe(409);
+    t.clock.advance(301_000);
+    const scr = (await req(t.app, admin, 'GET', '/api/cipher/screen')).json() as CipherScreen;
+    expect(scr.signal.status).toBe('live');
+    expect(scr.signalPlay!.segments.length).toBeGreaterThan(20); // looped
+    const live = await me(ps[0]!.jar);
+    expect(live.signal).toMatchObject({ status: 'live', eligible: true, letters: 5, word: null });
+    expect((await call<GuessResult>(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'comit' })).body.correct).toBe(false);
+    const first = await call<GuessResult>(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'comet' });
+    expect(first.body).toMatchObject({ correct: true, points: P.signalFirst });
+    const second = await call<GuessResult>(ps[1]!.jar, 'POST', '/api/cipher/signal', { guess: 'COMET' });
+    expect(second.body).toMatchObject({ correct: true, points: P.signalCorrect });
+    expect(second.body.me.trial).toBe(8);
+    // the word never reached a phone before the reveal
+    expect(responses.join('\n').toUpperCase()).not.toMatch(/"COMET"/);
+    // close: the guild with the most points per member wins, its members get the crown
+    expect((await fire({ action: 'close' })).statusCode).toBe(200);
+    const closed = (await req(t.app, admin, 'GET', '/api/cipher/screen')).json() as CipherScreen;
+    const winner = closed.signal.winner!;
+    expect(winner).toBe(closed.guilds.find((g) => g.rank === 1)!.guild);
+    const winnerId = ps.find((p) => one<{ guild: string }>(t.ctx.db, 'SELECT guild FROM cipher_players WHERE attendee_id = ?', p.id)!.guild === winner)!;
+    expect(one(t.ctx.db, "SELECT 1 AS x FROM points_ledger WHERE attendee_id = ? AND ref LIKE 'champion:%'", winnerId.id)).toBeTruthy();
+    expect(one(t.ctx.db, "SELECT 1 AS x FROM sticker_unlocks WHERE attendee_id = ? AND sticker_id = 'cipher-champion'", winnerId.id)).toBeTruthy();
+    expect((await call(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'COMET' })).status).toBe(409);
+    await fire({ action: 'reveal' });
+    expect((await me(ps[0]!.jar)).signal.word).toBe('COMET');
+  });
+
+  it('only players who sealed the pact may answer; first-N under a race; guild maths is points per member', async () => {
+    const ps = await toSignal(4);
+    const [late] = await players(1);
+    await scanWord(late!.jar, slip(12, 1).bottom);
+    await fire({ action: 'fire', word: 'NOVA' });
+    expect((await call(late!.jar, 'POST', '/api/cipher/signal', { guess: 'NOVA' })).status).toBe(409);
+    const rs = await Promise.all(ps.map((p) => call<GuessResult>(p.jar, 'POST', '/api/cipher/signal', { guess: 'nova' })));
+    const ranks = all<{ rank: number }>(t.ctx.db, 'SELECT rank FROM cipher_answers ORDER BY rank').map((r) => r.rank);
+    expect(ranks).toEqual([1, 2, 3, 4]);
+    expect(rs.filter((r) => r.body.points === P.signalFirst + 0)).toHaveLength(4); // firstN 10
+    const st = standings(t.ctx);
+    for (const g of st) expect(g.average).toBeCloseTo(g.members ? g.points / g.members : 0, 1);
+    // the window closes the signal by itself
+    t.clock.advance(DEFAULT_CIPHER_SETTINGS.signalWindowSec * 1000 + 1000);
+    expect((await me(ps[0]!.jar)).signal.status).toBe('closed');
+  });
+
+  it('warn can be called off; a second warn while one is open is refused', async () => {
+    expect((await fire({ action: 'warn', inSec: 120 })).statusCode).toBe(200);
+    expect((await fire({ action: 'warn', inSec: 120 })).statusCode).toBe(409);
+    expect((await fire({ action: 'cancel' })).statusCode).toBe(200);
+    expect(all(t.ctx.db, 'SELECT * FROM cipher_signals')).toHaveLength(0);
+    expect((await fire({ action: 'fire', word: 'ab!' })).statusCode).toBe(400);
   });
 });
 

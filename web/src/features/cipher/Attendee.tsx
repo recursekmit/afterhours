@@ -27,7 +27,7 @@ import { api } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { celebrate, haptics, sfx } from '../../fun';
 import { type SlipScan, SlipScanLauncher, readingKey } from '../../lib/slips';
-import { Avatar, Button, Card, ErrorState, LinkButton, LoadingState, NumberTicker, TextField, WaxSeal, useToast } from '../../kit';
+import { Avatar, Button, Card, Countdown, ErrorState, LinkButton, LoadingState, NumberTicker, TextField, WaxSeal, useToast } from '../../kit';
 import { PageHead, Stamp, ui } from '../common/ui';
 import { TelegraphKey } from '../morse/Key';
 import { freeDecode, playSignal } from '../morse/signal';
@@ -150,7 +150,7 @@ function Trial({ me }: { me: CipherMe }) {
     case 6:
       return me.nextSoon ? <Soon me={me} n={6} /> : <Pact me={me} />;
     case 7:
-      return <Soon me={me} n={7} />;
+      return me.nextSoon ? <Soon me={me} n={7} /> : <Signal me={me} />;
     default:
       return <Done me={me} />;
   }
@@ -659,23 +659,95 @@ function Pact({ me }: { me: CipherMe }) {
 // ---------------------------------------------------------------------------
 
 function Soon({ me, n }: { me: CipherMe; n: number }) {
+  const over = n === 7 && me.signal.status === 'closed';
   return (
     <TrialCard me={me} n={n}>
       <div className={s.soon} data-testid="next-soon">
-        <WaxSeal glyph="clock" size={64} />
-        <p className={ui.handBig}>next trials open soon.</p>
-        <p className={ui.hand}>{n === 6 ? 'keep slip IV handy: someone from another guild will need it.' : 'eyes on the projector when the organisers call the last signal.'}</p>
+        <WaxSeal glyph={over ? 'bolt' : 'clock'} size={64} />
+        <p className={ui.handBig}>{over ? 'the last signal has been sent.' : 'next trials open soon.'}</p>
+        <p className={ui.hand}>
+          {over
+            ? me.signal.winner
+              ? `${GUILD_INFO[me.signal.winner].title} won the race.${me.signal.word ? ` the word was ${me.signal.word}.` : ''}`
+              : 'watch the projector for the result.'
+            : n === 6
+              ? 'keep slip IV handy: someone from another guild will need it.'
+              : 'eyes on the projector when the organisers call the last signal.'}
+        </p>
       </div>
+    </TrialCard>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 7: the last signal
+// ---------------------------------------------------------------------------
+
+function Signal({ me }: { me: CipherMe }) {
+  const setMe = useSetMe();
+  const toast = useToast();
+  const [guess, setGuess] = useState('');
+  const [res, setRes] = useState<GuessResult | null>(null);
+  const sig = me.signal;
+  const answer = useMutation({
+    mutationFn: () => api.post('/api/cipher/signal', { guess }, GuessResultSchema),
+    onSuccess: (r) => {
+      setRes(r);
+      if (r.correct) setTimeout(() => setMe(r.me), 1400);
+      else {
+        sfx.fail();
+        haptics.fail();
+      }
+    },
+    onError: (e) => toast(e.message, { kind: 'bad' }),
+  });
+  return (
+    <TrialCard me={me} n={7} how="listen">
+      {sig.status === 'warned' && sig.fireAt !== null && (
+        <div className={s.soon} data-testid="signal-warned">
+          <p className={ui.handBig}>the last signal goes out in</p>
+          <Countdown to={sig.fireAt} className={s.bigCount} />
+          <p className={ui.hand}>find a spot where you can see the projector. it plays {sig.firstN > 1 ? `slowly, three times. the first ${sig.firstN} to type it win big.` : 'slowly, three times.'}</p>
+        </div>
+      )}
+      {sig.status === 'live' && (
+        <>
+          <div className={s.signalLive} data-testid="signal-live">
+            <span className={s.liveDot} aria-hidden="true" />
+            <p>
+              <b>live on the projector.</b> {sig.letters} letters. {sig.correct} caught it so far.
+            </p>
+          </div>
+          <form
+            className={s.typeRow}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (guess.trim()) answer.mutate();
+            }}
+          >
+            <TextField label="the last signal says" value={guess} onChange={(e) => setGuess(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" maxLength={8} data-testid="signal-guess" />
+            <Button tone="lime" type="submit" icon="check" loading={answer.isPending} disabled={!guess.trim()}>
+              send
+            </Button>
+          </form>
+          <Outcome r={res} />
+          <MiniChart />
+        </>
+      )}
     </TrialCard>
   );
 }
 
 function Done({ me }: { me: CipherMe }) {
   return (
-    <Card tone="ink" className={s.closed}>
+    <Card tone="ink" className={s.closed} data-testid="cipher-done">
       <WaxSeal glyph="crown" size={80} />
       <p className={ui.handBig}>all seven trials sealed.</p>
-      <p className={ui.hand}>{me.points} cipher points for {GUILD_INFO[me.ticket!.guild].title}.</p>
+      {me.signal.answered && <p className={s.cardTitle}>#{me.signal.answered.rank} on the last signal</p>}
+      <p className={ui.hand}>
+        {me.points} cipher points for {GUILD_INFO[me.ticket!.guild].title}.
+      </p>
+      {me.signal.winner && <p className={ui.hand}>{GUILD_INFO[me.signal.winner].title} won the race.</p>}
     </Card>
   );
 }

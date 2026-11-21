@@ -117,6 +117,33 @@ export function parseIdQr(raw: string): IdQr | null {
   if (!text || text.length > 4000) return null;
   // ID cards differ by batch: 2nd year cards carry "055W-12600-C-NAME-CSE-250908"; other batches carry longer
   // payloads (details, or a link). A full roll number anywhere in the payload always wins.
+  // 1st-year cards (2026 batch) carry a labelled, pipe-separated payload:
+  //   "S. No: 1 | Student Name: … | Father Name: … | Branch: CSE | Admin. No: 10000 | Roll No: KMBD1A0527 | Valid From: 2026 TO 2030"
+  // The roll there starts with "KM" instead of the batch digits, so read its last four, and take the batch from
+  // "Valid From". Nothing else from this payload (names, father's name) is kept.
+  const labelled = /ROLL\s*NO\.?\s*[:-]\s*([A-Z0-9]{6,12})/.exec(text);
+  if (labelled) {
+    const value = normaliseRoll(labelled[1] ?? '');
+    if (KMIT_ROLL_RE.test(value)) {
+      return { suffix: value.slice(-4), roll: value, number: null, section: null, surname: null, branch: null, date: null, batch: null };
+    }
+    const tail = value.slice(-4);
+    if (SUFFIX_RE.test(tail)) {
+      const from = /VALID\s*FROM\s*[:-]?\s*(20\d{2})/.exec(text);
+      const branch = /BRANCH\s*[:-]\s*([A-Z]{2,5})/.exec(text);
+      const admn = /ADMI?N\.?\s*NO\.?\s*[:-]\s*(\d{3,7})/.exec(text);
+      return {
+        suffix: fixSuffix(tail),
+        roll: null,
+        number: admn?.[1] ?? null,
+        section: null,
+        surname: null,
+        branch: branch?.[1] ?? null,
+        date: null,
+        batch: from?.[1] ? from[1].slice(2) : null,
+      };
+    }
+  }
   const embedded = findEmbeddedRoll(text);
   if (/^[A-Z][A-Z0-9+.-]*:\/\//.test(text) && !embedded) return null; // a URL with no roll: kit cards, stall QRs
   const tokens = text.split(/[^A-Z0-9]+/).filter(Boolean);

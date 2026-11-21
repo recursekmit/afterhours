@@ -45,3 +45,26 @@ describe('the card format settles a shared last-four', () => {
     expect(r.kind).toBe('many');
   });
 });
+
+describe('1st-year labelled card format', () => {
+  const card = (roll: string, from = '2026') => `S. No: 7 | Student Name: TEST PERSON | Father Name: TEST PARENT | Branch: CSE | Admin. No: 10000 | Roll No: ${roll} | Valid From: ${from} TO 2030`;
+  const roster = [
+    { id: 1, roll: '25BD1A0527', name: 'Second Year' },
+    { id: 2, roll: '26BD1A0527', name: 'First Year' },
+    { id: 3, roll: '26BD1A053Q', name: 'Only One' },
+  ];
+  it('reads the last four of a KM-prefixed roll and the batch from Valid From', () => {
+    expect(parseIdQr(card('KMBD1A0527'))).toMatchObject({ suffix: '0527', roll: null, batch: '26', branch: 'CSE', number: '10000' });
+  });
+  it('settles a shared last four by the batch, no picker', () => {
+    expect(resolveIdQr(parseIdQr(card('KMBD1A0527'))!, roster)).toMatchObject({ kind: 'one', who: { id: 2 } });
+    expect(resolveIdQr(parseIdQr(card('KMBD1A053Q'))!, roster)).toMatchObject({ kind: 'one', who: { id: 3 } });
+  });
+  it('a labelled card with a normal roll is exact', () => {
+    expect(parseIdQr(card('26BD1A0527'))).toMatchObject({ roll: '26BD1A0527' });
+  });
+  it('keeps no names from the payload', () => {
+    const q = parseIdQr(card('KMBD1A0527'))!;
+    expect(JSON.stringify(q)).not.toMatch(/TEST PERSON|TEST PARENT/);
+  });
+});

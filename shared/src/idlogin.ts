@@ -98,22 +98,43 @@ function dateBatch(tok: string): { date: string; batch: string } | null {
  * roll anywhere, segments in the expected order or not. Returns null for
  * anything that is not a student ID (a URL, a kit QR, a stall code, junk).
  */
+/**
+ * A KMIT roll written anywhere in a longer text ("ROLL NO:26BD1A053G", "...?roll=26bd1a053g&..."), including
+ * the letter O typed for a zero in the digit positions. Returns the normalised roll or null.
+ */
+export function findEmbeddedRoll(upperText: string): string | null {
+  const re = /(?:^|[^A-Z0-9])([0-9O]{2}[A-Z]{2}[0-9O][A-Z][0-9O]{2}[A-Z0-9]{2})(?=$|[^A-Z0-9])/g;
+  for (const m of upperText.matchAll(re)) {
+    const r = normaliseRoll(m[1] ?? '');
+    if (KMIT_ROLL_RE.test(r)) return r;
+  }
+  return null;
+}
+
 export function parseIdQr(raw: string): IdQr | null {
   if (typeof raw !== 'string') return null;
   const text = raw.trim().toUpperCase();
-  if (!text || text.length > 200) return null;
-  if (/^[A-Z][A-Z0-9+.-]*:\/\//.test(text)) return null; // a URL: our kit cards, stall QRs, anything else
+  if (!text || text.length > 4000) return null;
+  // ID cards differ by batch: 2nd year cards carry "055W-12600-C-NAME-CSE-250908"; other batches carry longer
+  // payloads (details, or a link). A full roll number anywhere in the payload always wins.
+  const embedded = findEmbeddedRoll(text);
+  if (/^[A-Z][A-Z0-9+.-]*:\/\//.test(text) && !embedded) return null; // a URL with no roll: kit cards, stall QRs
   const tokens = text.split(/[^A-Z0-9]+/).filter(Boolean);
   if (tokens.length === 0) return null;
 
-  // A full roll anywhere wins.
-  let roll: string | null = null;
-  for (const t of tokens) {
-    const r = normaliseRoll(t);
-    if (KMIT_ROLL_RE.test(r)) {
-      roll = r;
-      break;
+  let roll: string | null = embedded;
+  if (!roll) {
+    for (const t of tokens) {
+      const r = normaliseRoll(t);
+      if (KMIT_ROLL_RE.test(r)) {
+        roll = r;
+        break;
+      }
     }
+  }
+  if (roll) {
+    // A payload that names the roll outright: no guessing from the first segment.
+    return { suffix: roll.slice(-4), roll, number: null, section: null, surname: null, branch: null, date: null, batch: null };
   }
 
   let suffix: string | null = null;
@@ -182,6 +203,13 @@ export function resolveIdQr<T extends RosterCandidate>(qr: IdQr, roster: readonl
   const cands = qr.roll ? roster.filter((p) => rollKey(p.roll) === rollKey(qr.roll ?? '')) : roster.filter((p) => rollSuffix(p.roll) === rollKey(qr.suffix));
   if (cands.length === 0) return { kind: 'none' };
   if (cands.length === 1) return { kind: 'one', who: cands[0] as T };
+  // The card's format tells the batch: the short "055W-12600-C-NAME-CSE-250908" cards end in their issue
+  // date (25... = the 25BD1A batch). When that narrows a shared last-four to one person, no picker is needed.
+  if (qr.batch) {
+    const sameBatch = cands.filter((p) => rollKey(p.roll).startsWith(qr.batch ?? ''));
+    if (sameBatch.length === 1) return { kind: 'one', who: sameBatch[0] as T };
+    if (sameBatch.length > 1) return { kind: 'many', candidates: sameBatch };
+  }
   return { kind: 'many', candidates: cands };
 }
 

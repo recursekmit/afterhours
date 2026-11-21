@@ -72,7 +72,7 @@ describe('student ID QR parsing', () => {
     expect(q).toMatchObject({ suffix: '055W', number: '12600', section: 'C', surname: 'DATTA', branch: 'CSE', batch: '25' });
   });
   it('takes a full roll if the card carries one', () => {
-    expect(parseIdQr('26BD1A055W-C-DATTA')).toMatchObject({ suffix: '055W', roll: '26BD1A055W', surname: 'DATTA' });
+    expect(parseIdQr('26BD1A055W-C-DATTA')).toMatchObject({ suffix: '055W', roll: '26BD1A055W' });
     expect(parseIdQr('26BD1A055W')).toMatchObject({ roll: '26BD1A055W' });
   });
   it('copes with missing or odd segments', () => {
@@ -113,9 +113,10 @@ describe('resolving a scan against the roster', () => {
   it('nobody with that suffix: not registered', () => {
     expect(resolve('0999-12600-C-KAPOOR-CSE-260908')).toBe('none');
   });
-  it('two or more share it: everyone of them, for the picker; neither year nor surname narrows it', () => {
-    expect(resolve('0533-12600-C-DATTA-CSE-250908')).toBe('many:25BD1A0533,26BD1A0533');
-    expect(resolve('0533-12600-C-VERMA-CSE-260908')).toBe('many:25BD1A0533,26BD1A0533');
+  it('two or more share it: the card format (issue-date batch) narrows it, else the picker; surnames never narrow', () => {
+    expect(resolve('0533-12600-C-DATTA-CSE-250908')).toBe('25BD1A0533');
+    expect(resolve('0533-12600-C-VERMA-CSE-260908')).toBe('26BD1A0533');
+    expect(resolve('0533-12600-C-VERMA-CSE-240908')).toBe('many:25BD1A0533,26BD1A0533');
     expect(resolve('0577-12600-C')).toBe('many:25BD1A0577,26BD1A0577');
   });
   it('a full roll in the QR is exact', () => {

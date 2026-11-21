@@ -343,6 +343,19 @@ export function Echo({ run, onDone, onQuit }: { run: Spec<'memory'>; onDone: Don
   const busy = useRef(false);
   const now = useServerNow(250);
   const left = Math.max(0, Math.ceil((run.startedAt + run.durationMs - now) / 1000));
+  const timeUp = now >= run.startedAt + run.durationMs;
+  const ended = useRef(false);
+
+  // Time is up: bank the levels cleared so far (the server would otherwise only hear about it on the next tap).
+  useEffect(() => {
+    if (!timeUp || ended.current || busy.current) return;
+    ended.current = true;
+    api
+      .post(`/api/arcade/runs/${run.runId}/finish`, {}, RunResultSchema)
+      .then(onDone)
+      .catch((e: Error) => toast(e.message, { kind: 'bad' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeUp, level]);
 
   useEffect(() => {
     setShowing(true);
@@ -365,7 +378,7 @@ export function Echo({ run, onDone, onQuit }: { run: Spec<'memory'>; onDone: Don
   }, [seq, run.spec.showMs]);
 
   const press = (pad: number) => {
-    if (showing || busy.current) return;
+    if (showing || busy.current || ended.current) return;
     sfx.note(PAD_NOTES[pad] ?? 440, 160);
     haptics.tap();
     setLit(pad);

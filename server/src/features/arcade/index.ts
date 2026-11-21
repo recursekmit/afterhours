@@ -165,11 +165,12 @@ function ownRun(ctx: FeatureContext, id: string, attendeeId: number): RunRow {
   return r;
 }
 
-function openRunOrThrow(ctx: FeatureContext, id: string, attendeeId: number, game: GameId): RunRow {
+/** `bankLate`: echo's levels are checked as they are played, so a late call still banks what was cleared in time. */
+function openRunOrThrow(ctx: FeatureContext, id: string, attendeeId: number, game: GameId, bankLate = false): RunRow {
   const r = ownRun(ctx, id, attendeeId);
   if (r.game !== game) throw badRequest('That run is a different game.');
   if (r.status !== 'open') throw conflict(r.status === 'done' ? 'That run is already scored.' : 'That run is closed.');
-  if (ctx.now() > r.expires_at) {
+  if (ctx.now() > r.expires_at && !bankLate) {
     run(ctx.db, "UPDATE arcade_runs SET status = 'abandoned' WHERE id = ? AND status = 'open'", r.id);
     throw new HttpError(410, 'run_expired', 'Too slow, that run timed out. Start a new one.');
   }
@@ -281,6 +282,14 @@ const memoryScored = (levels: number): Scored => ({ score: levels * 100, label: 
 export function tick(ctx: FeatureContext): void {
   const s = state(ctx);
   const now = ctx.now();
+  // An echo run whose phone never came back: bank the levels it cleared in time, then tidy the rest.
+  for (const r of all<RunRow>(ctx.db, "SELECT * FROM arcade_runs WHERE status = 'open' AND game = 'memory' AND progress > 0 AND expires_at < ?", now - 60_000)) {
+    try {
+      finalize(ctx, r, memoryScored(r.progress));
+    } catch {
+      /* scored meanwhile */
+    }
+  }
   run(ctx.db, "UPDATE arcade_runs SET status = 'abandoned' WHERE status = 'open' AND expires_at < ?", now - 60_000);
   if (s.dirty.size > 0 && now - s.lastTopAt >= 2000) {
     ctx.live.publish('arcade.top', { games: [...s.dirty] }, 'screens');
@@ -391,7 +400,7 @@ export const arcade = defineFeature({
       const me = requireAttendee(req);
       const id = (req.params as { id: string }).id;
       const { taps } = parse(MemoryStepSchema, req.body);
-      const r = openRunOrThrow(ctx, id, me.attendeeId, 'memory');
+      const r = openRunOrThrow(ctx, id, me.attendeeId, 'memory', true);
       const now = ctx.now();
       const level = r.progress + 1;
       const seq = memorySequence(r.seed);
@@ -414,7 +423,7 @@ export const arcade = defineFeature({
     // POST /api/arcade/runs/:id/finish: memory, time is up (or you quit): bank the levels cleared so far
     app.post('/runs/:id/finish', async (req): Promise<RunResult> => {
       const me = requireAttendee(req);
-      const r = openRunOrThrow(ctx, (req.params as { id: string }).id, me.attendeeId, 'memory');
+      const r = openRunOrThrow(ctx, (req.params as { id: string }).id, me.attendeeId, 'memory', true);
       return finalize(ctx, r, memoryScored(r.progress));
     });
 

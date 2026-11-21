@@ -1,5 +1,5 @@
 /*
-  The Cipher Ticket on the phone (/morse/cipher): your four slips, your guild, a constellation of seven
+  The Cipher Ticket on the phone (/morse/cipher): your four slips, your guild, a constellation of six
   trials. Each trial has a one-line rule, a short drawn how-to and "N others on this trial"; the header
   keeps the trial clock, your streak and your cipher points. Playable with sound off (flash + buzz), and
   with reduced motion (the drawings hold still, the seal does not stamp).
@@ -53,7 +53,8 @@ export function CipherPage() {
   useEffect(() => {
     if (!me?.ticket) return;
     // a trial was just sealed: the wax comes down
-    if (last.current !== null && me.trial > last.current) setSealing(me.trial - 1);
+    // (the trial they were on: the pact jumps straight to done, as the last signal is off)
+    if (last.current !== null && me.trial > last.current) setSealing(last.current);
     last.current = me.trial;
   }, [me?.trial, me?.ticket]);
   if (q.isPending) return <LoadingState label="lighting the candles..." />;
@@ -74,7 +75,7 @@ export function CipherPage() {
   const guild = m.ticket ? GUILD_INFO[m.ticket.guild] : null;
   return (
     <div className={ui.page} data-guild={m.ticket?.guild ?? 'none'}>
-      <PageHead title="the cipher" note={guild ? `set no. ${pad3(m.ticket!.serial)}, ${guild.title}` : 'four slips, seven trials, one guild'} color="var(--tangerine)" />
+      <PageHead title="the cipher" note={guild ? `set no. ${pad3(m.ticket!.serial)}, ${guild.title}` : 'four slips, six trials, one guild'} color="var(--tangerine)" />
       {m.ticket && <Header me={m} />}
       <Constellation stars={m.stars} current={m.ticket ? m.trial : 1} />
       <Trial me={m} />
@@ -121,7 +122,7 @@ function TrialCard({ me, n, children, how, edge }: { me: CipherMe; n: number; ch
     <Card tone="paper" className={s.trial} data-testid={`trial-${id}`}>
       <div className={ui.between}>
         <span className={ui.kicker}>
-          trial {n} of 7: {TRIAL_INFO[id].title}
+          trial {n} of 6: {TRIAL_INFO[id].title}
         </span>
         <Stamp tone="sky" rot={-3}>
           {others} {others === 1 ? 'other' : 'others'} here
@@ -765,7 +766,7 @@ function Done({ me }: { me: CipherMe }) {
   return (
     <Card tone="ink" className={s.closed} data-testid="cipher-done">
       <WaxSeal glyph="crown" size={80} />
-      <p className={ui.handBig}>all seven trials sealed.</p>
+      <p className={ui.handBig}>all six trials sealed.</p>
       {me.signal.answered && <p className={s.cardTitle}>#{me.signal.answered.rank} on the last signal</p>}
       <p className={ui.hand}>
         {me.points} cipher points for {GUILD_INFO[me.ticket!.guild].title}.
@@ -826,7 +827,7 @@ export function CipherMorseCard() {
         <span className={s.cardCount}>{sealed}/7</span>
       </div>
       <h2 className={s.cardTitle}>the cipher</h2>
-      <p className={ui.hand}>{m.ticket ? `${GUILD_INFO[m.ticket.guild].title}, trial ${Math.min(m.trial, 7)} of 7.` : 'four slips in your kit. scan one to claim them and learn your guild.'}</p>
+      <p className={ui.hand}>{m.ticket ? `${GUILD_INFO[m.ticket.guild].title}, trial ${Math.min(m.trial, 6)} of 6.` : 'four slips in your kit. scan one to claim them and learn your guild.'}</p>
       <LinkButton to="/morse/cipher" tone="sun" icon="ticket" block data-testid="cipher-open">
         {m.ticket ? 'back to the cipher' : 'claim my slips'}
       </LinkButton>

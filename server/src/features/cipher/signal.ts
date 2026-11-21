@@ -85,11 +85,16 @@ function cleanWord(w: string | undefined, ctx: FeatureContext): string {
   return n;
 }
 
+/** The last signal is off for this event: nothing can announce or fire one (close/reveal/cancel stay harmless). */
+const signalOff = (action: string): boolean => action === 'warn' || action === 'fire';
+
 export function signalAction(ctx: FeatureContext, a: SignalFire): void {
   const s = settings(ctx);
   const r = current(ctx);
   const open = r && r.status !== 'closed' ? r : undefined;
   const now = ctx.now();
+  // Switched off for this event (no projector; the cipher ends at the pact).
+  if (signalOff(a.action)) throw conflict('The last signal is switched off: the cipher ends at the pact.');
   switch (a.action) {
     case 'warn': {
       if (open) throw conflict(open.status === 'live' ? 'The last signal is already live.' : 'The last signal is already announced. Fire it or cancel it.');

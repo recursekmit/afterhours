@@ -14,7 +14,6 @@ import { type APIRequestContext, type BrowserContext, chromium, expect, type Pag
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
-import { MORSE_TABLE } from '../shared/src/features/morse';
 import { decodePng } from '../web/src/lib/slips/scanner/testing/png';
 import { cameraScene, type FloatImage, rgbaToFloat } from '../web/src/lib/slips/scanner/testing/synth';
 
@@ -138,7 +137,7 @@ function parseCsv(text: string): Record<string, string>[] {
   return rows.map((r) => Object.fromEntries(r.split(',').map((v, i) => [cols[i]!, v])));
 }
 
-test.describe.serial('the cipher: two phones, two guilds, all seven trials', () => {
+test.describe.serial('the cipher: two phones, two guilds, all six trials', () => {
   test.describe.configure({ timeout: 180_000 });
   test.beforeAll(async ({ playwright }) => {
     admin = await playwright.request.newContext({ baseURL: BASE });
@@ -317,85 +316,19 @@ test.describe.serial('the cipher: two phones, two guilds, all seven trials', () 
         }
       });
     }
-    await phone('a', async (page) => {
-      await page.goto('/morse/cipher');
-      await expect(page.getByTestId('star-pact')).toHaveAttribute('data-sealed', 'yes');
-    });
-  });
-
-  test('the last signal: warn, fire, every phone plays its own word, both answer, the guild is crowned, reveal', async ({ browser }) => {
-    // console: announce it 5 minutes ahead
-    const cctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, baseURL: BASE });
-    const con = await cctx.newPage();
-    await con.request.post('/api/admin/session', { data: { pin: '2468' } });
-    await con.goto('/admin/cipher');
-    await con.getByTestId('signal-warn').click();
-    await expect(con.getByTestId('signal-fire')).toBeVisible();
-    await con.waitForTimeout(500);
-    await con.getByTestId('signal-fire').scrollIntoViewIfNeeded().catch(() => undefined);
-    await con.screenshot({ path: `${SHOTS}/cipher-console-signal-1280.png` });
-
-    await phone('a', async (page) => {
-      await page.goto('/morse/cipher');
-      await expect(page.getByTestId('signal-warned')).toBeVisible();
-    });
-
-    // fire it from the console: no projector, every phone gets its own word
-    await con.getByTestId('signal-fire').click();
-    await expect(con.getByTestId('signal-close')).toBeVisible();
-
-    /** Decode a phone's on/off timing back into letters (what a player does by ear and eye). */
-    const decode = (sig: { unitMs: number; segments: number[] }) => {
-      const rev = Object.fromEntries(Object.entries(MORSE_TABLE).map(([k, v]) => [v, k]));
-      let out = '';
-      let cur = '';
-      sig.segments.forEach((ms, i) => {
-        if (i % 2 === 0) cur += ms < 2 * sig.unitMs ? '.' : '-';
-        else if (ms > 2 * sig.unitMs) {
-          out += rev[cur] ?? '?';
-          cur = '';
-        }
-      });
-      return out + (rev[cur] ?? '?');
-    };
-    const words: Record<string, string> = {};
+    // the pact is the last trial (the last signal is off): both are done
     for (const who of ['a', 'b'] as const) {
       await phone(who, async (page) => {
         await page.goto('/morse/cipher');
-        await expect(page.getByTestId('signal-live')).toBeVisible();
-        await page.getByTestId('signal-play').click();
-        await expect(page.getByTestId('signal-flash')).toBeVisible();
-        const me = (await (await page.request.get('/api/cipher/me')).json()) as { signal: { letters: number; play: { unitMs: number; segments: number[] } } };
-        const word = decode(me.signal.play);
-        expect(word).toHaveLength(me.signal.letters);
-        words[who] = word;
+        await expect(page.getByTestId('star-pact')).toHaveAttribute('data-sealed', 'yes');
+        await expect(page.getByTestId('cipher-done')).toContainText('all six trials sealed');
+        await expect(page.getByTestId('star-signal')).toHaveCount(0);
         if (who === 'a') {
-          await page.waitForTimeout(900);
-          await page.screenshot({ path: `${SHOTS}/cipher-signal-390.png`, fullPage: true });
+          await page.waitForTimeout(400);
+          await page.screenshot({ path: `${SHOTS}/cipher-done-390.png`, fullPage: true });
         }
-        await page.getByTestId('signal-guess').fill(word);
-        const sent = page.waitForResponse((r) => r.url().endsWith('/api/cipher/signal'));
-        await page.getByRole('button', { name: 'send' }).click();
-        const res = (await (await sent).json()) as { correct: boolean; message: string };
-        expect(res.correct, res.message).toBe(true);
-        expect(res.message).toContain(who === 'a' ? '#1' : '#2');
-        await waitSealed(page, 'signal');
       });
     }
-
-    // close: the guild is crowned; then reveal each player's word on their own phone
-    await con.getByTestId('signal-close').click();
-    await con.getByTestId('signal-reveal').click();
-    await expect(con.getByTestId('signal-reveal')).toHaveCount(0, { timeout: 15_000 });
-    await cctx.close();
-    await phone('a', async (page) => {
-      await page.goto('/morse/cipher');
-      await expect(page.getByTestId('cipher-done')).toContainText('#1 on the last signal');
-      const me = (await (await page.request.get('/api/cipher/me')).json()) as { signal: { word: string; winner: string | null } };
-      expect(me.signal.word).toBe(words.a);
-      await page.waitForTimeout(400);
-      await page.screenshot({ path: `${SHOTS}/cipher-done-390.png`, fullPage: true });
-    });
   });
 
   test('projector: the guild race; console: progress and difficulty', async ({ browser }) => {

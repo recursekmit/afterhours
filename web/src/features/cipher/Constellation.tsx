@@ -1,11 +1,11 @@
 /*
-  The constellation map: seven stars, one per trial, joined by a line of light as trials are sealed.
+  The constellation map: six stars, one per trial, joined by a line of light as trials are sealed.
   Sealed stars sit on a red wax drop with their rhythm pips; the current star breathes; the rest wait faint.
 */
-import { type Star, TRIALS, TRIAL_INFO } from '@afterhours/shared/features/cipher';
+import { PLAYED_TRIALS as TRIALS, type Star, TRIAL_INFO } from '@afterhours/shared/features/cipher';
 import s from './cipher.module.css';
 
-const POS: [number, number][] = [
+const ALL_POS: [number, number][] = [
   [28, 128],
   [76, 56],
   [128, 112],
@@ -19,8 +19,10 @@ const star4 = (x: number, y: number, r: number) =>
   `M${x} ${y - r}L${x + r * 0.22} ${y - r * 0.22}L${x + r} ${y}L${x + r * 0.22} ${y + r * 0.22}L${x} ${y + r}L${x - r * 0.22} ${y + r * 0.22}L${x - r} ${y}L${x - r * 0.22} ${y - r * 0.22}Z`;
 
 export function Constellation({ stars, current, onPick }: { stars: Star[]; current: number; onPick?: (trial: number) => void }) {
+  // the last signal is off: six stars
+  const POS = ALL_POS.slice(0, TRIALS.length);
   return (
-    <figure className={s.constellation} aria-label={`constellation: ${stars.filter((x) => x.sealedAt).length} of 7 trials sealed`}>
+    <figure className={s.constellation} aria-label={`constellation: ${stars.filter((x) => x.sealedAt).length} of 6 trials sealed`}>
       <svg viewBox="0 0 340 170" role="img">
         {POS.slice(1).map(([x, y], i) => {
           const [px, py] = POS[i] as [number, number];

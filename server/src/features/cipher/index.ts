@@ -46,9 +46,7 @@ export const cipher = defineFeature({
     { id: STICKERS.whisper, title: 'the whisper', hint: 'decode the word your phone whispers', shape: 'blob', color: 'grape', glyph: 'eye', feature: 'cipher', order: 73 },
     { id: STICKERS.riddle, title: 'the riddle', hint: 'answer the riddle hidden on slip III', shape: 'square', color: 'paper', glyph: 'note', feature: 'cipher', order: 74 },
     { id: STICKERS.pact, title: 'the pact', hint: 'seal a pact with someone from another guild', shape: 'heart', color: 'pink', glyph: 'heart', feature: 'cipher', order: 75 },
-    { id: STICKERS.signal, title: 'last signal', hint: 'catch the last signal', shape: 'burst', color: 'lime', glyph: 'bolt', feature: 'cipher', order: 76 },
-    { id: STICKERS.master, title: 'cipher master', hint: 'seal all seven trials of the cipher', shape: 'star', color: 'sun', glyph: 'crown', feature: 'cipher', order: 77 },
-    { id: STICKERS.champion, title: 'guild champion', hint: 'be in the guild that wins the cipher race', shape: 'shield', color: 'tangerine', glyph: 'flag', feature: 'cipher', order: 78 },
+    { id: STICKERS.master, title: 'cipher master', hint: 'seal all six trials of the cipher', shape: 'star', color: 'sun', glyph: 'crown', feature: 'cipher', order: 77 },
   ],
 
   routes(app, ctx) {

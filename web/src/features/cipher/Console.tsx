@@ -10,6 +10,7 @@ import {
   CipherPrintSchema,
   type CipherSettings,
   GUILD_INFO,
+  PLAYED_TRIALS,
   TRIALS,
   TRIAL_INFO,
 } from '@afterhours/shared/features/cipher';
@@ -19,7 +20,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { SlipSheet } from '../../lib/slips';
-import { Button, Countdown, TextField, useToast } from '../../kit';
+import { Button, TextField, useToast } from '../../kit';
 import { Section, Stamp, Stat, downloadHref, ui } from '../common/ui';
 import { mmss, pad3, useCipherAdmin } from './api';
 import s from './cipher.module.css';
@@ -67,7 +68,7 @@ export default function CipherConsole() {
         <div className={ui.statGrid}>
           <Stat label="sworn in" value={o.players.length} />
           <Stat label="sets claimed" value={o.set ? `${o.set.claimed}/${o.set.copies}` : 'no set'} />
-          <Stat label="all seven sealed" value={o.sealed[TRIALS.length - 1] ?? 0} />
+          <Stat label="all six sealed" value={o.sealed[PLAYED_TRIALS.length - 1] ?? 0} />
         </div>
         {!o.set && <p className={ui.hand}>no Morse slip set yet: the trails console makes "the morse slip" (kind morse, four slips, unique copies).</p>}
         <div className={ui.row}>
@@ -114,7 +115,6 @@ export default function CipherConsole() {
           </tbody>
         </table>
       </Section>
-      <LastSignal o={o} onDone={() => void q.refetch()} />
       <Players o={o} />
       <Pacts o={o} onDone={() => void q.refetch()} />
       <Settings o={o} onSaved={() => void q.refetch()} />
@@ -143,7 +143,7 @@ function TrialTable({ o }: { o: CipherAdmin }) {
         </tr>
       </thead>
       <tbody>
-        {TRIALS.map((t, i) => (
+        {PLAYED_TRIALS.map((t, i) => (
           <tr key={t}>
             <td>
               {i + 1}. {TRIAL_INFO[t].title}
@@ -154,74 +154,6 @@ function TrialTable({ o }: { o: CipherAdmin }) {
         ))}
       </tbody>
     </table>
-  );
-}
-
-function LastSignal({ o, onDone }: { o: CipherAdmin; onDone: () => void }) {
-  const toast = useToast();
-  const [mins, setMins] = useState(Math.round(o.settings.signalWarnSec / 60));
-  const sig = o.signal;
-  const act = useMutation({
-    mutationFn: (b: { action: 'warn' | 'fire' | 'close' | 'reveal' | 'cancel'; inSec?: number; word?: string }) => api.post('/api/cipher/admin/signal', b, CipherAdminSchema),
-    onSuccess: () => {
-      onDone();
-    },
-    onError: (e: Error) => toast(e.message, { kind: 'bad' }),
-  });
-  const open = sig.status === 'warned' || sig.status === 'live';
-  const ready = o.sealed[5] ?? 0;
-  return (
-    <Section
-      title="the last signal"
-      tilt={-0.3}
-      action={<Stamp tone={sig.status === 'live' ? 'live' : sig.status === 'warned' ? 'info' : 'done'}>{sig.status === 'idle' ? 'not sent' : sig.status}</Stamp>}
-    >
-      <p className={ui.hand}>
-        {ready} {ready === 1 ? 'player has' : 'players have'} sealed the pact and can answer. every eligible phone gets its own word and beeps, flashes and buzzes it (no projector needed). players replay it as often as they like; the first {o.settings.signalFirstN} correct win big. closing it crowns the winning guild on every phone.
-      </p>
-      {sig.id !== null && (
-        <div className={ui.statGrid}>
-          <Stat label="the words" value="one per phone" />
-          <Stat label="caught it" value={sig.correct} />
-          <Stat label={sig.status === 'warned' ? 'goes live in' : sig.status === 'live' ? 'closes in' : 'winner'} value={sig.status === 'warned' && sig.fireAt ? <Countdown to={sig.fireAt} /> : sig.status === 'live' && sig.closesAt ? <Countdown to={sig.closesAt} /> : sig.winner ? GUILD_INFO[sig.winner].short : '-'} />
-        </div>
-      )}
-      {!open && (
-        <div className={ui.row}>
-          <TextField label="warn, minutes ahead" type="number" min={0} max={60} value={String(mins)} onChange={(e) => setMins(Number(e.target.value))} />
-          <Button tone="sun" icon="bell" loading={act.isPending} onClick={() => act.mutate({ action: 'warn', inSec: Math.max(0, Math.round(mins * 60)) })} data-testid="signal-warn">
-            announce: fire in {mins} min
-          </Button>
-          <Button tone="pink" icon="bolt" loading={act.isPending} onClick={() => act.mutate({ action: 'fire' })} data-testid="signal-fire">
-            fire now
-          </Button>
-        </div>
-      )}
-      {open && (
-        <div className={ui.row}>
-          {sig.status === 'warned' && (
-            <>
-              <Button tone="pink" icon="bolt" loading={act.isPending} onClick={() => act.mutate({ action: 'fire' })} data-testid="signal-fire">
-                fire it now
-              </Button>
-              <Button tone="paper" loading={act.isPending} onClick={() => act.mutate({ action: 'cancel' })}>
-                call it off
-              </Button>
-            </>
-          )}
-          {sig.status === 'live' && (
-            <Button tone="lime" icon="crown" loading={act.isPending} onClick={() => act.mutate({ action: 'close' })} data-testid="signal-close">
-              close answers and crown the guild
-            </Button>
-          )}
-        </div>
-      )}
-      {sig.status === 'closed' && !sig.revealed && (
-        <Button tone="sun" icon="eye" loading={act.isPending} onClick={() => act.mutate({ action: 'reveal' })} data-testid="signal-reveal">
-          reveal the word on every screen
-        </Button>
-      )}
-    </Section>
   );
 }
 
@@ -254,8 +186,8 @@ function Players({ o }: { o: CipherAdmin }) {
                     {GUILD_INFO[p.guild].short}
                   </span>
                 </td>
-                <td>{p.trial > TRIALS.length ? 'all sealed' : `${p.trial}. ${TRIAL_INFO[TRIALS[p.trial - 1]!].title}`}</td>
-                <td className={ui.num}>{p.trial > TRIALS.length || p.trialStartedAt === null ? '' : mmss(now - p.trialStartedAt)}</td>
+                <td>{p.trial > PLAYED_TRIALS.length ? 'all sealed' : `${p.trial}. ${TRIAL_INFO[TRIALS[p.trial - 1]!].title}`}</td>
+                <td className={ui.num}>{p.trial > PLAYED_TRIALS.length || p.trialStartedAt === null ? '' : mmss(now - p.trialStartedAt)}</td>
                 <td className={ui.num}>{p.stars}</td>
                 <td className={ui.num}>{p.points}</td>
                 <td>{p.pact ?? ''}</td>

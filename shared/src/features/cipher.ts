@@ -72,6 +72,11 @@ export const SLIP_OF = { winds: 1, echo: 2, riddle: 3, pact: 4 } as const;
 export const TRIALS = ['oath', 'winds', 'echo', 'whisper', 'riddle', 'pact', 'signal'] as const;
 export type TrialId = (typeof TRIALS)[number];
 export const TrialIdSchema = z.enum(TRIALS);
+/**
+ * The trials players actually play: 1-6. Trial 7 (the last signal) is switched off for this event (no
+ * projector): sealing the pact completes the cipher. Its code stays in place, unreachable.
+ */
+export const PLAYED_TRIALS = TRIALS.slice(0, 6) as readonly TrialId[];
 /** 1-based trial number of an id. */
 export const trialNo = (t: TrialId): number => TRIALS.indexOf(t) + 1;
 

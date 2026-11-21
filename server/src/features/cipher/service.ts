@@ -1,4 +1,4 @@
-// The Cipher Ticket, server side: slips and guilds, the seven trials, points, the projector and console
+// The Cipher Ticket, server side: slips and guilds, the six trials (the last signal is off), points, the projector and console
 // views. Pact pairing lives in pact.ts and the last signal in signal.ts.
 //
 // Fairness: every judgement happens here. Before a trial is solved the phone gets only what it needs to
@@ -350,9 +350,11 @@ export function seal(ctx: FeatureContext, attendeeId: number, n: number, opts: {
     if (opts.points > 0 && ctx.points.award({ attendeeId, source: SOURCE, ref: id, points: opts.points, label: TRIAL_LABEL[id] }).awarded) paid += opts.points;
     if (fast && s.points.speed > 0 && ctx.points.award({ attendeeId, source: SOURCE, ref: `speed:${id}`, points: s.points.speed, label: `${TRIAL_LABEL[id]}, fast` }).awarded) paid += s.points.speed;
     run(ctx.db, 'UPDATE cipher_seals SET points = ? WHERE attendee_id = ? AND trial = ?', paid, attendeeId, n);
-    run(ctx.db, 'UPDATE cipher_players SET trial = ?, trial_started_at = ?, pact_since = NULL WHERE attendee_id = ?', n + 1, now, attendeeId);
+    // The last signal is off: the pact is the final trial, and sealing it completes the cipher.
+    const next = n === T.pact ? T.done : n + 1;
+    run(ctx.db, 'UPDATE cipher_players SET trial = ?, trial_started_at = ?, pact_since = NULL WHERE attendee_id = ?', next, now, attendeeId);
     ctx.stickers.unlock(attendeeId, STICKERS[id]);
-    if (n === TRIALS.length) ctx.stickers.unlock(attendeeId, STICKERS.master);
+    if (next === T.done) ctx.stickers.unlock(attendeeId, STICKERS.master);
     touch(ctx);
     if (n + 1 === T.pact) enterPool(ctx, attendeeId);
     return paid;

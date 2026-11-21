@@ -1,8 +1,8 @@
 /*
-  Projector: the guild race (four bars, cipher points per member), the heat on each of the seven trials,
+  Projector: the guild race (four bars, cipher points per member), the heat on each of the six trials,
   and the pacts sealed ticker. Big enough to read from the back of a hall.
 */
-import { GUILD_INFO, TRIALS, TRIAL_INFO } from '@afterhours/shared/features/cipher';
+import { GUILD_INFO, PLAYED_TRIALS, TRIAL_INFO } from '@afterhours/shared/features/cipher';
 import { motion } from 'motion/react';
 import { useCipherScreen } from './api';
 import s from './cipher.module.css';
@@ -45,7 +45,7 @@ export default function CipherScene() {
         <div>
           <h3 className={s.boxTitle}>on each trial now</h3>
           <div className={s.heat}>
-            {TRIALS.map((t, i) => (
+            {PLAYED_TRIALS.map((t, i) => (
               <div key={t} className={s.heatCol}>
                 <motion.div className={s.heatBar} initial={false} animate={{ height: `${((o.onTrial[i] ?? 0) / heatMax) * 100}%` }} />
                 <span className={s.heatNum}>{o.onTrial[i] ?? 0}</span>
@@ -61,7 +61,7 @@ export default function CipherScene() {
               {p.a} and {p.b} ({GUILD_INFO[p.ga].short}, {p.gb ? GUILD_INFO[p.gb].short : 'the oracle'})
             </span>
           ))}
-          {o.recentPacts.length === 0 && <span className={s.tickerItem}>{o.sealed[TRIALS.length - 2] ? '' : 'the first pact is still to come.'}</span>}
+          {o.recentPacts.length === 0 && <span className={s.tickerItem}>{o.sealed[PLAYED_TRIALS.length - 1] ? '' : 'the first pact is still to come.'}</span>}
         </div>
       </div>
     </div>

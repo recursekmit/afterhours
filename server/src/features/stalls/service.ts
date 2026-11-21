@@ -48,7 +48,9 @@ export function freeUsed(ctx: FeatureContext, attendeeId: number): number {
 }
 
 export function allowanceOf(ctx: FeatureContext, attendeeId: number): Allowance {
-  const total = getSettings(ctx).allowance;
+  // per-person extras (event day: a few people get one more free drink), stored as stalls_meta 'extraFree:<id>'
+  const extra = Number(one<{ value: string }>(ctx.db, 'SELECT value FROM stalls_meta WHERE key = ?', `extraFree:${attendeeId}`)?.value ?? 0);
+  const total = getSettings(ctx).allowance + (Number.isInteger(extra) && extra > 0 ? Math.min(extra, MAX_ALLOWANCE) : 0);
   const used = freeUsed(ctx, attendeeId);
   return { total, used, left: Math.max(0, total - used) };
 }

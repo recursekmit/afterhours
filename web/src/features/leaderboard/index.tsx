@@ -8,6 +8,7 @@ import { useServerNow } from '../../core/clock';
 import type { SceneStatus } from '../../core/feature';
 import { defineFeature } from '../../core/feature';
 import { LeaderboardPage } from './Attendee';
+import { HereCard } from './Here';
 import { useBoard } from './useBoard';
 
 function useBoardSceneStatus(): SceneStatus {
@@ -21,6 +22,7 @@ function useBoardSceneStatus(): SceneStatus {
 export const leaderboard = defineFeature({
   name: 'leaderboard',
   routes: [{ path: 'leaderboard', Component: LeaderboardPage }],
+  home: { order: 2, Card: HereCard },
   nav: { order: 30, label: 'board', to: '/leaderboard', icon: 'trophy' },
   console: { order: 70, label: 'leaderboard', path: 'leaderboard', icon: 'trophy', Panel: lazy(() => import('./Console')) },
   scenes: [{ id: 'leaderboard', label: 'leaderboard', Component: lazy(() => import('./Scene')), useStatus: useBoardSceneStatus, order: 40, durationMs: 15000 }],

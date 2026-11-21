@@ -252,4 +252,17 @@ describe('leaderboard feature', () => {
     tick(t.ctx);
     expect(performance.now() - t1).toBeLessThan(300);
   }, 60_000);
+  it('"I am here": only people who tapped are on the prize board, in live board order', async () => {
+    const ppl = await crowd(5); // p4 has the most
+    expect(((await req(t.app, null, 'POST', '/api/leaderboard/here')).statusCode)).toBe(401);
+    expect((await req(t.app, ppl[1]!.jar, 'GET', '/api/leaderboard/here')).json()).toMatchObject({ here: false });
+    for (const i of [1, 3, 0]) expect((await req(t.app, ppl[i]!.jar, 'POST', '/api/leaderboard/here')).json()).toMatchObject({ here: true });
+    await req(t.app, ppl[3]!.jar, 'POST', '/api/leaderboard/here'); // twice is fine
+    expect((await req(t.app, ppl[1]!.jar, 'GET', '/api/leaderboard/here')).json()).toMatchObject({ here: true });
+    expect((await req(t.app, ppl[1]!.jar, 'GET', '/api/leaderboard/admin/here')).statusCode).toBe(401);
+    const hb = (await req(t.app, admin, 'GET', '/api/leaderboard/admin/here')).json() as { rows: { place: number; rank: number; nickname: string }[]; here: number };
+    expect(hb.here).toBe(3);
+    expect(hb.rows.map((r) => [r.place, r.nickname, r.rank])).toEqual([[1, 'p3', 2], [2, 'p1', 4], [3, 'p0', 5]]);
+    expect((await req(t.app, admin, 'POST', '/api/leaderboard/admin/here/clear', { confirm: 'CLEAR' })).json()).toMatchObject({ here: 0, rows: [] });
+  });
 });

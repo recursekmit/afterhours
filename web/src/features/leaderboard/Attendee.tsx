@@ -14,6 +14,7 @@ import { Avatar, Card, Doodle, ErrorState, LoadingState, NumberTicker } from '..
 import { CountUp } from '../attendance/CountUp';
 import { PageHead, Stamp, ui } from '../common/ui';
 import s from './leaderboard.module.css';
+import { HereCard } from './Here';
 import { useBoard } from './useBoard';
 
 type Delta = Map<number, number>;
@@ -139,6 +140,7 @@ export function LeaderboardPage() {
           <span className={s.keepChip}>your points still count</span>
         </motion.p>
       )}
+      <HereCard />
       {me && (
         <Card tone="paper" className={s.meCard}>
           <div className={s.meRow}>

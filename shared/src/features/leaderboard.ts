@@ -143,11 +143,28 @@ export const RevealStepSchema = z.object({
 });
 export type RevealStep = z.infer<typeof RevealStepSchema>;
 
+/** "Still here?" (event day, prizes for the top people who are still in the room). */
+export const HereMeSchema = z.object({ here: z.boolean(), at: z.number().int().nullable() });
+export type HereMe = z.infer<typeof HereMeSchema>;
+export const HereRowSchema = z.object({
+  place: z.number().int(),
+  rank: z.number().int(),
+  attendeeId: z.number().int(),
+  nickname: z.string(),
+  roll: z.string().nullable(),
+  total: z.number().int(),
+  at: z.number().int(),
+});
+export type HereRow = z.infer<typeof HereRowSchema>;
+export const HereBoardSchema = z.object({ rows: z.array(HereRowSchema), here: z.number().int(), players: z.number().int() });
+export type HereBoard = z.infer<typeof HereBoardSchema>;
+
 declare module '../live' {
   interface LiveEvents {
     'leaderboard.moves': LeaderboardMoves;
     'leaderboard.rank': MyRankEvent;
     'leaderboard.freeze': FreezeState;
     'leaderboard.reveal': RevealStep;
+    'leaderboard.here': { here: number };
   }
 }

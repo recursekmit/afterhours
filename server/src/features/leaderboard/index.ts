@@ -12,6 +12,8 @@ import {
   type BoardRow,
   type FreezeState,
   FreezeRequestSchema,
+  type HereBoard,
+  type HereMe,
   type MyStanding,
   RevealRequestSchema,
   type RevealState,
@@ -22,6 +24,7 @@ import {
   defineFeature,
   getAttendee,
   isAdmin,
+  all,
   isScreen,
   one,
   parse,
@@ -261,9 +264,10 @@ export function tick(ctx: FeatureContext): void {
 export const leaderboard = defineFeature({
   name: 'leaderboard',
   // purge test player: rebuild the board without them
-  onPurge(ctx) {
+  onPurge(ctx, attendeeId) {
     const s = state(ctx);
     s.cache = null;
+    run(ctx.db, 'DELETE FROM leaderboard_here WHERE attendee_id = ?', attendeeId);
   },
 
   stickers: [
@@ -285,6 +289,35 @@ export const leaderboard = defineFeature({
       const q = parse(BoardQuerySchema, req.query);
       const peek = isAdmin(req) && (q.peek === '1' || q.peek === 'true');
       return buildBoard(ctx, { limit: q.limit, meId: me?.attendeeId ?? null, peek });
+    });
+
+    // "Still here?" for the prizes. GET/POST /api/leaderboard/here (attendee): tap once, stays tapped.
+    app.get('/here', async (req): Promise<HereMe> => {
+      const me = getAttendee(req);
+      if (!me) throw unauthorized();
+      const r = one<{ at: number }>(ctx.db, 'SELECT at FROM leaderboard_here WHERE attendee_id = ?', me.attendeeId);
+      return { here: Boolean(r), at: r?.at ?? null };
+    });
+    app.post('/here', async (req): Promise<HereMe> => {
+      const me = getAttendee(req);
+      if (!me) throw unauthorized();
+      run(ctx.db, 'INSERT OR IGNORE INTO leaderboard_here (attendee_id, at) VALUES (?, ?)', me.attendeeId, ctx.now());
+      const r = one<{ at: number }>(ctx.db, 'SELECT at FROM leaderboard_here WHERE attendee_id = ?', me.attendeeId);
+      ctx.live.publish('leaderboard.here', { here: hereCount(ctx) }, 'all');
+      return { here: true, at: r?.at ?? null };
+    });
+    // GET /api/leaderboard/admin/here (console): the live board, only the people who tapped "I'm here".
+    app.get('/admin/here', async (req): Promise<HereBoard> => {
+      requireAdmin(req);
+      return hereBoard(ctx);
+    });
+    // POST /api/leaderboard/admin/here/clear { confirm: 'CLEAR' }: start the roll call over.
+    app.post('/admin/here/clear', async (req): Promise<HereBoard> => {
+      requireAdmin(req);
+      if ((req.body as { confirm?: string } | null)?.confirm !== 'CLEAR') throw conflict('Send confirm: CLEAR.');
+      run(ctx.db, 'DELETE FROM leaderboard_here');
+      ctx.live.publish('leaderboard.here', { here: 0 }, 'all');
+      return hereBoard(ctx);
     });
 
     // POST /api/leaderboard/admin/freeze: board stops moving for everyone; top places are covered until revealed.
@@ -350,4 +383,21 @@ export const leaderboard = defineFeature({
 /** Used by tests and the console: who is in the top N right now (live, unmasked). */
 export function topNow(ctx: FeatureContext, n = 10): FullRow[] {
   return liveRows(ctx).slice(0, n);
+}
+
+const hereCount = (ctx: FeatureContext): number => one<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM leaderboard_here')?.n ?? 0;
+
+/** Live, unmasked board filtered to the people who tapped "I'm here"; `place` is their order among them. */
+export function hereBoard(ctx: FeatureContext): HereBoard {
+  const here = new Map(
+    all<{ attendee_id: number; at: number; roll: string | null }>(
+      ctx.db,
+      'SELECT h.attendee_id, h.at, a.roll FROM leaderboard_here h LEFT JOIN attendees a ON a.id = h.attendee_id',
+    ).map((r) => [r.attendee_id, r]),
+  );
+  const live = liveRows(ctx);
+  const rows = live
+    .filter((r) => here.has(r.attendeeId))
+    .map((r, i) => ({ place: i + 1, rank: r.rank, attendeeId: r.attendeeId, nickname: r.nickname, roll: here.get(r.attendeeId)?.roll ?? null, total: r.total, at: here.get(r.attendeeId)!.at }));
+  return { rows, here: here.size, players: live.length };
 }

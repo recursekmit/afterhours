@@ -6,6 +6,7 @@ import { api } from '../../core/api';
 import { Button, TextField, useToast } from '../../kit';
 import { Section, Stamp, ui } from '../common/ui';
 import { Row } from './Attendee';
+import { HereConsole } from './Here';
 import s from './leaderboard.module.css';
 import { useBoard } from './useBoard';
 
@@ -26,6 +27,7 @@ export default function LeaderboardConsole() {
   const reveal = f?.reveal;
   return (
     <div className={ui.stack}>
+      <HereConsole />
       <Section title="the big reveal" tape action={f && <Stamp tone={f.frozen ? 'sky' : 'live'}>{f.frozen ? 'frozen' : 'live'}</Stamp>}>
         <p className={ui.hand}>
           1. freeze before the wrap: everyone sees the top places as ???, their own points keep counting. 2. start the reveal: places uncover from #{topN} to #1 on every screen at once, with a drum roll before #1. 3. unfreeze afterwards.

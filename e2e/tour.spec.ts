@@ -58,6 +58,8 @@ test.describe.serial('screenshot tour', () => {
     baseURL = String(info.project.use.baseURL);
     admin = await playwright.request.newContext({ baseURL });
     expect((await admin.post('/api/admin/session', { data: { pin: '2468' } })).ok()).toBeTruthy();
+    // both events are hidden from players until the console shows them
+    expect((await admin.put('/api/hunt/admin/visibility', { data: { hunt: true, morse: true } })).ok()).toBeTruthy();
     kits = (await api<{ kits: { kitId: string; password: string }[] }>('POST', '/api/admin/kits', { mode: 'blank', count: 8 })).kits;
   });
 

@@ -120,5 +120,5 @@ demo.forEach((k, i) => {
   console.log(`  ${pad(k.kitId, 8)}${pad(formatPassword(k.password), 10)}${state}`);
 });
 console.log(`\n  + ${crowd.length} demo attendees with points (random passwords, not printed)`);
-console.log(`  console PIN: ${config.adminPin}   projector PIN: ${config.screenPin}`);
-console.log(`  app: ${config.appUrl}/   console: ${config.appUrl}/admin   projector: ${config.appUrl}/screen\n`);
+console.log(`  console PIN: ${config.adminPin}   projector PIN: ${config.screenPin}   gate PIN: ${config.gatePin}`);
+console.log(`  app: ${config.appUrl}/   console: ${config.appUrl}/admin   projector: ${config.appUrl}/screen   gate: ${config.appUrl}/gate\n`);

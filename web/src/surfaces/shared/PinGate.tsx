@@ -1,7 +1,8 @@
 /*
-  PinGate: the sign-in for the two staff surfaces (console and projector).
+  PinGate: the sign-in for staff surfaces (console, projector, door gate).
   A chunky keypad works on a laptop trackpad, a phone and a projector remote.
 */
+import type { StaffRole } from '@afterhours/shared';
 import { useAnimate, useReducedMotion } from 'motion/react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useStaffSession, useStaffSignIn } from '../../core/queries';
@@ -12,7 +13,7 @@ import s from './pingate.module.css';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'go'] as const;
 
-export function PinGate({ role, children }: { role: 'admin' | 'screen'; children: ReactNode }) {
+export function PinGate({ role, children }: { role: StaffRole; children: ReactNode }) {
   const session = useStaffSession(role);
   const signIn = useStaffSignIn(role);
   const [pin, setPin] = useState('');
@@ -47,8 +48,13 @@ export function PinGate({ role, children }: { role: 'admin' | 'screen'; children
     else setPin((p) => (p.length < 12 ? p + k : p));
   };
 
-  const title = role === 'admin' ? 'organisers only' : 'projector pin';
-  const hint = role === 'admin' ? 'the console pin, not your kit password.' : 'type it on the laptop driving the big screen.';
+  const title = role === 'admin' ? 'organisers only' : role === 'screen' ? 'projector pin' : 'door coordinators';
+  const hint =
+    role === 'admin'
+      ? 'the console pin, not your kit password.'
+      : role === 'screen'
+        ? 'type it on the laptop driving the big screen.'
+        : 'the gate pin, to scan student IDs at entry.';
 
   return (
     <div className={s.gate} data-role={role}>

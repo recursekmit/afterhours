@@ -10,6 +10,13 @@
 */
 import {
   type DeskLookupResponse,
+  type GateCount,
+  type GateEnterResponse,
+  type GateLookupResponse,
+  type GatePerson,
+  type GateRecent,
+  type GateStats,
+  type GateUndoResponse,
   KMIT_ROLL_RE,
   type ImportReport,
   type ParticipantInput,
@@ -20,6 +27,7 @@ import {
   normaliseRoll,
   parseIdQr,
   phoneDigits,
+  phoneLast4,
   resolveIdQr,
   rollKey,
   rollSuffix,
@@ -43,6 +51,7 @@ interface Joined {
   source: 'import' | 'walkin';
   kit_id: string;
   created_at: number;
+  gate_entered_at: number | null;
   device_hash: string | null;
   resets: number;
   attendee_id: number | null;
@@ -53,7 +62,7 @@ interface Joined {
 }
 
 const SELECT = `
-  SELECT p.id, p.roll, p.name, p.year, p.section, p.phone, p.email, p.note, p.source, p.kit_id, p.created_at,
+  SELECT p.id, p.roll, p.name, p.year, p.section, p.phone, p.email, p.note, p.source, p.kit_id, p.created_at, p.gate_entered_at,
          k.device_hash, k.resets,
          a.id AS attendee_id, a.nickname, a.first_signin_at, a.profile_complete,
          (SELECT COALESCE(SUM(l.points), 0) FROM points_ledger l WHERE l.attendee_id = a.id) AS points
@@ -76,6 +85,7 @@ function toRow(r: Joined): ParticipantRow {
     createdAt: r.created_at,
     bound: r.device_hash !== null,
     resets: r.resets,
+    gateEnteredAt: r.gate_entered_at,
     attendee:
       r.attendee_id === null
         ? null
@@ -434,4 +444,76 @@ export function deskLookup(ctx: AppContext, q: string): DeskLookupResponse {
     .filter((p) => (key.length >= 3 && rollKey(p.roll).includes(key)) || p.name.toLowerCase().includes(needle) || (p.attendee?.nickname ?? '').toLowerCase().includes(needle))
     .slice(0, 30);
   return { read: 'search', qr: null, pickId: matches.length === 1 ? (matches[0]?.id ?? null) : null, matches };
+}
+
+/* ---------------------------------------------------------------- gate */
+
+function toGatePerson(r: ParticipantRow): GatePerson {
+  const last4 = phoneLast4(r.phone);
+  return {
+    id: r.id,
+    roll: r.roll,
+    name: r.name,
+    year: r.year,
+    section: r.section,
+    phoneLast4: last4.length === 4 ? last4 : null,
+    note: r.note,
+    signedIn: r.attendee !== null,
+    gateEnteredAt: r.gateEnteredAt,
+  };
+}
+
+export function gateCount(ctx: AppContext): GateCount {
+  const row = one<{ total: number; entered: number }>(ctx.db, 'SELECT COUNT(*) AS total, COUNT(gate_entered_at) AS entered FROM participants');
+  return { total: row?.total ?? 0, entered: row?.entered ?? 0 };
+}
+
+export function gateStats(ctx: AppContext): GateStats {
+  const { total, entered } = gateCount(ctx);
+  const recent: GateRecent[] = all<{ id: number; name: string; roll: string; year: string | null; section: string | null; gate_entered_at: number }>(
+    ctx.db,
+    'SELECT id, name, roll, year, section, gate_entered_at FROM participants WHERE gate_entered_at IS NOT NULL ORDER BY gate_entered_at DESC, id DESC LIMIT 12',
+  ).map((r) => ({ id: r.id, name: r.name, roll: r.roll, year: r.year, section: r.section, gateEnteredAt: r.gate_entered_at }));
+  return { total, entered, recent };
+}
+
+/** Door check: scan an ID card QR or type a roll / name. Returns privacy-trimmed matches and live counts. */
+export function gateLookup(ctx: AppContext, q: string): GateLookupResponse {
+  const r = deskLookup(ctx, q);
+  return {
+    read: r.read,
+    qrSuffix: r.qr?.suffix ?? null,
+    matches: r.matches.map(toGatePerson),
+    stats: gateCount(ctx),
+  };
+}
+
+/** Mark a registered participant as let in at the door. Atomic: a second tap reports newlyEntered = false. */
+export function markGateEntered(ctx: AppContext, id: number): GateEnterResponse {
+  const now = ctx.now();
+  const newlyEntered = tx(ctx.db, () => {
+    const exists = one<{ id: number }>(ctx.db, 'SELECT id FROM participants WHERE id = ?', id);
+    if (!exists) throw notFound('No such participant.');
+    return run(ctx.db, 'UPDATE participants SET gate_entered_at = ? WHERE id = ? AND gate_entered_at IS NULL', now, id).changes === 1;
+  });
+  const person = toGatePerson(getParticipant(ctx, id));
+  const stats = gateCount(ctx);
+  if (newlyEntered) {
+    ctx.live.publish('gate.changed', { entered: stats.entered, total: stats.total, participantId: id, enteredAt: person.gateEnteredAt }, ['gates', 'admins']);
+  }
+  return { person, newlyEntered, stats };
+}
+
+/** Clear a participant's door-entry timestamp (in case a coordinator tapped by mistake). */
+export function undoGateEntered(ctx: AppContext, id: number): GateUndoResponse {
+  const cur = one<{ gate_entered_at: number | null }>(ctx.db, 'SELECT gate_entered_at FROM participants WHERE id = ?', id);
+  if (!cur) throw notFound('No such participant.');
+  const had = cur.gate_entered_at !== null;
+  if (had) run(ctx.db, 'UPDATE participants SET gate_entered_at = NULL WHERE id = ?', id);
+  const person = toGatePerson(getParticipant(ctx, id));
+  const stats = gateCount(ctx);
+  if (had) {
+    ctx.live.publish('gate.changed', { entered: stats.entered, total: stats.total, participantId: id, enteredAt: null }, ['gates', 'admins']);
+  }
+  return { person, stats };
 }

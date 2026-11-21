@@ -10,6 +10,7 @@ import {
   type ResetKitResponse,
   SignInRequestSchema,
   type StaffMe,
+  type StaffRole,
   KitIdSchema,
 } from '@afterhours/shared';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -148,7 +149,10 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
 
   /* ---------------------------------------------------- staff PINs */
 
-  const staffLogin = (role: 'admin' | 'screen', pin: string) => async (req: FastifyRequest, reply: FastifyReply): Promise<StaffMe> => {
+  const staffCookie = (role: StaffRole) => (role === 'admin' ? COOKIES.admin : role === 'screen' ? COOKIES.screen : COOKIES.gate);
+  const staffNeedMsg = (role: StaffRole) => (role === 'admin' ? 'Console PIN needed.' : role === 'screen' ? 'Projector PIN needed.' : 'Gate PIN needed.');
+
+  const staffLogin = (role: StaffRole, pin: string) => async (req: FastifyRequest, reply: FastifyReply): Promise<StaffMe> => {
     const key = `pin:${req.ip}`;
     if (!pinFailLimiter.allowed(key)) {
       throw new HttpError(429, 'rate_limited', 'Too many wrong PINs. Wait a few minutes.', { retryAfter: pinFailLimiter.retryAfter(key) });
@@ -159,17 +163,17 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
       throw new HttpError(401, 'bad_credentials', 'Wrong PIN.');
     }
     const s = createSession(ctx, role, null);
-    setCookie(reply, ctx, role === 'admin' ? COOKIES.admin : COOKIES.screen, s.token, s.expiresAt);
+    setCookie(reply, ctx, staffCookie(role), s.token, s.expiresAt);
     return { role };
   };
-  const staffMe = (role: 'admin' | 'screen') => async (req: FastifyRequest): Promise<StaffMe> => {
-    if (!findSession(ctx, role, req.cookies[role === 'admin' ? COOKIES.admin : COOKIES.screen])) {
-      throw unauthorized(role === 'admin' ? 'Console PIN needed.' : 'Projector PIN needed.');
+  const staffMe = (role: StaffRole) => async (req: FastifyRequest): Promise<StaffMe> => {
+    if (!findSession(ctx, role, req.cookies[staffCookie(role)])) {
+      throw unauthorized(staffNeedMsg(role));
     }
     return { role };
   };
-  const staffLogout = (role: 'admin' | 'screen') => async (req: FastifyRequest, reply: FastifyReply): Promise<Ok> => {
-    const name = role === 'admin' ? COOKIES.admin : COOKIES.screen;
+  const staffLogout = (role: StaffRole) => async (req: FastifyRequest, reply: FastifyReply): Promise<Ok> => {
+    const name = staffCookie(role);
     deleteSession(ctx, req.cookies[name]);
     clearCookie(reply, ctx, name);
     return { ok: true };
@@ -181,6 +185,9 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
   app.post('/api/screen/session', staffLogin('screen', ctx.config.screenPin));
   app.get('/api/screen/session', staffMe('screen'));
   app.delete('/api/screen/session', staffLogout('screen'));
+  app.post('/api/gate/session', staffLogin('gate', ctx.config.gatePin));
+  app.get('/api/gate/session', staffMe('gate'));
+  app.delete('/api/gate/session', staffLogout('gate'));
 
   /* ---------------------------------------------------- admin: kits */
 

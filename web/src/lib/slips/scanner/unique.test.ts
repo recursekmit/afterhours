@@ -17,7 +17,8 @@ import sample from './fixtures/unique-sample.json';
 import { processFrame } from './pipeline';
 import { type CameraOptions, type FloatImage, cameraScene, rasterSlip, rng } from './testing/synth';
 
-const T = SLIP_SIZES.ticket;
+// the morse tickets print four per A4 page (SLIP_SIZES.quad, 146 x 66): the smallest ticket, so the hardest case
+const T = SLIP_SIZES.quad;
 const COPIES = sample.copies.map((c) => {
   const L = layoutSlip({ strips: c.edges as Partial<Record<SlipEdge, string>>, widthMm: T.widthMm, heightMm: T.heightMm, number: c.slip, serial: c.serial });
   return { id: `no. ${String(c.serial).padStart(3, '0')} slip ${c.slip}`, L, print: rasterSlip(L, 10, { seed: c.serial }) as FloatImage };
@@ -64,6 +65,8 @@ describe('unique slips: the scanner reads generated words', () => {
     const words = sample.copies.flatMap((c) => Object.values(c.edges));
     expect(new Set(words).size).toBe(words.length);
     for (const c of COPIES) expect(c.L.errors).toEqual([]);
+    // dots never smaller than 1.3 mm
+    for (const c of COPIES) for (const st of c.L.strips) expect(st.unitMm).toBeGreaterThanOrEqual(1.3);
   });
 
   for (const [ci, cond] of CONDITIONS.entries()) {
@@ -116,7 +119,7 @@ describe('unique slips: the scanner reads generated words', () => {
     const tot = rows.reduce((a, [, r]) => ({ n: a.n + r.n, ok: a.ok + r.ok, wrong: a.wrong + r.wrong, none: a.none + r.none }), { n: 0, ok: 0, wrong: 0, none: 0 });
     const lines = [
       '',
-      `unique slips: accuracy on generated words (${COPIES.length} copies x 4 turns per condition, ticket 176 x 80)`,
+      `unique slips: accuracy on generated words (${COPIES.length} copies x 4 turns per condition, quad ticket 146 x 66)`,
       `words: ${sample.copies.map((c) => Object.values(c.edges).join(' ')).join(' | ')}`,
       'condition'.padEnd(30) + 'n'.padStart(5) + 'ok'.padStart(6) + 'wrong'.padStart(7) + 'none'.padStart(6) + '   %',
     ];

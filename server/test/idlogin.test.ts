@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { importParticipants, parseParticipantCsv } from '../src/core/auth/participants';
 import { all, one } from '../src/core/db';
-import { AVATAR, type Jar, type TestApp, Jar as JarClass, adminJar, capture, makeApp, makeKits, req, signedInAttendee } from './helpers';
+import { AVATAR, type Jar, type TestApp, Jar as JarClass, adminJar, capture, gateJar, makeApp, makeKits, req, signedInAttendee } from './helpers';
+import { setVisibility } from '../src/features/hunt/visibility';
 
 type J = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -23,6 +24,7 @@ describe('student-ID login', () => {
   let admin: Jar;
   beforeEach(async () => {
     t = await makeApp();
+    setVisibility(t.ctx, { hunt: true, morse: true }); // both events are hidden from players by default
     admin = await adminJar(t.app);
     const r = await req(t.app, admin, 'POST', '/api/admin/participants/import', { csv: ROSTER });
     expect(r.statusCode, r.body).toBe(200);
@@ -409,6 +411,110 @@ describe('student-ID login', () => {
         ['kitty', 20],
       ]);
       expect(lb.me?.rank).toBe(1);
+    });
+  });
+
+  describe('door gate (/gate)', () => {
+    it('needs GATE_PIN; wrong PIN is refused, admin can also access, gate cannot access admin', async () => {
+      expect((await req(t.app, phone(), 'GET', '/api/gate/stats')).statusCode).toBe(401);
+      expect((await req(t.app, phone(), 'POST', '/api/gate/lookup', { q: DIVYA_QR })).statusCode).toBe(401);
+      expect((await req(t.app, phone(), 'POST', '/api/gate/session', { pin: '0000' })).statusCode).toBe(401);
+
+      const gate = await gateJar(t.app);
+      expect((await req(t.app, gate, 'GET', '/api/gate/session')).json()).toEqual({ role: 'gate' });
+      expect((await req(t.app, gate, 'GET', '/api/gate/stats')).statusCode).toBe(200);
+      // gate coordinator cannot access admin console endpoints
+      expect((await req(t.app, gate, 'GET', '/api/admin/participants')).statusCode).toBe(401);
+      // admin can also use gate endpoints
+      expect((await req(t.app, admin, 'GET', '/api/gate/stats')).statusCode).toBe(200);
+      // lock / sign out works
+      expect((await req(t.app, gate, 'DELETE', '/api/gate/session')).statusCode).toBe(200);
+      expect((await req(t.app, gate, 'GET', '/api/gate/stats')).statusCode).toBe(401);
+    });
+
+    it('scans ID QR, lateral-entry full roll, duplicate suffix, and name; hides full phone and email', async () => {
+      // add a lateral entry student to verify end-to-end
+      expect((await req(t.app, admin, 'POST', '/api/admin/participants', { name: 'Kiran Lateral', roll: '25BD5A0502', year: '2nd', section: 'CSE-A', phone: '9876543210', email: 'kiran@example.com' })).statusCode).toBe(200);
+      const gate = await gateJar(t.app);
+
+      const look = async (q: string) => {
+        const r = await req(t.app, gate, 'POST', '/api/gate/lookup', { q });
+        expect(r.statusCode, r.body).toBe(200);
+        return r;
+      };
+
+      const qrRes = await look(DIVYA_QR);
+      expect(qrRes.body).not.toContain('9000000055');
+      expect(qrRes.body).not.toContain('divya@example.com');
+      expect(qrRes.json()).toMatchObject({
+        read: 'qr',
+        qrSuffix: '660K',
+        stats: { total: 7, entered: 0 },
+        matches: [{ roll: '26BD1A660K', name: 'Divya Kapoor', phoneLast4: '0055', gateEnteredAt: null }],
+      });
+
+      const latRes = await look('25BD5A0502');
+      expect(latRes.json()).toMatchObject({
+        read: 'roll',
+        matches: [{ roll: '25BD5A0502', name: 'Kiran Lateral', phoneLast4: '3210' }],
+      });
+
+      const dupRes = await look('0533-12600-B-DATTA-CSE-260908');
+      expect(dupRes.json().matches.map((m: J) => m.roll).sort()).toEqual(['25BD1A0533', '26BD1A0533']);
+
+      const nameRes = await look('kapoor');
+      expect(nameRes.json().matches.map((m: J) => m.roll)).toEqual(['26BD1A660K']);
+
+      const missRes = await look('0999-12600-A-NOBODY-CSE-260908');
+      expect(missRes.json()).toMatchObject({ read: 'qr', qrSuffix: '0999', matches: [] });
+    });
+
+    it('marks entered once, flags already entered on second tap, broadcasts live, and supports undo', async () => {
+      const gate = await gateJar(t.app);
+      const divya = await byRoll('26BD1A660K');
+      const cap = capture(t.ctx, { attendeeId: null, admin: false, screen: false, gate: true });
+
+      const first = await req(t.app, gate, 'POST', `/api/gate/participants/${divya.id}/enter`, {});
+      expect(first.statusCode, first.body).toBe(200);
+      expect(first.json()).toMatchObject({
+        newlyEntered: true,
+        stats: { total: 6, entered: 1 },
+        person: { id: divya.id, roll: '26BD1A660K', gateEnteredAt: t.clock.now() },
+      });
+      expect(cap.events.find((e) => e.type === 'gate.changed')?.data).toEqual({
+        entered: 1,
+        total: 6,
+        participantId: divya.id,
+        enteredAt: t.clock.now(),
+      });
+
+      // second tap (e.g. another coordinator or rescan) does not overwrite timestamp and reports newlyEntered = false
+      const enteredAt = t.clock.now();
+      t.clock.advance(60_000);
+      const second = await req(t.app, gate, 'POST', `/api/gate/participants/${divya.id}/enter`, {});
+      expect(second.statusCode).toBe(200);
+      expect(second.json()).toMatchObject({
+        newlyEntered: false,
+        stats: { total: 6, entered: 1 },
+        person: { id: divya.id, gateEnteredAt: enteredAt },
+      });
+
+      const stats = (await req(t.app, gate, 'GET', '/api/gate/stats')).json() as J;
+      expect(stats).toMatchObject({
+        total: 6,
+        entered: 1,
+        recent: [{ id: divya.id, roll: '26BD1A660K', name: 'Divya Kapoor', gateEnteredAt: enteredAt }],
+      });
+
+      // undo clears entry and broadcasts
+      const undone = await req(t.app, gate, 'POST', `/api/gate/participants/${divya.id}/undo`, {});
+      expect(undone.statusCode).toBe(200);
+      expect(undone.json()).toMatchObject({
+        stats: { total: 6, entered: 0 },
+        person: { id: divya.id, gateEnteredAt: null },
+      });
+      expect(cap.events.filter((e) => e.type === 'gate.changed')).toHaveLength(2);
+      cap.unsub();
     });
   });
 });

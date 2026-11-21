@@ -101,7 +101,10 @@ export type MeResponse = z.infer<typeof MeResponseSchema>;
 export const PinRequestSchema = z.object({ pin: z.string().min(1).max(64) });
 export type PinRequest = z.infer<typeof PinRequestSchema>;
 
-export const StaffMeSchema = z.object({ role: z.enum(['admin', 'screen']) });
+export const StaffRoleSchema = z.enum(['admin', 'screen', 'gate']);
+export type StaffRole = z.infer<typeof StaffRoleSchema>;
+
+export const StaffMeSchema = z.object({ role: StaffRoleSchema });
 export type StaffMe = z.infer<typeof StaffMeSchema>;
 
 /* ------------------------------------------------------- admin: kits */

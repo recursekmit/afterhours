@@ -38,6 +38,12 @@ export interface WebFeature {
   home?: { order: number; Card: Comp };
   /** An entry in the attendee bottom nav (keep it to the big things). */
   nav?: { order: number; label: string; to: string; icon: IconName };
+  /**
+   * Hook: whether attendees see this feature's nav entry and home card right now (default: always).
+   * Called unconditionally on every render of the shell, in registry order (rules of hooks). Routes stay
+   * mounted; the pages themselves show "not open yet" when the server refuses.
+   */
+  useVisible?: () => boolean;
   /** A panel in the organiser console at /admin/<path>. */
   console?: { order: number; label: string; path: string; icon: IconName; Panel: Comp };
   /** Projector scenes. */

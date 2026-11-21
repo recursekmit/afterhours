@@ -70,6 +70,8 @@ test.describe.serial('trails: slip camera', () => {
   test.beforeAll(async ({ playwright }) => {
     admin = await playwright.request.newContext({ baseURL: BASE });
     expect((await admin.post('/api/admin/session', { data: { pin: '2468' } })).ok()).toBeTruthy();
+    // both events are hidden from players until the console shows them
+    expect((await admin.put('/api/hunt/admin/visibility', { data: { hunt: true, morse: true } })).ok()).toBeTruthy();
   });
 
   test('build a slip trail and print its kit slip with the real renderer', async ({ browser }) => {

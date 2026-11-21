@@ -225,7 +225,9 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
       const items = range ? sheet.slips.filter((i) => i.serial !== null && i.serial >= range.from && i.serial <= range.to) : sheet.slips;
       // unique: each page names its own serials, so the title stays short
       const what = sheet.mode === 'per_kit' ? ' (one per kit)' : sheet.mode === 'unique' ? ' (unique)' : '';
-      setPrinting({ title: `${sheet.title}${what}`, slips: items.map((i) => designFromPrintItem(i, undefined, printAs)) });
+      // a set's own print size (the morse tickets: four per A4 page), unless printing as plain cards
+      const size = sheet.size && sheet.size in SLIP_SIZES && printAs !== 'card' ? SLIP_SIZES[sheet.size as keyof typeof SLIP_SIZES] : undefined;
+      setPrinting({ title: `${sheet.title}${what}`, slips: items.map((i) => designFromPrintItem(i, size, printAs)) });
     } catch (e) {
       toast((e as Error).message, { kind: 'bad' });
     }
@@ -259,7 +261,7 @@ export function SlipEditor({ trail, stops, trails }: { trail: number; stops: Hun
       <label className={ui.label}>
         print slips as
         <select className={ui.select} value={printAs} onChange={(e) => setPrintAs(e.target.value as PrintAs)} data-testid="slip-print-as">
-          <option value="mixed">tickets, all four designs in turn (176 x 80)</option>
+          <option value="mixed">tickets, all four designs (unique sets: each copy's own, balanced) (176 x 80)</option>
           {SLIP_TICKETS.map((t) => (
             <option key={t} value={t}>
               ticket: {TICKET_ART[t].label}

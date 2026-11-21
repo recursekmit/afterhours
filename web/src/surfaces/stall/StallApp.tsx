@@ -77,8 +77,8 @@ function Signed({ me, onSignOut }: { me: ShopMe; onSignOut: () => void }) {
         <span className={s.barTally} aria-label="handed out today">
           <b>{tally.units}</b> handed out
         </span>
-        <Button size="sm" tone="paper" onClick={onSignOut}>
-          sign out
+        <Button size="sm" tone="paper" icon="lock" onClick={onSignOut} data-testid="stall-logout">
+          log out
         </Button>
       </header>
       {view.kind === 'scan' && <Counter tally={tally} note={note} busy={busy} onInput={(v) => void scan(v)} />}

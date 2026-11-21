@@ -77,8 +77,16 @@ function bandUnits(edge: SlipEdge, widthMm: number, heightMm: number): number {
 export function edgeUnitLimit(edge: SlipEdge): number {
   const t = SLIP_SIZES.ticket;
   const c = SLIP_SIZES.card;
-  return Math.min(bandUnits(edge, t.widthMm, t.heightMm), edgeCapacity(edge, c.widthMm, c.heightMm), edge === 'bottom' || edge === 'top' ? 45 : 34);
+  const q = SLIP_SIZES.quad;
+  // the 4-per-page kit ticket: dots at least QUAD_MIN_UNIT_MM (short edges hold 32 units, about 3 letters)
+  const quad = Math.floor((edgeCapacity(edge, q.widthMm, q.heightMm) * 0.9) / QUAD_MIN_UNIT_MM);
+  return Math.min(bandUnits(edge, t.widthMm, t.heightMm), edgeCapacity(edge, c.widthMm, c.heightMm), quad, edge === 'bottom' || edge === 'top' ? 45 : 34);
 }
+
+/** Dots on the 4-per-page ticket (SLIP_SIZES.quad) are never smaller than this (mm). */
+export const QUAD_MIN_UNIT_MM = 1.3;
+/** Ticket words are 3 or 4 letters on every edge: easy to recognise once decoded, typos easy to spot. */
+export const WORD_LEN = { min: 3, max: 4 } as const;
 
 export function edgeClass(edge: SlipEdge): EdgeClass {
   return edge === 'bottom' || edge === 'top' ? 'long' : 'short';
@@ -118,7 +126,7 @@ export function isBlockedWord(word: string): boolean {
 }
 
 /** A small deterministic PRNG (mulberry32) from a string seed, so a set regenerates the same way. */
-function prng(seed: string): () => number {
+export function prng(seed: string): () => number {
   let a = parseInt(createHash('sha256').update(seed).digest('hex').slice(0, 8), 16) >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -129,7 +137,7 @@ function prng(seed: string): () => number {
   };
 }
 
-function shuffle<T>(list: T[], rnd: () => number): T[] {
+export function shuffle<T>(list: T[], rnd: () => number): T[] {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
     [list[i], list[j]] = [list[j] as T, list[i] as T];
@@ -139,7 +147,7 @@ function shuffle<T>(list: T[], rnd: () => number): T[] {
 
 /** Candidate words for an edge class, best first: tech words, pronounceable codes, letter+digit codes (each tier shuffled). */
 function candidates(cls: EdgeClass, rnd: () => number): string[] {
-  const tech = TECH_WORDS.filter((w) => (cls === 'short' ? w.length <= 3 : w.length >= 4));
+  const tech = TECH_WORDS.filter((w) => w.length >= WORD_LEN.min && w.length <= WORD_LEN.max && (cls === 'short' ? w.length === 3 : w.length === 4));
   const cvc: string[] = [];
   const cvcv: string[] = [];
   for (const a of CONSONANTS)
@@ -151,7 +159,6 @@ function candidates(cls: EdgeClass, rnd: () => number): string[] {
   const codes: string[] = [];
   for (const a of CONSONANTS + VOWELS)
     for (const d of DIGITS) {
-      codes.push(a + d);
       for (const b of CONSONANTS) codes.push(a + d + b);
     }
   // Short edges: CVC first, then the light CVCV words that still fit (TINE, SEMI...). Long edges: CVCV,
@@ -259,5 +266,32 @@ export function generateWords(slots: readonly WordSlot[], opts: GenerateOptions)
     if (word === null) throw new Error(`Ran out of ${edgeClass(slot.edge)}-edge words for slip ${slot.group}. Lower the number of copies.`);
     out[i] = word;
   }
+  return out;
+}
+
+/**
+ * Ticket designs for the copies of one slip: all four, balanced (20 each for 80, never more than one
+ * apart for any N), shuffled deterministically from `seed`. Copies that already have a design keep it
+ * (a reprint of serial 37 is the same ticket); only the missing ones are filled, least-used designs first.
+ */
+export function assignDesigns<D extends string>(designs: readonly D[], current: ReadonlyMap<number, D | null>, seed: string): Map<number, D> {
+  const out = new Map<number, D>();
+  const counts = new Map<D, number>(designs.map((d) => [d, 0]));
+  const missing: number[] = [];
+  for (const [serial, d] of [...current.entries()].sort((a, b) => a[0] - b[0])) {
+    if (d !== null && counts.has(d)) {
+      out.set(serial, d);
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    } else missing.push(serial);
+  }
+  if (missing.length === 0) return out;
+  const pool: D[] = [];
+  for (let i = 0; i < missing.length; i++) {
+    const least = designs.reduce((best, d) => ((counts.get(d) ?? 0) < (counts.get(best) ?? 0) ? d : best), designs[0] as D);
+    pool.push(least);
+    counts.set(least, (counts.get(least) ?? 0) + 1);
+  }
+  shuffle(pool, prng(`${seed}:${missing[0]}:${missing.length}`));
+  missing.forEach((serial, i) => out.set(serial, pool[i] as D));
   return out;
 }

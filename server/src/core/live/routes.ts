@@ -59,7 +59,7 @@ export function registerLiveRoutes(app: FastifyInstance, ctx: AppContext) {
   app.get('/api/live/poll', async (req): Promise<LivePollResponse> => {
     const viewer = viewerOf(req);
     const { since } = parse(SinceQuery, req.query);
-    ctx.live.notePoll(viewer.attendeeId !== null ? `a:${viewer.attendeeId}` : `ip:${req.ip}:${viewer.admin ? 'admin' : viewer.screen ? 'screen' : 'anon'}`);
+    ctx.live.notePoll(viewer.attendeeId !== null ? `a:${viewer.attendeeId}` : `ip:${req.ip}:${viewer.admin ? 'admin' : viewer.screen ? 'screen' : viewer.gate ? 'gate' : 'anon'}`);
     if (since === undefined) return { cursor: ctx.live.currentCursor, events: [], reset: false };
     return ctx.live.since(since, viewer);
   });

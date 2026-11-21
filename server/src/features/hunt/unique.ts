@@ -7,9 +7,9 @@
 // sequence is "derived": that copy's top strip read upside down.
 import { randomBytes } from 'node:crypto';
 import { type SlipCopies, slipWordKey } from '@afterhours/shared/features/hunt';
-import { type SlipEdge, reverseReading } from '@afterhours/shared/morse-slip';
+import { SLIP_TICKETS, type SlipEdge, type SlipTicket, reverseReading } from '@afterhours/shared/morse-slip';
 import { type FeatureContext, all, badRequest, conflict, notFound, one, run, tx } from '../../core';
-import { type WordSlot, generateWords } from './slipwords';
+import { type WordSlot, assignDesigns, generateWords, prng, shuffle } from './slipwords';
 
 interface SetRow {
   id: number;
@@ -113,6 +113,7 @@ export function syncCopies(ctx: FeatureContext, setId: number, opts: { copies?: 
         run(ctx.db, 'INSERT INTO hunt_slip_copy_words (copy_id, reading_id, word, morse) VALUES (?, ?, ?, ?)', s.copyId, s.readingId, w, slipWordKey(w));
       });
     }
+    assignSetDesigns(ctx, setId, slips.map((s) => s.id));
     // derived extras: each copy's top strip, upside down
     for (const sl of slips) {
       const readings = all<ReadingRow>(ctx.db, 'SELECT * FROM hunt_slip_readings WHERE slip_id = ? ORDER BY id', sl.id);
@@ -130,6 +131,42 @@ export function syncCopies(ctx: FeatureContext, setId: number, opts: { copies?: 
       for (const t of tops) run(ctx.db, 'INSERT OR IGNORE INTO hunt_slip_copy_words (copy_id, reading_id, word, morse) VALUES (?, ?, NULL, ?)', t.copy_id, d.id, reverseReading(t.morse));
     }
   });
+}
+
+/**
+ * Each copy's ticket design, kept once given (a reprint of a serial is the same ticket):
+ * - the first slip (slip I): all four designs balanced over the serials (20 each for 80), shuffled from the
+ *   set. For the morse tickets that is the participant's guild colour;
+ * - the other slips of a serial take the designs that serial does not have yet, in a seeded order, so one
+ *   page (one serial) holds every design once.
+ */
+function assignSetDesigns(ctx: FeatureContext, setId: number, slipIds: readonly number[]): void {
+  const first = slipIds[0];
+  if (first === undefined) return;
+  const rows = all<{ id: number; slip_id: number; serial: number; design: string | null }>(
+    ctx.db,
+    `SELECT id, slip_id, serial, design FROM hunt_slip_copies WHERE slip_id IN (${slipIds.map(() => '?').join(',')})`,
+    ...slipIds,
+  );
+  const set = (id: number, d: SlipTicket) => run(ctx.db, 'UPDATE hunt_slip_copies SET design = ? WHERE id = ?', d, id);
+  const firstRows = rows.filter((r) => r.slip_id === first);
+  const guild = assignDesigns(SLIP_TICKETS, new Map(firstRows.map((r) => [r.serial, r.design as SlipTicket | null])), `design:${setId}:${first}`);
+  for (const r of firstRows) {
+    const d = guild.get(r.serial);
+    if (d && r.design !== d) set(r.id, d);
+  }
+  const order = new Map(slipIds.map((id, i) => [id, i]));
+  for (const serial of new Set(rows.map((r) => r.serial))) {
+    const others = rows.filter((r) => r.serial === serial && r.slip_id !== first).sort((a, b) => (order.get(a.slip_id) ?? 0) - (order.get(b.slip_id) ?? 0));
+    const used = new Set<string>([guild.get(serial) ?? '', ...others.map((r) => r.design ?? '')]);
+    const free = shuffle(
+      SLIP_TICKETS.filter((d) => !used.has(d)),
+      prng(`design:${setId}:serial:${serial}`),
+    );
+    others.forEach((r, i) => {
+      if (r.design === null) set(r.id, free.shift() ?? (SLIP_TICKETS[i % SLIP_TICKETS.length] as SlipTicket));
+    });
+  }
 }
 
 export interface UniqueMatch {
@@ -153,6 +190,19 @@ export function matchCopy(ctx: FeatureContext, slipId: number, keys: Iterable<st
   return null;
 }
 
+/** The serial an attendee holds in the set this slip belongs to (any slip of it), or null. */
+export function serialInSet(ctx: FeatureContext, attendeeId: number, slipId: number): number | null {
+  return (
+    one<{ serial: number }>(
+      ctx.db,
+      `SELECT c.serial FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
+        WHERE s.set_id = (SELECT set_id FROM hunt_slips WHERE id = ?) AND c.claimed_by = ? LIMIT 1`,
+      slipId,
+      attendeeId,
+    )?.serial ?? null
+  );
+}
+
 /** The serial of the copy of this slip an attendee holds, or null. */
 export function myCopy(ctx: FeatureContext, attendeeId: number, slipId: number): number | null {
   return one<{ serial: number }>(ctx.db, 'SELECT serial FROM hunt_slip_copies WHERE slip_id = ? AND claimed_by = ?', slipId, attendeeId)?.serial ?? null;
@@ -173,6 +223,20 @@ export function claimCopy(ctx: FeatureContext, attendeeId: number, copyId: numbe
     if (c.claimed_by !== null) return { kind: 'taken' };
     const held = myCopy(ctx, attendeeId, c.slip_id);
     if (held !== null) return { kind: 'other_copy', serial: held };
+    // A serial is one person's set (the morse tickets: one A4 page, slips I-IV). The first claim on any slip
+    // of a serial reserves the whole serial: a friend cannot use the other slips of that page, and the owner
+    // never needs a different serial for another slip.
+    const mySerial = serialInSet(ctx, attendeeId, c.slip_id);
+    if (mySerial !== null && mySerial !== c.serial) return { kind: 'other_copy', serial: mySerial };
+    const reserved = one<{ x: number }>(
+      ctx.db,
+      `SELECT 1 AS x FROM hunt_slip_copies o JOIN hunt_slips os ON os.id = o.slip_id
+        WHERE os.set_id = (SELECT set_id FROM hunt_slips WHERE id = ?) AND o.serial = ? AND o.claimed_by IS NOT NULL AND o.claimed_by != ?`,
+      c.slip_id,
+      c.serial,
+      attendeeId,
+    );
+    if (reserved) return { kind: 'taken' };
     try {
       const r = run(ctx.db, 'UPDATE hunt_slip_copies SET claimed_by = ?, claimed_at = ? WHERE id = ? AND claimed_by IS NULL', attendeeId, ctx.now(), copyId);
       return r.changes === 1 ? { kind: 'mine', serial: c.serial, fresh: true } : { kind: 'taken' };
@@ -208,9 +272,9 @@ export function claimedCount(ctx: FeatureContext, setId: number): number {
 export function copiesView(ctx: FeatureContext, setId: number): SlipCopies {
   const set = getSet(ctx, setId);
   const slips = all<{ id: number; slip_no: number; label: string }>(ctx.db, 'SELECT id, slip_no, label FROM hunt_slips WHERE set_id = ? ORDER BY slip_no, id', setId);
-  const cells = all<{ id: number; slip_id: number; serial: number; claimed_by: number | null; claimed_at: number | null; nickname: string | null }>(
+  const cells = all<{ id: number; slip_id: number; serial: number; design: string | null; claimed_by: number | null; claimed_at: number | null; nickname: string | null }>(
     ctx.db,
-    `SELECT c.id, c.slip_id, c.serial, c.claimed_by, c.claimed_at, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
+    `SELECT c.id, c.slip_id, c.serial, c.design, c.claimed_by, c.claimed_at, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
        LEFT JOIN attendees a ON a.id = c.claimed_by WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id`,
     setId,
   );
@@ -218,7 +282,7 @@ export function copiesView(ctx: FeatureContext, setId: number): SlipCopies {
   for (const c of cells) {
     let row = rows.get(c.serial);
     if (!row) rows.set(c.serial, (row = { serial: c.serial, cells: [] }));
-    row.cells.push({ slipId: c.slip_id, copyId: c.id, claimedBy: c.claimed_by === null ? null : { attendeeId: c.claimed_by, nickname: c.nickname }, claimedAt: c.claimed_at });
+    row.cells.push({ slipId: c.slip_id, copyId: c.id, design: (c.design as SlipTicket | null) ?? null, claimedBy: c.claimed_by === null ? null : { attendeeId: c.claimed_by, nickname: c.nickname }, claimedAt: c.claimed_at });
   }
   return {
     setId,
@@ -261,17 +325,17 @@ const csvCell = (v: string | number | null) => {
 /** The organisers' private answer key: serial -> words, one line per copy. */
 export function answerKeyCsv(ctx: FeatureContext, setId: number): string {
   getSet(ctx, setId);
-  const copies = all<{ id: number; slip_id: number; serial: number; slip_no: number; label: string; nickname: string | null }>(
+  const copies = all<{ id: number; slip_id: number; serial: number; design: string | null; slip_no: number; label: string; nickname: string | null }>(
     ctx.db,
-    `SELECT c.id, c.slip_id, c.serial, s.slip_no, s.label, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
+    `SELECT c.id, c.slip_id, c.serial, c.design, s.slip_no, s.label, a.nickname FROM hunt_slip_copies c JOIN hunt_slips s ON s.id = c.slip_id
        LEFT JOIN attendees a ON a.id = c.claimed_by WHERE s.set_id = ? ORDER BY c.serial, s.slip_no, s.id`,
     setId,
   );
-  const lines = ['serial,slip_no,label,bottom,right,top,left,top_upside_down_morse,claimed_by'];
+  const lines = ['serial,slip_no,label,design,bottom,right,top,left,top_upside_down_morse,claimed_by'];
   for (const c of copies) {
     const { edges, upside } = copyEdges(ctx, c.id, c.slip_id);
     lines.push(
-      [String(c.serial).padStart(3, '0'), c.slip_no, c.label, edges.bottom ?? '', edges.right ?? '', edges.top ?? '', edges.left ?? '', upside ?? '', c.nickname ?? ''].map(csvCell).join(','),
+      [String(c.serial).padStart(3, '0'), c.slip_no, c.label, c.design ?? '', edges.bottom ?? '', edges.right ?? '', edges.top ?? '', edges.left ?? '', upside ?? '', c.nickname ?? ''].map(csvCell).join(','),
     );
   }
   return `${lines.join('\n')}\n`;

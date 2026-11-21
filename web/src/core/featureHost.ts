@@ -25,5 +25,16 @@ export const scenes: (SceneDef & { feature: string })[] = features
   .flatMap((f) => (f.scenes ?? []).map((sc) => ({ ...sc, feature: f.name })))
   .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
+const visibilityHooks = features.map((f) => ({ name: f.name, use: f.useVisible }));
+/**
+ * The features attendees should not see right now (e.g. the treasure hunt before an organiser switches it
+ * on). Calls every feature's useVisible hook, always in the same order.
+ */
+export function useHiddenFeatures(): ReadonlySet<string> {
+  const hidden = new Set<string>();
+  for (const v of visibilityHooks) if (v.use && !v.use()) hidden.add(v.name);
+  return hidden;
+}
+
 export const attendeeOverlays: WebFeature[] = features.filter((f) => f.AttendeeOverlay);
 export const screenOverlays: WebFeature[] = features.filter((f) => f.ScreenOverlay);

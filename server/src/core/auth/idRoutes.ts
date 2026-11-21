@@ -23,6 +23,11 @@
 import {
   DeskLookupRequestSchema,
   type DeskLookupResponse,
+  type GateEnterResponse,
+  GateLookupRequestSchema,
+  type GateLookupResponse,
+  type GateStats,
+  type GateUndoResponse,
   IdResolveRequestSchema,
   type IdResolveResponse,
   IdSignInRequestSchema,
@@ -34,6 +39,8 @@ import {
   type ParticipantListResponse,
   type ParticipantRow,
   ParticipantSettingsSchema,
+  type PurgeReport,
+  PurgeRequestSchema,
   RollSignInRequestSchema,
   parseIdQr,
   phoneLast4,
@@ -48,19 +55,24 @@ import { HttpError } from '../errors';
 import { RateLimiter } from '../ratelimit';
 import { parse } from '../validate';
 import { safeEqual, sha256 } from './crypto';
-import { requireAdmin } from './guards';
+import { requireAdmin, requireGate } from './guards';
+import { purgeParticipant } from './purge';
 import {
   type RosterEntry,
   addParticipant,
   deskLookup,
   findByRoll,
+  gateLookup,
+  gateStats,
   getIdLoginSettings,
   importParticipants,
   listParticipants,
+  markGateEntered,
   removeParticipant,
   roster,
   setIdLoginSettings,
   unbindParticipant,
+  undoGateEntered,
   updateParticipant,
 } from './participants';
 import { COOKIES } from './sessions';
@@ -244,6 +256,14 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
     return { ok: true };
   });
 
+  // POST /api/admin/participants/:id/purge { confirm: <their roll> }  -> PurgeReport. Mock testers: the
+  // participant and every trace of their activity go, as if they never came (core/auth/purge.ts).
+  app.post<{ Params: { id: string } }>('/api/admin/participants/:id/purge', async (req): Promise<PurgeReport> => {
+    requireAdmin(req);
+    const b = parse(PurgeRequestSchema, req.body);
+    return purgeParticipant(ctx, parse(IdParam, req.params.id), b.confirm);
+  });
+
   app.post<{ Params: { id: string } }>('/api/admin/participants/:id/unbind', async (req): Promise<ParticipantRow> => {
     requireAdmin(req);
     return unbindParticipant(ctx, parse(IdParam, req.params.id));
@@ -257,5 +277,27 @@ export function registerIdLoginRoutes(app: FastifyInstance, ctx: AppContext, dep
   app.post('/api/admin/desk/lookup', async (req): Promise<DeskLookupResponse> => {
     requireAdmin(req);
     return deskLookup(ctx, parse(DeskLookupRequestSchema, req.body).q);
+  });
+
+  /* --------------------------------------------------------------- gate */
+
+  app.get('/api/gate/stats', async (req): Promise<GateStats> => {
+    requireGate(req);
+    return gateStats(ctx);
+  });
+
+  app.post('/api/gate/lookup', async (req): Promise<GateLookupResponse> => {
+    requireGate(req);
+    return gateLookup(ctx, parse(GateLookupRequestSchema, req.body).q);
+  });
+
+  app.post<{ Params: { id: string } }>('/api/gate/participants/:id/enter', async (req): Promise<GateEnterResponse> => {
+    requireGate(req);
+    return markGateEntered(ctx, parse(IdParam, req.params.id));
+  });
+
+  app.post<{ Params: { id: string } }>('/api/gate/participants/:id/undo', async (req): Promise<GateUndoResponse> => {
+    requireGate(req);
+    return undoGateEntered(ctx, parse(IdParam, req.params.id));
   });
 }

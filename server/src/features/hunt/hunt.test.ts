@@ -17,6 +17,7 @@ import { run } from '../../core';
 import { type TestApp, Jar, adminJar, capture, makeApp, req } from '../../../test/helpers';
 import { cooldownFor, rankBonus, speedBonus, stopOrder, stopWorth } from './rules';
 import { hunt } from './index';
+import { setVisibility } from './visibility';
 
 const flushTick = async (t: TestApp) => {
   await hunt.tick!.run(t.ctx);
@@ -91,6 +92,7 @@ describe('hunt feature', () => {
 
   beforeEach(async () => {
     t = await makeApp();
+    setVisibility(t.ctx, { hunt: true, morse: true }); // both events are hidden from players by default
     admin = await adminJar(t.app);
   });
   afterEach(async () => t.close());

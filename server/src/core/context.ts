@@ -49,6 +49,11 @@ export interface ServerFeature {
   seed?: (ctx: FeatureContext) => void | Promise<void>;
   /** Feature names whose seed must run before this one (e.g. attendance needs schedule's activities). */
   seedAfter?: string[];
+  /**
+   * "purge test player" (core/auth/purge.ts) already deleted this attendee's rows from every table with an
+   * attendee_id column; drop any in-memory cache that still counts them (crowds, tallies, boards).
+   */
+  onPurge?: (ctx: FeatureContext, attendeeId: number) => void;
 }
 
 /** Identity helper so feature objects are type-checked where they are written. */

@@ -20,6 +20,7 @@ const child = spawn(process.execPath, ['server/dist/index.js'], {
     APP_URL: `http://127.0.0.1:${port}`,
     ADMIN_PIN: '2468',
     SCREEN_PIN: '1357',
+    GATE_PIN: '3579',
     LOG_LEVEL: 'warn',
   },
 });

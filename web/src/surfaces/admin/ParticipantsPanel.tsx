@@ -11,6 +11,7 @@ import {
   ParticipantListResponseSchema,
   type ParticipantRow,
   ParticipantRowSchema,
+  PurgeReportSchema,
   ParticipantSettingsSchema,
   OkSchema,
 } from '@afterhours/shared';
@@ -297,6 +298,7 @@ function Table() {
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<ParticipantRow | null>(null);
   const [confirm, setConfirm] = useState<{ kind: 'unbind' | 'remove'; row: ParticipantRow } | null>(null);
+  const [purging, setPurging] = useState<ParticipantRow | null>(null);
   const { unbind, remove } = useParticipantActions();
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -408,6 +410,9 @@ function Table() {
                             remove
                           </Button>
                         )}
+                        <Button tone="paper" size="sm" ghost icon="close" onClick={() => setPurging(r)} aria-label={`purge test player ${r.roll}`} data-testid={`purge-${r.roll}`}>
+                          purge test player
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -418,6 +423,7 @@ function Table() {
         )}
       </Card>
       <EditSheet row={editing} onClose={() => setEditing(null)} />
+      <PurgeSheet row={purging} onClose={() => setPurging(null)} />
       <ConfirmSheet
         c={confirm}
         onClose={() => setConfirm(null)}
@@ -425,6 +431,46 @@ function Table() {
         onGo={(c) => (c.kind === 'unbind' ? unbind : remove).mutate(c.row, { onSuccess: () => setConfirm(null) })}
       />
     </section>
+  );
+}
+
+/**
+ * "purge test player": a mock tester and every trace of what they did (points, stickers, slip claims,
+ * trail and Morse progress, votes, drops, stall hand-overs with their stock, check-ins) go, as if they
+ * never came. The roll number has to be typed out.
+ */
+function PurgeSheet({ row, onClose }: { row: ParticipantRow | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [typed, setTyped] = useState('');
+  const purge = useMutation({
+    mutationFn: (r: ParticipantRow) => api.post(`/api/admin/participants/${r.id}/purge`, { confirm: typed }, PurgeReportSchema),
+    onSuccess: (rep) => {
+      const n = Object.values(rep.rows).reduce((a, b) => a + b, 0);
+      toast(`${rep.roll} purged: ${n} rows of activity removed`, { kind: 'good' });
+      void qc.invalidateQueries();
+      setTyped('');
+      onClose();
+    },
+    onError: (e) => toast(e.message, { kind: 'bad' }),
+  });
+  const ok = row !== null && typed.trim().toUpperCase() === row.roll.toUpperCase();
+  return (
+    <Sheet open={row !== null} onClose={onClose} placement="center" title={`purge test player ${row?.roll ?? ''}?`}>
+      {row && (
+        <div className={s.stack}>
+          <p>
+            <b>{row.attendee?.nickname ?? row.name}</b> and everything they did go for good: points, stickers, slip claims (their tickets become free again), trail and Morse progress, votes, drops, stall
+            hand-overs (stock comes back), check-ins. The leaderboard looks as if they never came. Only for mock testers.
+          </p>
+          {row.note && <p className={s.note}>note: {row.note}</p>}
+          <TextField label={`type ${row.roll} to confirm`} value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+          <Button tone="pink" icon="close" disabled={!ok} loading={purge.isPending} onClick={() => purge.mutate(row)}>
+            purge {row.roll}
+          </Button>
+        </div>
+      )}
+    </Sheet>
   );
 }
 

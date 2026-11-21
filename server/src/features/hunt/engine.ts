@@ -41,7 +41,8 @@ import {
   tx,
 } from '../../core';
 import { cooldownFor, hintCost, normaliseCode, rankBonus, speedBonus, stopOrder, stopSubset, stopWorth } from './rules';
-import { claimCopy, matchCopy, myCopy, setOfSlip } from './unique';
+import { claimCopy, matchCopy, serialInSet, setOfSlip } from './unique';
+import { trailAudience } from './visibility';
 
 export const HUNT_SOURCE = 'hunt';
 
@@ -529,7 +530,7 @@ function currentView(ctx: FeatureContext, trail: Trail, stop: Stop, attendeeId: 
     letters: stop.challenge === 'morse' ? word.length : null,
     // Only the on/off timings (as in a decode round): never the readable word.
     signal: stop.challenge === 'morse' && stop.onlineFallback && word ? wordToSignal(word, TRAIL_MORSE_WPM) : null,
-    slip: slip && stop.slipId !== null ? { slipNo: slip.slip_no, label: slip.label, unique: setOfSlip(ctx, stop.slipId)?.mode === 'unique', serial: myCopy(ctx, attendeeId, stop.slipId) } : null,
+    slip: slip && stop.slipId !== null ? { slipNo: slip.slip_no, label: slip.label, unique: setOfSlip(ctx, stop.slipId)?.mode === 'unique', serial: serialInSet(ctx, attendeeId, stop.slipId) } : null,
     clue: stop.clue,
     clueImage: stop.clueImage,
     hints: hints.slice(0, used),
@@ -654,6 +655,14 @@ function reply(ctx: FeatureContext, attendeeId: number, trailId: number, r: { re
   return { ...r, me: buildMe(ctx, attendeeId, trailId) };
 }
 
+/** The trail a scanned code belongs to (as scan() resolves it): the sticker's trail, else the hint, else trail 1. */
+export function scanTrailId(ctx: FeatureContext, raw: string, trailHint: number = TREASURE_TRAIL_ID): number {
+  const code = extractHuntCode(raw);
+  const norm = normaliseCode(code);
+  const hit = findStop(ctx, 'token = ?', code) ?? (norm.length === 8 ? findStop(ctx, 'code = ?', norm) : null);
+  return hit?.trailId ?? (findTrail(ctx, trailHint) ? trailHint : TREASURE_TRAIL_ID);
+}
+
 /** A QR or typed sticker code. The trail comes from the sticker; `trailHint` only shapes the reply for unknown codes. */
 export function scan(ctx: FeatureContext, attendeeId: number, raw: string, trailHint: number = TREASURE_TRAIL_ID): HuntAttemptResult {
   const code = extractHuntCode(raw);
@@ -701,7 +710,7 @@ export function scan(ctx: FeatureContext, attendeeId: number, raw: string, trail
 }
 
 /** Resolve a stop id to its trail, for answer and hint (an unknown id replies as trail 1). */
-function trailOfStop(ctx: FeatureContext, stopId: number): number {
+export function trailOfStop(ctx: FeatureContext, stopId: number): number {
   return one<{ trail_id: number }>(ctx.db, 'SELECT trail_id FROM hunt_stops WHERE id = ?', stopId)?.trail_id ?? TREASURE_TRAIL_ID;
 }
 
@@ -890,7 +899,7 @@ export function solveStop(ctx: FeatureContext, attendeeId: number, stop: Stop, v
   if (!solvedStop) throw new Error('solved stop missing from view');
   const who = getPublicAttendee(ctx, attendeeId);
   if (who) {
-    ctx.live.publish('hunt.stamp', { trailId: trail.id, nickname: who.nickname, avatar: who.avatar, solved: outcome.solvedCount, total: trailTotal(trail, stops.length), at }, 'screens');
+    ctx.live.publish('hunt.stamp', { trailId: trail.id, nickname: who.nickname, avatar: who.avatar, solved: outcome.solvedCount, total: trailTotal(trail, stops.length), at }, trailAudience(ctx, trail.id, 'screens'));
   }
   let finish: HuntMyFinish | null = null;
   if (outcome.finishInfo) {
@@ -911,7 +920,7 @@ export function solveStop(ctx: FeatureContext, attendeeId: number, stop: Stop, v
           },
           finishedCount: outcome.finishInfo.rank,
         },
-        'all',
+        trailAudience(ctx, trail.id, 'all'),
       );
     }
   }
@@ -1038,26 +1047,29 @@ export function submitSlip(ctx: FeatureContext, attendeeId: number, stopId: numb
   const slow = () => rt.scans.enforce(`slip:${attendeeId}`, 'That is a lot of scanning. Take a breath and turn the slip slowly.');
   let r: ReadingRow | null = readingKeys(ctx, current.slipId, kitId).find((k) => keys.has(k.key))?.row ?? null;
   if (setOfSlip(ctx, current.slipId)?.mode === 'unique') {
-    // Unique slips: the reading is looked up across every printed copy of this slip. The first person
-    // to read a copy claims it; after that it only works for them, and they cannot use another copy.
-    const hit = r ? null : matchCopy(ctx, current.slipId, keys);
+    // Unique slips: the reading is looked up across every printed copy of this slip, then of the other
+    // slips of its set (the morse tickets: a participant's four tickets I-IV all read at the one stop). The
+    // first person to read a copy claims it, and with it the whole serial; after that it only works for them.
+    const setSlips = all<{ id: number }>(ctx.db, 'SELECT id FROM hunt_slips WHERE set_id = (SELECT set_id FROM hunt_slips WHERE id = ?) ORDER BY slip_no, id', current.slipId).map((x) => x.id);
+    let hit: ReturnType<typeof matchCopy> = null;
+    if (!r) for (const sid of [current.slipId, ...setSlips.filter((x) => x !== current.slipId)]) if ((hit = matchCopy(ctx, sid, keys))) break;
     if (hit) {
       const c = claimCopy(ctx, attendeeId, hit.copyId);
       if (c.kind !== 'mine') {
         slow(); // refusals count like misses, so guessing other people's words is slow
-        const slipNo = one<{ slip_no: number }>(ctx.db, 'SELECT slip_no FROM hunt_slips WHERE id = ?', current.slipId)?.slip_no ?? 1;
-        const held = c.kind === 'other_copy' ? c.serial : myCopy(ctx, attendeeId, current.slipId);
+        const slipNo = one<{ slip_no: number }>(ctx.db, 'SELECT s.slip_no FROM hunt_slips s JOIN hunt_slip_copies c ON c.slip_id = s.id WHERE c.id = ?', hit.copyId)?.slip_no ?? 1;
+        const held = c.kind === 'other_copy' ? c.serial : serialInSet(ctx, attendeeId, current.slipId);
         return {
           ...base,
           outcome: 'taken',
           serial: held,
-          message: c.kind === 'taken' ? SLIP_TAKEN : `that's a different copy of slip ${slipNo}. yours is no. ${String(c.serial).padStart(3, '0')}: scan that one.`,
+          message: c.kind === 'taken' ? SLIP_TAKEN : `that's a different copy of slip ${slipNo}. yours is no. ${String(c.serial).padStart(3, '0')}: scan your own.`,
           me: me(),
         };
       }
       r = one<ReadingRow>(ctx.db, 'SELECT * FROM hunt_slip_readings WHERE id = ?', hit.readingId) ?? null;
     }
-    base = { ...base, serial: myCopy(ctx, attendeeId, current.slipId) };
+    base = { ...base, serial: serialInSet(ctx, attendeeId, current.slipId) };
   }
   if (!r) {
     // Same words for every miss, whatever was read: nothing about the real readings leaks.

@@ -35,6 +35,8 @@ test.describe.serial('features', () => {
     baseURL = String(info.project.use.baseURL);
     admin = await playwright.request.newContext({ baseURL });
     expect((await admin.post('/api/admin/session', { data: { pin: '2468' } })).ok()).toBeTruthy();
+    // both events are hidden from players until the console shows them
+    expect((await admin.put('/api/hunt/admin/visibility', { data: { hunt: true, morse: true } })).ok()).toBeTruthy();
     const r = await api<{ kits: { kitId: string; password: string }[] }>('POST', '/api/admin/kits', { mode: 'blank', count: 12 });
     kits = r.kits;
   });
@@ -122,7 +124,7 @@ test.describe.serial('features', () => {
     await api('PUT', `/api/hunt/admin/order?trail=${tr}`, { ids: [ids.at(-1)!, ...ids.slice(0, -1)] });
     await api('PUT', `/api/hunt/admin/state?trail=${tr}`, { status: 'open' });
     const page = await attendee(browser);
-    await page.goto('/hunt');
+    await page.goto('/morse'); // morse trails live under the Morse tab
     await page.getByRole('link', { name: /e2e slips/ }).click();
     await page.getByRole('button', { name: 'start this trail' }).click();
     const box = page.getByLabel('or type the word on the bottom edge');

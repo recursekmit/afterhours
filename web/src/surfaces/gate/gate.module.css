@@ -1,0 +1,362 @@
+/* Door coordinator surface (/gate): phone-first, high contrast, engraved ticket tokens only. */
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-4);
+  padding-top: calc(var(--s-2) + env(safe-area-inset-top));
+  background: var(--paper-2);
+  color: var(--ink);
+  border-bottom: var(--line) solid var(--rule);
+  box-shadow: var(--shadow-sm);
+}
+
+.barBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.barCount {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 12px;
+  background: var(--lime);
+  color: var(--gold-bright);
+  border: var(--line-thin) solid var(--rule);
+  border-radius: var(--cut-2);
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: var(--step-0);
+  white-space: nowrap;
+}
+
+.barCount b {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+}
+
+.main {
+  width: min(100%, var(--page-max));
+  margin: 0 auto;
+  padding: var(--s-4) var(--gutter) var(--s-7);
+  display: grid;
+  gap: var(--s-4);
+  align-content: start;
+}
+
+.stack {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.cardTitle {
+  font-size: var(--step-2);
+  line-height: 1.1;
+}
+
+.sub {
+  font-family: var(--font-hand);
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+}
+
+.searchRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-3);
+  align-items: end;
+}
+
+/* Verdict cards */
+.verdictCard {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.verdictHead {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.verdictText {
+  min-width: 0;
+  display: grid;
+  gap: var(--s-1);
+}
+
+.stamp {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: var(--line) solid var(--ink);
+  border-radius: var(--cut-2);
+  box-shadow: var(--shadow-sm);
+}
+
+.stampGood {
+  background: var(--gold);
+  color: var(--on-gold);
+  border-color: var(--gold-bright);
+}
+
+.stampWarn {
+  background: var(--paper-2);
+  color: var(--gold-bright);
+  border-color: var(--gold-bright);
+}
+
+.stampBad {
+  background: var(--paper-2);
+  color: var(--bad-text);
+  border-color: var(--bad-text);
+}
+
+.personName {
+  font-size: var(--step-3);
+  line-height: 1.08;
+  word-break: break-word;
+}
+
+.personRoll {
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  letter-spacing: 0.08em;
+  color: var(--gold-bright);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px var(--s-4);
+  padding: var(--s-3);
+  background: rgb(0 0 0 / 0.18);
+  border: var(--line-thin) solid var(--rule-soft);
+  border-radius: var(--cut-2);
+  font-size: var(--step-0);
+}
+
+.facts dt {
+  font-family: var(--font-hand);
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.facts dd {
+  font-weight: 600;
+}
+
+.noteBox {
+  padding: var(--s-2) var(--s-3);
+  background: var(--paper-2);
+  border: var(--line-thin) dashed var(--gold-bright);
+  border-radius: var(--cut-2);
+  font-family: var(--font-hand);
+  font-size: var(--step-0);
+}
+
+.alreadyBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  background: rgb(0 0 0 / 0.25);
+  border: var(--line) solid var(--gold-bright);
+  border-radius: var(--cut-2);
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  color: var(--gold-bright);
+}
+
+.doneTick {
+  display: inline-grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  flex: none;
+  background: var(--gold);
+  color: var(--on-gold);
+  border: var(--line) solid var(--gold-bright);
+  border-radius: var(--cut-round);
+  box-shadow: var(--shadow-sm);
+}
+
+.actions {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.rowActions {
+  display: flex;
+  gap: var(--s-2);
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Picker for duplicate 4-digit suffixes or name search */
+.picks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+
+.pickBtn {
+  width: 100%;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  padding: var(--s-3);
+  background: var(--paper-3);
+  color: var(--ink);
+  border: var(--outline);
+  border-radius: var(--cut-2);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-pop), box-shadow var(--dur-fast);
+}
+
+.pickBtn:active {
+  transform: translate(2px, 3px);
+  box-shadow: var(--shadow-pressed);
+}
+
+.pickTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.pickName {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+}
+
+.pickRoll {
+  font-family: var(--font-display);
+  font-size: var(--step-0);
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+.pickBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  font-family: var(--font-hand);
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: var(--line-thin) solid var(--ink);
+  border-radius: var(--cut-3);
+  font-family: var(--font-hand);
+  font-weight: 700;
+  font-size: var(--step--1);
+  color: var(--ink);
+}
+
+.badgeGood {
+  background: var(--lime);
+}
+
+.badgeWarn {
+  background: var(--sun);
+}
+
+/* Recent list */
+.recentList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+}
+
+.recentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  background: var(--paper-3);
+  border: var(--line-thin) solid var(--rule-soft);
+  border-radius: var(--cut-2);
+}
+
+.recentWho {
+  min-width: 0;
+  display: grid;
+}
+
+.recentName {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentMeta {
+  font-family: var(--font-hand);
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+
+.recentTime {
+  font-family: var(--font-hand);
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.errorNote {
+  padding: var(--s-2) var(--s-3);
+  background: var(--pink);
+  border: var(--outline);
+  border-radius: var(--cut-2);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pickBtn {
+    transition: none;
+  }
+}

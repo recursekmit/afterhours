@@ -5,24 +5,28 @@
 import type { MeResponse } from '@afterhours/shared';
 import { motion } from 'motion/react';
 import { NavLink, Route, Routes, useLocation } from 'react-router';
-import { attendeeOverlays, attendeeRoutes, navItems } from '../../core/featureHost';
+import { attendeeOverlays, attendeeRoutes, navItems, useHiddenFeatures } from '../../core/featureHost';
 import { useUpdateReady, applyUpdate } from '../../core/pwa/register';
 import { haptics, sfx } from '../../fun';
 import { Button, Doodle, EmptyState, type IconName, PageTransition } from '../../kit';
 import { Home } from './Home';
+import { SignOutButton } from './SignOut';
 import { StickerBook } from './StickerBook';
 import s from './attendee.module.css';
 
-const NAV: { to: string; label: string; icon: IconName; end?: boolean }[] = [
+const NAV: { to: string; label: string; icon: IconName; end?: boolean; feature?: string }[] = [
   { to: '/', label: 'home', icon: 'home', end: true },
-  ...navItems.map((n) => ({ to: n.to, label: n.label, icon: n.icon })),
+  ...navItems.map((n) => ({ to: n.to, label: n.label, icon: n.icon, feature: n.feature })),
   { to: '/stickers', label: 'stickers', icon: 'book' },
 ];
 
 function BottomNav() {
+  // a feature that is switched off for players (the treasure hunt, until an organiser opens it) has no tab
+  const hidden = useHiddenFeatures();
+  const nav = NAV.filter((n) => !n.feature || !hidden.has(n.feature));
   return (
     <nav className={s.nav} aria-label="main">
-      {NAV.map((n) => (
+      {nav.map((n) => (
         <NavLink
           key={n.to}
           to={n.to}
@@ -74,7 +78,15 @@ export function Shell({ me }: { me: MeResponse }) {
         <PageTransition pageKey={pathname === '/' ? '/' : (pathname.split('/')[1] ?? '/')}>
           <Routes>
             <Route index element={<Home me={me} />} />
-            <Route path="stickers" element={<StickerBook />} />
+            <Route
+              path="stickers"
+              element={
+                <>
+                  <StickerBook />
+                  <SignOutButton me={me} />
+                </>
+              }
+            />
             {attendeeRoutes.map((r) => (
               <Route key={`${r.feature}:${r.path}`} path={r.path} element={<r.Component />} />
             ))}

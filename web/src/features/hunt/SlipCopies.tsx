@@ -12,6 +12,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { api } from '../../core/api';
 import { Button, TextField, useToast } from '../../kit';
+import { TICKET_ART } from '../../lib/slips';
 import { Stamp, downloadHref, ui } from '../common/ui';
 import s from './hunt.module.css';
 
@@ -126,6 +127,12 @@ export function SlipCopiesPanel({ setId, onPrint }: { setId: number; onPrint: (r
                 <td className={ui.num}>{pad(r.serial)}</td>
                 {r.cells.map((c) => (
                   <td key={c.copyId}>
+                    {c.design && (
+                      // the ticket's own ground colour (the art), so the table reads like the stack of tickets
+                      <span className={s.copyDesign} data-design={c.design} style={{ background: TICKET_ART[c.design].ground }}>
+                        {c.design}
+                      </span>
+                    )}
                     {c.claimedBy ? (
                       <span className={s.copyCell}>
                         <b>{c.claimedBy.nickname ?? `#${c.claimedBy.attendeeId}`}</b>

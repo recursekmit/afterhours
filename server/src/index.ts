@@ -20,7 +20,7 @@ const { app, ctx } = await buildApp({
 
 if (envFile) app.log.info({ envFile }, 'loaded .env');
 if (config.env !== 'production' && !process.env.ADMIN_PIN) {
-  app.log.warn(`dev PINs in use: console ${config.adminPin}, projector ${config.screenPin}`);
+  app.log.warn(`dev PINs in use: console ${config.adminPin}, projector ${config.screenPin}, gate ${config.gatePin}`);
 }
 if (!ctx.push.enabled) app.log.warn('VAPID keys not set: push notifications disabled (npm run vapid -w server)');
 

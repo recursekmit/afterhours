@@ -17,6 +17,7 @@ const EnvSchema = z.object({
   EVENT_DATE: z.string().default('2026-11-21'),
   ADMIN_PIN: z.string().min(4).optional(),
   SCREEN_PIN: z.string().min(4).optional(),
+  GATE_PIN: z.string().min(4).optional(),
   SESSION_HOURS: z.coerce.number().min(1).max(72).default(16),
   COOKIE_SECURE: bool.optional(),
   TRUST_PROXY: bool.default(false),
@@ -41,6 +42,7 @@ export interface Config {
   eventDate: string;
   adminPin: string;
   screenPin: string;
+  gatePin: string;
   sessionHours: number;
   cookieSecure: boolean;
   trustProxy: boolean;
@@ -56,11 +58,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
   const e = parsed.data;
   const prod = e.NODE_ENV === 'production';
-  if (prod && (!e.ADMIN_PIN || !e.SCREEN_PIN)) {
-    throw new Error('ADMIN_PIN and SCREEN_PIN must be set in production (see .env.example).');
+  if (prod && (!e.ADMIN_PIN || !e.SCREEN_PIN || !e.GATE_PIN)) {
+    throw new Error('ADMIN_PIN, SCREEN_PIN and GATE_PIN must be set in production (see .env.example).');
   }
   if (e.ADMIN_PIN && e.ADMIN_PIN === e.SCREEN_PIN) {
     throw new Error('ADMIN_PIN and SCREEN_PIN must differ.');
+  }
+  if (e.ADMIN_PIN && e.GATE_PIN && e.ADMIN_PIN === e.GATE_PIN) {
+    throw new Error('ADMIN_PIN and GATE_PIN must differ.');
   }
   return {
     env: e.NODE_ENV,
@@ -75,6 +80,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     // Dev defaults so `npm run dev` works without a .env. Production refuses to boot without them.
     adminPin: e.ADMIN_PIN ?? '2468',
     screenPin: e.SCREEN_PIN ?? '1357',
+    gatePin: e.GATE_PIN ?? '3579',
     sessionHours: e.SESSION_HOURS,
     cookieSecure: e.COOKIE_SECURE ?? prod,
     trustProxy: e.TRUST_PROXY,

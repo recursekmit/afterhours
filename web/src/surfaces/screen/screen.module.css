@@ -55,3 +55,6 @@
 .arrow { position: absolute; left: calc(var(--u) * -5); bottom: calc(var(--u) * 6); transform: rotate(-20deg); }
 /* Recurse corner bug on every scene (the join scene has its own lockup) */
 .bug { position: absolute; z-index: 6; right: calc(var(--u) * 3); bottom: calc(var(--u) * 2.4); opacity: 0.9; pointer-events: none; }
+/* "log out" in the corner (ScreenApp.tsx): quiet until hovered, for handing the laptop back */
+.logout { position: fixed; left: 12px; bottom: 12px; z-index: 50; opacity: 0.35; transition: opacity 160ms; }
+.logout:hover, .logout:focus-within { opacity: 1; }

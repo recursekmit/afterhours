@@ -11,6 +11,7 @@ import type { HypeState } from '@afterhours/shared/features/drops';
 import { z } from 'zod';
 import { type FeatureContext, one } from '../../core';
 import type { Viewer } from '../../core/live/bus';
+import { trailVisible } from '../hunt/visibility';
 import { buildState } from '../schedule/service';
 import { names, nick, push as feed } from './feed';
 import { AUTO_ROOM, scaleInput } from './library';
@@ -101,6 +102,11 @@ export function pump(ctx: FeatureContext): void {
   const now = ctx.now();
   for (const env of r.events) {
     const d: unknown = env.data;
+    // a trail whose event (treasure hunt or morse challenge) is hidden from players: no feed lines about it
+    if (env.type.startsWith('hunt.')) {
+      const id = (d as { trailId?: unknown } | null)?.trailId;
+      if (typeof id !== 'number' || !trailVisible(ctx, id)) continue;
+    }
     switch (env.type) {
       case 'reactions.burst': {
         const p = Burst.safeParse(d);

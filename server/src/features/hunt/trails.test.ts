@@ -22,6 +22,7 @@ import { all, one, openDb, run } from '../../core/db';
 import { runMigrations } from '../../core/migrate';
 import { type TestApp, Jar, SRC_ROOT, adminJar, makeApp, req } from '../../../test/helpers';
 import { SLIP_UNKNOWN } from './engine';
+import { setVisibility } from './visibility';
 
 let kitSeq = 0;
 function fastAttendee(t: TestApp, nickname: string) {
@@ -53,6 +54,7 @@ describe('trails', () => {
   let admin: Jar;
   beforeEach(async () => {
     t = await makeApp();
+    setVisibility(t.ctx, { hunt: true, morse: true }); // both events are hidden from players by default
     admin = await adminJar(t.app);
   });
   afterEach(async () => t.close());

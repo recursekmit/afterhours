@@ -25,15 +25,16 @@ export default function MorseConsole() {
   const o = ov.data;
   return (
     <div className={ui.stack}>
-      <Section title="morse" tape action={o && <Stamp tone={o.enabled ? 'live' : 'done'}>{o.enabled ? 'on' : 'off'}</Stamp>}>
+      <Section title="online morse ladder" tape action={o && <Stamp tone={o.enabled ? 'live' : 'done'}>{o.enabled ? 'on' : 'off'}</Stamp>}>
         <div className={ui.statGrid}>
           <Stat label="players" value={o?.players ?? '...'} />
           <Stat label="rounds running" value={o?.activeRounds ?? '...'} />
         </div>
         <div className={ui.row}>
           <Button tone={o?.enabled ? 'pink' : 'lime'} icon={o?.enabled ? 'lock' : 'play'} onClick={() => enable.mutate(!o?.enabled)}>
-            {o?.enabled ? 'switch morse off' : 'switch morse on'}
+            {o?.enabled ? 'switch the online ladder off' : 'switch the online ladder on'}
           </Button>
+          <span className={ui.hand}>this switch is the online ladder only (decode and encode levels on the phone). the morse slip tickets are shown or hidden in the hunt panel: "show morse challenge to players".</span>
         </div>
         <table className={ui.table}>
           <thead>

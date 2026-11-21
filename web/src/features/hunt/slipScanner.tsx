@@ -11,7 +11,7 @@ export default function SlipReader({ onRead }: { onRead: (read: { text?: string;
   return (
     <SlipScanLauncher
       label="scan the slip"
-      hint="hold the slip flat with the edge you want at the bottom. turn it to read another edge."
+      hint="hold the card 10-15 cm away with the whole card in view. the edge at the bottom is the one read; turn it to read another."
       onScan={(scan, source) => {
         const read = readingKey(scan);
         if (read) onRead(read, source);

@@ -20,6 +20,7 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/api/health`,
     reuseExistingServer: false,
     timeout: 30_000,
-    env: { E2E_PORT: String(PORT) },
+    // the e2e suites pin the one-phone-per-ID rule (off by default on event day)
+    env: { E2E_PORT: String(PORT), AH_ONE_PHONE: '1' },
   },
 });

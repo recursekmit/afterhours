@@ -1,9 +1,17 @@
 // Student-ID login, end to end on the API. Made-up people only: nothing here is from the real roster.
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { importParticipants, parseParticipantCsv } from '../src/core/auth/participants';
 import { all, one } from '../src/core/db';
 import { AVATAR, type Jar, type TestApp, Jar as JarClass, adminJar, capture, gateJar, makeApp, makeKits, req, signedInAttendee } from './helpers';
 import { setVisibility } from '../src/features/hunt/visibility';
+
+// These tests pin the one-phone-per-ID rule, which is OFF by default on event day (AH_ONE_PHONE=1 brings it back).
+beforeAll(() => {
+  process.env.AH_ONE_PHONE = '1';
+});
+afterAll(() => {
+  delete process.env.AH_ONE_PHONE;
+});
 
 type J = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 

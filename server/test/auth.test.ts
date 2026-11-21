@@ -1,8 +1,16 @@
 import { PASSWORD_ALPHABET } from '@afterhours/shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { generatePassword, hashPassword, verifyPassword } from '../src/core/auth/crypto';
 import { parseKitCsv } from '../src/core/auth/kits';
 import { AVATAR, Jar, type TestApp, adminJar, makeApp, makeKits, req, signedInAttendee } from './helpers';
+
+// These tests pin the one-phone-per-ID rule, which is OFF by default on event day (AH_ONE_PHONE=1 brings it back).
+beforeAll(() => {
+  process.env.AH_ONE_PHONE = '1';
+});
+afterAll(() => {
+  delete process.env.AH_ONE_PHONE;
+});
 
 describe('password hashing', () => {
   it('scrypt round-trips and rejects wrong passwords', async () => {

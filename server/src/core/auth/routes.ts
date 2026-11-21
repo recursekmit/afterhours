@@ -22,7 +22,7 @@ import { parse } from '../validate';
 import { getMe, saveProfile } from './attendees';
 import { getDummyHash, newToken, safeEqual, sha256, verifyPassword } from './crypto';
 import { requireAdmin, requireAttendee } from './guards';
-import { registerIdLoginRoutes } from './idRoutes';
+import { mayUseAnyPhone, registerIdLoginRoutes } from './idRoutes';
 import { generateKits, listKits, parseKitCsv, resetKit } from './kits';
 import { COOKIES, clearCookie, createSession, deleteSession, findSession, setCookie } from './sessions';
 
@@ -66,7 +66,8 @@ export function registerAuthRoutes(app: FastifyInstance, ctx: AppContext) {
       kitFailLimiter.hit(kitKey);
       throw new HttpError(401, 'bad_credentials', "That kit ID and password don't match. Check your card?");
     }
-    const me = signInToKit(req, reply, kit.id, () => new HttpError(409, 'kit_bound', 'This kit is already signed in on another phone. Ask the desk to reset it.'));
+    // Event day: a kit can be signed in again on any phone too (see mayUseAnyPhone).
+    const me = signInToKit(req, reply, kit.id, () => new HttpError(409, 'kit_bound', 'This kit is already signed in on another phone. Ask the desk to reset it.'), { rebind: mayUseAnyPhone() });
     kitFailLimiter.reset(kitKey);
     return me;
   });

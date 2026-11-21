@@ -1,4 +1,4 @@
-// Mock testers (rolls 99BD1A90T<n>) can sign in again and again, on any phone. Real students keep one phone.
+// Sign in again and again: everyone by default (event day); testers (99BD1A90T<n>) even under AH_ONE_PHONE=1.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { all } from '../src/core/db';
 import { isTestRoll } from '../src/core/auth/idRoutes';
@@ -52,10 +52,25 @@ describe('mock testers sign in again and again', () => {
     expect((await req(t.app, b, 'POST', '/api/auth/id/signin', { payload: TESTER_QR })).statusCode).toBe(200);
   });
 
-  it('a real student is still held to one phone', async () => {
-    expect((await rollSignIn(new JarClass(), '25BD1A0533', '0011')).statusCode).toBe(200);
-    const r = await rollSignIn(new JarClass(), '25BD1A0533', '0011');
-    expect(r.statusCode).toBe(409);
-    expect((r.json() as J).error.code).toBe('id_bound');
+  it('by default everyone may sign in again on another phone, as the same attendee', async () => {
+    const one = await rollSignIn(new JarClass(), '25BD1A0533', '0011');
+    const two = await rollSignIn(new JarClass(), '25BD1A0533', '0011');
+    expect(one.statusCode).toBe(200);
+    expect(two.statusCode, two.body).toBe(200);
+    expect((two.json() as J).attendee.id).toBe((one.json() as J).attendee.id);
+  });
+
+  it('with AH_ONE_PHONE=1 a real student is held to one phone; testers still are not', async () => {
+    process.env.AH_ONE_PHONE = '1';
+    try {
+      expect((await rollSignIn(new JarClass(), '25BD1A0533', '0011')).statusCode).toBe(200);
+      const r = await rollSignIn(new JarClass(), '25BD1A0533', '0011');
+      expect(r.statusCode).toBe(409);
+      expect((r.json() as J).error.code).toBe('id_bound');
+      expect((await rollSignIn(new JarClass(), '99BD1A90T9', '0009')).statusCode).toBe(200);
+      expect((await rollSignIn(new JarClass(), '99BD1A90T9', '0009')).statusCode).toBe(200);
+    } finally {
+      delete process.env.AH_ONE_PHONE;
+    }
   });
 });

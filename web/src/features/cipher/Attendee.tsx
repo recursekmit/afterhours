@@ -292,10 +292,12 @@ function Winds({ me }: { me: CipherMe }) {
 }
 
 function Cursed({ onDone }: { onDone: () => void }) {
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
-    const t = setTimeout(onDone, 2600);
+    const t = setTimeout(() => done.current(), 2600);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, []);
   return (
     <motion.div className={s.cursed} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onDone} role="alert" data-testid="cursed">
       <svg viewBox="0 0 120 120" className={s.cursedGhost} aria-hidden="true">
@@ -759,12 +761,15 @@ function Done({ me }: { me: CipherMe }) {
 function SealOverlay({ trial, me, onDone }: { trial: number; me: CipherMe; onDone: () => void }) {
   const reduce = useReducedMotion();
   const st = me.stars[trial - 1];
+  const done = useRef(onDone);
+  done.current = onDone;
   useEffect(() => {
+    // once per seal: parent re-renders must not restart the sparks or the timer
     celebrate({ y: 0.4 });
     haptics.celebrate();
-    const t = setTimeout(onDone, 2600);
+    const t = setTimeout(() => done.current(), 2600);
     return () => clearTimeout(t);
-  }, [onDone]);
+  }, []);
   const id = TRIALS[trial - 1]!;
   return (
     <motion.div className={s.sealOverlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onDone} role="status" data-testid="seal-overlay">

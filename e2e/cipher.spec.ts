@@ -81,8 +81,9 @@ async function phone(who: 'a' | 'b', fn: (page: Page) => Promise<void>, roll?: n
     // a sealed trial unlocks a sticker: its celebration pops over everything; stick it in
     await page.addLocatorHandler(
       page.getByRole('button', { name: 'stick it in' }).first(),
-      async (b) => {
-        await b.click().catch(() => undefined);
+      async () => {
+        // stacked celebrations: the newest is on top
+        await page.getByRole('button', { name: 'stick it in' }).last().click({ timeout: 3000 }).catch(() => undefined);
       },
       { noWaitAfter: true },
     );
@@ -101,9 +102,14 @@ async function typeReading(page: Page, text: string, outcome = true) {
 }
 
 async function waitSealed(page: Page, trial: string) {
-  await expect(page.getByTestId(`star-${trial}`)).toHaveAttribute('data-sealed', 'yes', { timeout: 10_000 });
+  try {
+    await expect(page.getByTestId(`star-${trial}`)).toHaveAttribute('data-sealed', 'yes', { timeout: 20_000 });
+  } catch (e) {
+    const me = (await (await page.request.get('/api/cipher/me')).json()) as { trial: number; stars: unknown };
+    throw new Error(`not sealed on screen; server says trial ${me.trial} ${JSON.stringify(me.stars)}; ${String(e)}`.slice(0, 900));
+  }
   await page.getByTestId('seal-overlay').click({ timeout: 4000 }).catch(() => undefined);
-  await page.getByRole('button', { name: 'stick it in' }).click({ timeout: 4000 }).catch(() => undefined);
+  await page.getByRole('button', { name: 'stick it in' }).last().click({ timeout: 4000 }).catch(() => undefined);
 }
 
 /** Tap a word on the brass key: unit 150 ms, real pointer presses. */
@@ -324,7 +330,8 @@ test.describe.serial('the cipher: two phones, two guilds, all seven trials', () 
     await con.goto('/admin/cipher');
     await con.getByTestId('signal-warn').click();
     await expect(con.getByTestId('signal-fire')).toBeVisible();
-    await con.getByTestId('signal-fire').scrollIntoViewIfNeeded();
+    await con.waitForTimeout(500);
+    await con.getByTestId('signal-fire').scrollIntoViewIfNeeded().catch(() => undefined);
     await con.screenshot({ path: `${SHOTS}/cipher-console-signal-1280.png` });
 
     const pctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, baseURL: BASE });

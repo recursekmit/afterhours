@@ -18,7 +18,11 @@ export function useCipher() {
 /** Put a fresh CipherMe from any mutation straight into the cache. */
 export function useSetMe() {
   const qc = useQueryClient();
-  return (me: CipherMe) => qc.setQueryData(cipherKey, me);
+  return (me: CipherMe) => {
+    // a /me fetch that started before this answer landed must not overwrite it with the old state
+    void qc.cancelQueries({ queryKey: cipherKey });
+    qc.setQueryData(cipherKey, me);
+  };
 }
 
 export function useCipherScreen() {

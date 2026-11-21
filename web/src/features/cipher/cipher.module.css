@@ -1,0 +1,205 @@
+/* The Cipher Ticket: phone, projector, console. Tokens only (web/src/styles/tokens.css). */
+
+/* ---- guild colours: slip I's ground, and a brighter enamel for bars and swatches ---- */
+[data-guild='armillary'] { --guild: var(--enamel-tangerine); --guild-ground: var(--ticket-armillary); }
+[data-guild='wave'] { --guild: var(--enamel-sky); --guild-ground: var(--ticket-wave); }
+[data-guild='ginkgo'] { --guild: var(--enamel-lime); --guild-ground: var(--ticket-ginkgo); }
+[data-guild='ruins'] { --guild: var(--enamel-grape); --guild-ground: var(--ticket-ruins); }
+
+.closed { display: grid; justify-items: center; gap: var(--s-3); text-align: center; padding: var(--s-6) var(--s-4); }
+
+/* ---- header: guild plaque, points, streak, clock ---- */
+.header { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: var(--s-2); align-items: stretch; }
+.guildPlaque { display: flex; gap: var(--s-2); align-items: center; padding: var(--s-2); background: var(--guild-ground); border: var(--line) solid var(--gold); border-radius: var(--cut-2); box-shadow: var(--shadow-sm); min-width: 0; }
+.guildPlaque b { display: block; font-family: var(--font-display); font-weight: 700; font-size: var(--step-0); line-height: 1.05; color: var(--gold-bright); }
+.guildPlaque small { display: block; font-family: var(--font-hand); font-style: italic; color: var(--ink-soft); font-size: var(--step--1); }
+.guildSwatch { flex: none; width: 22px; height: 22px; background: var(--guild); border: 2px solid var(--gold); border-radius: var(--cut-round); box-shadow: 0 0 0 2px var(--guild-ground), 0 0 0 3px var(--rule); }
+.headStat { display: grid; justify-items: center; align-content: center; padding: var(--s-1) 2px; background: var(--paper-3); border: var(--line-thin) solid var(--rule); border-radius: var(--cut-2); min-width: 0; }
+.headStat small { font-family: var(--font-hand); font-style: italic; font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.1; }
+.headNum { font-family: var(--font-display); font-size: var(--step-1); color: var(--accent-text); line-height: 1.1; }
+.clockFast .headNum { color: var(--good-text); }
+.clockSlow .headNum { color: var(--ink-soft); }
+
+/* ---- the constellation ---- */
+.constellation { margin: 0; padding: var(--s-2) 0; background: radial-gradient(120% 90% at 50% 40%, var(--paper-3), var(--paper-2)); border: var(--line-thin) solid var(--rule); border-radius: var(--cut-1); box-shadow: var(--shadow-sm); }
+.constellation svg { display: block; width: 100%; height: auto; }
+.cLine { stroke: var(--rule-soft); stroke-width: 1.2; stroke-dasharray: 2 4; }
+.cLineLit { stroke: var(--gold); stroke-width: 2; filter: drop-shadow(0 0 3px rgb(245 223 172 / 0.6)); }
+.cShape { fill: none; stroke: var(--gold); stroke-width: 1.2; }
+.cWaiting .cShape { stroke: var(--rule); }
+.cWaiting .cLabel { fill: var(--ink-soft); opacity: 0.6; }
+.cSealed .cShape { fill: var(--gold-bright); stroke: var(--gold-bright); filter: drop-shadow(0 0 4px rgb(245 223 172 / 0.8)); }
+.cCurrent .cShape { fill: var(--gold); animation: breathe 1.8s var(--ease-out) infinite; transform-box: fill-box; transform-origin: center; }
+.cWax { fill: var(--wax); stroke: var(--wax-dark); stroke-width: 1.5; }
+.cHalo { fill: none; stroke: var(--gold-bright); stroke-width: 1; opacity: 0.6; animation: halo 1.8s var(--ease-out) infinite; transform-box: fill-box; transform-origin: center; }
+.cLabel { fill: var(--ink); font-family: var(--font-hand); font-style: italic; font-size: 11px; }
+.cPipOn { fill: var(--gold-bright); }
+.cPipOff { fill: var(--rule-soft); }
+@keyframes breathe { 50% { transform: scale(1.18); } }
+@keyframes halo { 0% { transform: scale(0.8); opacity: 0.8; } 100% { transform: scale(1.4); opacity: 0; } }
+
+/* ---- trial card ---- */
+.trial { display: grid; gap: var(--s-3); }
+.rule { font-size: var(--step-1); line-height: 1.25; font-weight: 600; }
+.hint { font-family: var(--font-hand); font-style: italic; font-weight: 700; padding: var(--s-2) var(--s-3); background: var(--sun); border: var(--line-thin) solid var(--frame); border-radius: var(--cut-3); }
+.typeRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2); align-items: end; }
+.outcome { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); padding: var(--s-2) var(--s-3); border: var(--line-thin) solid var(--frame); border-radius: var(--cut-3); background: var(--paper-2); }
+.outcomeGood { background: var(--lime); }
+.outcomeCursed { background: var(--grape); }
+.slipBadge { display: inline-grid; place-items: center; flex: none; min-width: 52px; height: 52px; padding: 0 6px; font-family: var(--font-display); font-weight: 700; font-size: var(--step-0); color: var(--gold-bright); background: var(--wax); border: 2px solid var(--wax-dark); border-radius: var(--cut-round); box-shadow: inset 0 0 0 3px rgb(0 0 0 / 0.15); }
+
+/* ---- how-to drawings ---- */
+.howTo { margin: 0; display: grid; place-items: center; }
+.howSvg { width: 100%; max-width: 240px; height: auto; }
+.howBand { fill: var(--sun); opacity: 0.5; }
+.howSlip { fill: var(--cream); stroke: var(--ink); stroke-width: 1.2; }
+.howStrip { fill: var(--ink-soft); opacity: 0.5; }
+.howStripOn { fill: var(--accent-text); }
+.howText { fill: var(--ink); font-family: var(--font-hand); font-style: italic; font-size: 8px; }
+.howTurn { transform-origin: 60px 36px; animation: turn 6s steps(1) infinite; }
+.howFixed { transform-origin: 60px 36px; }
+@keyframes turn { 0% { transform: rotate(0deg); } 25% { transform: rotate(90deg); } 50% { transform: rotate(180deg); } 75% { transform: rotate(270deg); } }
+.howWood { fill: var(--wood); }
+.howKnob { fill: var(--lacquer); stroke: var(--brass); stroke-width: 3; }
+.howPress { animation: press 1.6s var(--ease-out) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes press { 10%, 30% { transform: translateY(4px); } 40% { transform: none; } }
+.howPips rect { fill: var(--ink); animation: pip 1.6s steps(1) infinite; }
+.howPips rect:nth-child(2) { animation-delay: 0.2s; }
+.howPips rect:nth-child(3) { animation-delay: 0.4s; }
+.howPips rect:nth-child(4) { animation-delay: 0.6s; }
+.howPips rect:nth-child(5) { animation-delay: 0.8s; }
+@keyframes pip { 0% { opacity: 0.15; } 50% { opacity: 1; } }
+.howLamp { fill: var(--ink-soft); }
+.howBlink { animation: blink 2s steps(1) infinite; }
+@keyframes blink { 0%, 15%, 30%, 75% { fill: var(--ink-soft); } 10%, 20%, 40% { fill: var(--gold); } }
+.howCode { stroke: var(--ink); stroke-width: 6; stroke-linecap: round; }
+.howSortItem { animation: sortIt 3s var(--ease-out) infinite; }
+@keyframes sortIt { 0%, 30% { transform: translateY(0); } 50%, 80% { transform: translateY(-6px); } }
+.howSwapA { animation: swapA 3s var(--ease-out) infinite; }
+.howSwapB { animation: swapB 3s var(--ease-out) infinite; }
+@keyframes swapA { 40%, 60% { transform: translateX(24px) rotate(-6deg); } }
+@keyframes swapB { 40%, 60% { transform: translateX(-24px) rotate(6deg); } }
+
+/* ---- the oath ---- */
+.oath { display: grid; justify-items: center; gap: var(--s-3); text-align: center; padding: var(--s-4) var(--s-3); background: var(--guild-ground); color: var(--gold-bright); border: 2px solid var(--gold); border-radius: var(--cut-1); box-shadow: inset 0 0 0 4px var(--guild-ground), inset 0 0 0 5px var(--rule), var(--candle); }
+.oathKicker { font-family: var(--font-hand); font-style: italic; color: var(--cream); }
+.oathGuild { font-family: var(--font-display); font-size: var(--step-3); line-height: 1.05; color: var(--gold-bright); text-shadow: 0 0 18px rgb(245 223 172 / 0.35); }
+.oathLine { font-family: var(--font-hand); font-style: italic; font-size: var(--step-1); color: var(--cream); max-width: 30ch; }
+
+/* ---- the compass ---- */
+.compass { margin: 0 auto; width: min(280px, 100%); }
+.compass svg { display: block; width: 100%; height: auto; overflow: visible; }
+.dialRing { fill: var(--paper-2); stroke: var(--frame); stroke-width: 3; }
+.dialRingThin { fill: none; stroke: var(--rule); stroke-width: 1; }
+.dialRose { fill: var(--sun); stroke: var(--frame); stroke-width: 1; }
+.dialRoseIn { fill: var(--paper-3); stroke: var(--frame); stroke-width: 0.8; }
+.dialCount { font-family: var(--font-display); font-size: 16px; fill: var(--ink); }
+.rune { transition: transform var(--dur) var(--ease-pop); }
+.runeDisc { fill: var(--paper-3); stroke: var(--frame); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.runeMark { fill: none; stroke: var(--ink-soft); stroke-width: 2.4; stroke-linecap: round; opacity: 0.45; }
+.runeLetter { font-family: var(--font-display); font-size: 13px; fill: var(--ink); }
+.runeLit .runeDisc { fill: var(--wax); stroke: var(--wax-dark); stroke-dasharray: none; }
+.runeLit .runeMark { stroke: var(--enamel-gold); opacity: 1; }
+.runeCursed .runeDisc { fill: var(--enamel-grape); stroke: var(--wax-dark); stroke-dasharray: none; animation: flicker 2.4s steps(1) infinite; }
+.runeCursed .runeMark { stroke: var(--wax-light); opacity: 1; }
+.runeFlash { animation: runePop 700ms var(--ease-pop); }
+@keyframes runePop { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@keyframes flicker { 0%, 100% { opacity: 1; } 47% { opacity: 0.6; } 50% { opacity: 1; } 83% { opacity: 0.75; } }
+
+/* cursed: a spooky shroud, a ghost that shivers */
+.cursed { position: fixed; inset: 0; z-index: var(--z-celebrate); display: grid; place-content: center; justify-items: center; gap: var(--s-3); padding: var(--s-5); text-align: center; background: radial-gradient(circle at 50% 45%, rgb(58 31 79 / 0.88), rgb(10 4 12 / 0.96) 70%); color: var(--cream); animation: shake 600ms var(--ease-out) 2; }
+.cursedGhost { width: 140px; height: 140px; fill: var(--cream); opacity: 0.92; filter: drop-shadow(0 0 22px rgb(192 69 63 / 0.6)); animation: drift 2.6s var(--ease-out) infinite alternate; }
+.cursedEye { fill: var(--wax); }
+.cursedText { font-family: var(--font-display); font-size: var(--step-6); color: var(--wax-light); text-shadow: 0 0 20px rgb(192 69 63 / 0.7); line-height: 1; }
+.cursedSub { font-family: var(--font-hand); font-style: italic; font-size: var(--step-1); }
+@keyframes shake { 20% { transform: translateX(-8px); } 40% { transform: translateX(7px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(3px); } }
+@keyframes drift { from { transform: translateY(6px) rotate(-3deg); } to { transform: translateY(-8px) rotate(3deg); } }
+
+/* ---- the echo ---- */
+.echoAsk { display: flex; gap: var(--s-3); align-items: center; font-size: var(--step-0); }
+.echoAsk b { font-family: var(--font-display); }
+.letterSlots { display: flex; gap: var(--s-2); justify-content: center; }
+.slot { display: grid; place-items: center; width: 48px; height: 56px; font-family: var(--font-display); font-size: var(--step-3); border: var(--line) solid var(--frame); border-bottom-width: 3px; border-radius: var(--cut-3); background: var(--paper-3); }
+.slotOk { background: var(--lime); }
+.slotBad { background: var(--pink); }
+.ribbon { min-height: 52px; display: grid; place-items: center; font-family: var(--font-display); font-size: var(--step-3); letter-spacing: 0.15em; background: var(--paper-2); border: var(--line-thin) solid var(--frame); border-radius: var(--cut-3); overflow-wrap: anywhere; text-align: center; padding: 0 var(--s-2); }
+.pips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; min-height: 18px; }
+.dit, .dah { display: inline-block; height: 16px; background: var(--ink); border: var(--line-thin) solid var(--ink); border-radius: 8px; }
+.dit { width: 16px; }
+.dah { width: 40px; }
+.pipGood { background: var(--lime); }
+.pipOk { background: var(--sun); }
+.pipOff { background: var(--pink); }
+.starsInline { color: var(--accent-text); letter-spacing: 2px; }
+
+/* ---- chart, flash ---- */
+.miniChart summary { font-family: var(--font-hand); font-style: italic; font-weight: 700; cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.chart { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 4px; }
+.chartCompact { margin-top: var(--s-2); }
+.chartCell { display: grid; justify-items: center; gap: 0; padding: 3px 2px; background: var(--paper-3); border: var(--line-thin) solid var(--rule); border-radius: var(--cut-3); }
+.chartCell b { font-family: var(--font-display); font-weight: 400; font-size: var(--step-1); line-height: 1.1; }
+.chartCell i { font-style: normal; font-weight: 800; font-size: 13px; letter-spacing: 1px; }
+.flash { display: grid; place-items: center; height: 140px; background: var(--iron-gall); border: var(--line) solid var(--frame); border-radius: var(--cut-1); box-shadow: var(--shadow); transition: background 30ms linear; }
+.flashOn { background: var(--gold-bright); box-shadow: var(--shadow), 0 0 40px rgb(245 223 172 / 0.8); }
+.flashText { font-family: var(--font-hand); font-style: italic; font-size: var(--step-1); color: var(--cream); }
+
+/* ---- the riddle ---- */
+.riddleBox { display: flex; gap: var(--s-3); align-items: center; }
+.riddleText { font-size: var(--step-1); line-height: 1.25; }
+.riddleText b { font-family: var(--font-display); }
+.notes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.noteHint input { background: var(--sun); }
+
+/* ---- soon ---- */
+.soon { display: grid; justify-items: center; gap: var(--s-2); text-align: center; padding: var(--s-4) 0; }
+
+/* ---- the seal coming down ---- */
+.sealOverlay { position: fixed; inset: 0; z-index: var(--z-celebrate); display: grid; place-content: center; justify-items: center; gap: var(--s-3); background: radial-gradient(circle at 50% 45%, rgb(20 10 6 / 0.55), rgb(10 6 4 / 0.88) 70%); cursor: pointer; }
+.sealTitle { font-family: var(--font-display); font-size: var(--step-3); color: var(--gold-bright); text-shadow: var(--engrave); text-align: center; }
+.sealStars { font-size: 40px; letter-spacing: 6px; }
+.sealStarOn { color: var(--gold-bright); text-shadow: 0 0 14px rgb(245 223 172 / 0.8); }
+.sealStarOff { color: var(--rule-soft); }
+.sealPoints { font-family: var(--font-display); font-size: var(--step-4); color: var(--accent-text); }
+
+/* ---- cards that link in ---- */
+.morseCard { display: grid; gap: var(--s-2); }
+.cardTitle { font-family: var(--font-display); font-size: var(--step-3); line-height: 1; color: var(--gold-bright); }
+.cardCount { font-family: var(--font-display); font-size: var(--step-2); color: var(--accent-text); }
+
+/* ---- projector ---- */
+.scene { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: calc(var(--u) * 2.25) calc(var(--u) * 3); height: 100%; padding: calc(var(--u) * 2.25) calc(var(--u) * 4); color: var(--ink); }
+.sceneHead { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: calc(var(--u) * 2); }
+.sceneTitle { font-family: var(--font-display); font-size: calc(var(--u) * 3.38); line-height: 1; color: var(--gold-bright); text-shadow: var(--engrave); }
+.sceneNote { font-family: var(--font-hand); font-style: italic; font-size: calc(var(--u) * 1.69); color: var(--ink-soft); }
+.race { display: grid; gap: calc(var(--u) * 1.35); align-content: start; }
+.raceRow { display: grid; grid-template-columns: calc(var(--u) * 22) minmax(0, 1fr) calc(var(--u) * 9); gap: calc(var(--u) * 1.5); align-items: center; }
+.raceName { display: flex; align-items: center; gap: calc(var(--u) * 1); font-family: var(--font-display); font-size: calc(var(--u) * 2.02); line-height: 1.05; color: var(--gold-bright); }
+.raceName small { display: block; font-family: var(--font-hand); font-style: italic; font-size: calc(var(--u) * 1.35); color: var(--ink-soft); }
+.raceSwatch { flex: none; width: calc(var(--u) * 2.59); height: calc(var(--u) * 2.59); border-radius: 50%; background: var(--guild); border: 3px solid var(--gold); }
+.raceTrack { height: calc(var(--u) * 3.94); background: var(--paper-2); border: 2px solid var(--rule); border-radius: var(--cut-2); overflow: hidden; }
+.raceBar { height: 100%; background: linear-gradient(90deg, var(--guild-ground), var(--guild)); border-right: 4px solid var(--gold-bright); }
+.raceNum { font-family: var(--font-display); font-size: calc(var(--u) * 2.81); color: var(--accent-text); text-align: right; }
+.raceLead .raceTrack { box-shadow: 0 0 24px rgb(245 223 172 / 0.35); border-color: var(--gold); }
+.side { display: grid; gap: calc(var(--u) * 1.69); align-content: start; }
+.heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: calc(var(--u) * 0.8); align-items: end; height: calc(var(--u) * 14.62); }
+.heatCol { display: grid; grid-template-rows: 1fr auto auto; justify-items: center; height: 100%; gap: calc(var(--u) * 0.34); }
+.heatBar { align-self: end; width: 70%; background: var(--gold); border-radius: 4px 4px 0 0; min-height: 4px; }
+.heatNum { font-family: var(--font-display); font-size: calc(var(--u) * 1.91); color: var(--accent-text); }
+.heatLabel { font-family: var(--font-hand); font-style: italic; font-size: calc(var(--u) * 1.12); color: var(--ink-soft); text-align: center; line-height: 1; }
+.ticker { display: grid; gap: calc(var(--u) * 0.56); padding: calc(var(--u) * 1.12) calc(var(--u) * 1.5); background: var(--paper-2); border: 2px solid var(--rule); border-radius: var(--cut-1); }
+.tickerHead { font-family: var(--font-display); font-size: calc(var(--u) * 1.91); color: var(--gold-bright); }
+.tickerItem { font-family: var(--font-hand); font-size: calc(var(--u) * 1.57); }
+.boxTitle { font-family: var(--font-display); font-size: calc(var(--u) * 1.8); color: var(--gold-bright); }
+
+/* ---- console ---- */
+.guildCell { display: inline-flex; align-items: center; gap: 6px; }
+.dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--guild); border: 1.5px solid var(--frame); }
+.settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--s-3); }
+.settingsGroup { grid-column: 1 / -1; font-family: var(--font-display); font-size: var(--step-0); margin-top: var(--s-2); }
+.checkLabel { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; font-family: var(--font-hand); font-weight: 700; }
+.consoleTable { max-height: 420px; overflow: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cCurrent .cShape, .cHalo, .howTurn, .howPress, .howPips rect, .howBlink, .howSortItem, .howSwapA, .howSwapB, .runeCursed .runeDisc, .runeFlash, .cursed, .cursedGhost { animation: none; }
+  .howPips rect { opacity: 1; }
+}

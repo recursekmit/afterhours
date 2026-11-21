@@ -32,6 +32,7 @@ import { api } from '../../core/api';
 import { useLiveEvent } from '../../core/live';
 import { celebrate, haptics, sfx } from '../../fun';
 import { Button, Card, Countdown, ErrorState, LinkButton, LoadingState, Meter, NumberTicker, Sticker, Tabs, useToast } from '../../kit';
+import { CipherMorseCard } from '../cipher/Attendee';
 import { CodeBoxes } from '../common/CodeBoxes';
 import { PageHead, Stamp, ui } from '../common/ui';
 import { TelegraphKey } from './Key';
@@ -331,6 +332,7 @@ export function MorsePage() {
     <div className={ui.page}>
       <PageHead title="morse" note={`${st.players} ${st.players === 1 ? 'person has' : 'people have'} tried. you have ${st.morsePoints} morse points.`} color="var(--sky)" />
       {!st.enabled && <p className={s.off}>morse is switched off right now. the organisers will open it.</p>}
+      <CipherMorseCard />
       <TrailTeaser />
       <SprintBanner st={st} />
       {round ? (

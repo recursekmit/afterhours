@@ -4,6 +4,7 @@ import type { ServerFeature } from '../core';
 import { alerts } from './alerts';
 import { arcade } from './arcade';
 import { attendance } from './attendance';
+import { cipher } from './cipher';
 import { drops } from './drops';
 import { hunt } from './hunt';
 import { leaderboard } from './leaderboard';
@@ -19,6 +20,7 @@ export const features: ServerFeature[] = [
   alerts,
   arcade,
   attendance,
+  cipher,
   drops,
   hunt,
   leaderboard,

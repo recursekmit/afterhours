@@ -19,7 +19,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../core/api';
 import { useServerNow } from '../../core/clock';
 import { SlipSheet } from '../../lib/slips';
-import { Button, TextField, useToast } from '../../kit';
+import { Button, Countdown, TextField, useToast } from '../../kit';
 import { Section, Stamp, Stat, downloadHref, ui } from '../common/ui';
 import { mmss, pad3, useCipherAdmin } from './api';
 import s from './cipher.module.css';
@@ -114,6 +114,7 @@ export default function CipherConsole() {
           </tbody>
         </table>
       </Section>
+      <LastSignal o={o} onDone={() => void q.refetch()} />
       <Players o={o} />
       <Pacts o={o} onDone={() => void q.refetch()} />
       <Settings o={o} onSaved={() => void q.refetch()} />
@@ -153,6 +154,77 @@ function TrialTable({ o }: { o: CipherAdmin }) {
         ))}
       </tbody>
     </table>
+  );
+}
+
+function LastSignal({ o, onDone }: { o: CipherAdmin; onDone: () => void }) {
+  const toast = useToast();
+  const [mins, setMins] = useState(Math.round(o.settings.signalWarnSec / 60));
+  const [word, setWord] = useState('');
+  const sig = o.signal;
+  const act = useMutation({
+    mutationFn: (b: { action: 'warn' | 'fire' | 'close' | 'reveal' | 'cancel'; inSec?: number; word?: string }) => api.post('/api/cipher/admin/signal', b, CipherAdminSchema),
+    onSuccess: () => {
+      setWord('');
+      onDone();
+    },
+    onError: (e: Error) => toast(e.message, { kind: 'bad' }),
+  });
+  const open = sig.status === 'warned' || sig.status === 'live';
+  const ready = o.sealed[5] ?? 0;
+  return (
+    <Section
+      title="the last signal"
+      tilt={-0.3}
+      action={<Stamp tone={sig.status === 'live' ? 'live' : sig.status === 'warned' ? 'info' : 'done'}>{sig.status === 'idle' ? 'not sent' : sig.status}</Stamp>}
+    >
+      <p className={ui.hand}>
+        {ready} {ready === 1 ? 'player has' : 'players have'} sealed the pact and can answer. the projector takes over while it is announced and live, flashes and beeps the word {o.settings.signalLoops} times with the chart, then proclaims the winning guild when you close it.
+      </p>
+      {sig.id !== null && (
+        <div className={ui.statGrid}>
+          <Stat label="the word (console only)" value={o.signalWord ?? ''} />
+          <Stat label="caught it" value={sig.correct} />
+          <Stat label={sig.status === 'warned' ? 'goes live in' : sig.status === 'live' ? 'closes in' : 'winner'} value={sig.status === 'warned' && sig.fireAt ? <Countdown to={sig.fireAt} /> : sig.status === 'live' && sig.closesAt ? <Countdown to={sig.closesAt} /> : sig.winner ? GUILD_INFO[sig.winner].short : '-'} />
+        </div>
+      )}
+      {!open && (
+        <div className={ui.row}>
+          <TextField label="warn, minutes ahead" type="number" min={0} max={60} value={String(mins)} onChange={(e) => setMins(Number(e.target.value))} />
+          <TextField label="word (empty: we draw one)" value={word} maxLength={6} onChange={(e) => setWord(e.target.value.toUpperCase())} />
+          <Button tone="sun" icon="bell" loading={act.isPending} onClick={() => act.mutate({ action: 'warn', inSec: Math.max(0, Math.round(mins * 60)), word: word || undefined })} data-testid="signal-warn">
+            announce: fire in {mins} min
+          </Button>
+          <Button tone="pink" icon="bolt" loading={act.isPending} onClick={() => act.mutate({ action: 'fire', word: word || undefined })} data-testid="signal-fire">
+            fire now
+          </Button>
+        </div>
+      )}
+      {open && (
+        <div className={ui.row}>
+          {sig.status === 'warned' && (
+            <>
+              <Button tone="pink" icon="bolt" loading={act.isPending} onClick={() => act.mutate({ action: 'fire' })} data-testid="signal-fire">
+                fire it now
+              </Button>
+              <Button tone="paper" loading={act.isPending} onClick={() => act.mutate({ action: 'cancel' })}>
+                call it off
+              </Button>
+            </>
+          )}
+          {sig.status === 'live' && (
+            <Button tone="lime" icon="crown" loading={act.isPending} onClick={() => act.mutate({ action: 'close' })} data-testid="signal-close">
+              close answers and crown the guild
+            </Button>
+          )}
+        </div>
+      )}
+      {sig.status === 'closed' && !sig.word && (
+        <Button tone="sun" icon="eye" loading={act.isPending} onClick={() => act.mutate({ action: 'reveal' })} data-testid="signal-reveal">
+          reveal the word on every screen
+        </Button>
+      )}
+    </Section>
   );
 }
 

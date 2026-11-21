@@ -38,7 +38,7 @@ export default function SignalScene() {
     return (
       <div className={s.proclaim} data-guild={sig.winner ?? 'armillary'} data-testid="signal-proclamation">
         <motion.div initial={reduce ? false : { scale: 2, rotate: -14, opacity: 0 }} animate={{ scale: 1, rotate: -4, opacity: 1 }} transition={{ type: 'spring', stiffness: 160, damping: 14 }}>
-          <WaxSeal glyph="crown" size={160} press={!reduce} />
+          <WaxSeal glyph="crown" size={110} press={!reduce} />
         </motion.div>
         <p className={s.proclaimKicker}>hear ye: the cipher is decided</p>
         <h2 className={s.proclaimTitle}>{winner ? `${winner.title} wins` : 'the signal is sent'}</h2>

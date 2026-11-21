@@ -79,9 +79,13 @@ async function phone(who: 'a' | 'b', fn: (page: Page) => Promise<void>, roll?: n
     const ctx = await b.newContext({ ...PHONE, baseURL: BASE, permissions: ['camera'], storageState: phones[who] ?? undefined });
     const page = await ctx.newPage();
     // a sealed trial unlocks a sticker: its celebration pops over everything; stick it in
-    await page.addLocatorHandler(page.getByRole('button', { name: 'stick it in' }), async (b) => {
-      await b.click();
-    });
+    await page.addLocatorHandler(
+      page.getByRole('button', { name: 'stick it in' }).first(),
+      async (b) => {
+        await b.click().catch(() => undefined);
+      },
+      { noWaitAfter: true },
+    );
     await fn(page);
     phones[who] = await ctx.storageState();
     await ctx.close();
@@ -127,7 +131,7 @@ function parseCsv(text: string): Record<string, string>[] {
   return rows.map((r) => Object.fromEntries(r.split(',').map((v, i) => [cols[i]!, v])));
 }
 
-test.describe.serial('the cipher: two phones, two guilds, trials 1-6', () => {
+test.describe.serial('the cipher: two phones, two guilds, all seven trials', () => {
   test.describe.configure({ timeout: 180_000 });
   test.beforeAll(async ({ playwright }) => {
     admin = await playwright.request.newContext({ baseURL: BASE });
@@ -309,6 +313,71 @@ test.describe.serial('the cipher: two phones, two guilds, trials 1-6', () => {
     await phone('a', async (page) => {
       await page.goto('/morse/cipher');
       await expect(page.getByTestId('star-pact')).toHaveAttribute('data-sealed', 'yes');
+    });
+  });
+
+  test('the last signal: warn, fire, the projector flashes it, both phones answer, the guild is proclaimed, reveal', async ({ browser }) => {
+    // console: announce it 5 minutes ahead
+    const cctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, baseURL: BASE });
+    const con = await cctx.newPage();
+    await con.request.post('/api/admin/session', { data: { pin: '2468' } });
+    await con.goto('/admin/cipher');
+    await con.getByTestId('signal-warn').click();
+    await expect(con.getByTestId('signal-fire')).toBeVisible();
+    await con.getByTestId('signal-fire').scrollIntoViewIfNeeded();
+    await con.screenshot({ path: `${SHOTS}/cipher-console-signal-1280.png` });
+
+    const pctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, baseURL: BASE });
+    const proj = await pctx.newPage();
+    await proj.request.post('/api/screen/session', { data: { pin: '1357' } });
+    await api('POST', '/api/admin/screen/pin', { sceneId: null });
+    await proj.goto('/screen');
+    await expect(proj.getByTestId('signal-scene')).toBeVisible({ timeout: 15_000 });
+    await proj.waitForTimeout(800);
+    await proj.screenshot({ path: `${SHOTS}/cipher-signal-warned-1920.png` });
+
+    await phone('a', async (page) => {
+      await page.goto('/morse/cipher');
+      await expect(page.getByTestId('signal-warned')).toBeVisible();
+    });
+
+    // fire it from the console
+    await con.getByTestId('signal-fire').click();
+    await expect(con.getByTestId('signal-close')).toBeVisible();
+    await expect(proj.getByTestId('signal-lamp')).toBeVisible({ timeout: 15_000 });
+    await expect(proj.getByTestId('signal-lamp')).toHaveClass(/lampOn/, { timeout: 8000 });
+    await proj.screenshot({ path: `${SHOTS}/cipher-signal-live-1920.png` });
+
+    const word = (await api<{ signalWord: string }>('GET', '/api/cipher/admin')).signalWord;
+    for (const who of ['a', 'b'] as const) {
+      await phone(who, async (page) => {
+        await page.goto('/morse/cipher');
+        await expect(page.getByTestId('signal-live')).toBeVisible();
+        await page.getByTestId('signal-guess').fill(word);
+        if (who === 'a') await page.screenshot({ path: `${SHOTS}/cipher-signal-390.png`, fullPage: true });
+        const sent = page.waitForResponse((r) => r.url().endsWith('/api/cipher/signal'));
+        await page.getByRole('button', { name: 'send' }).click();
+        const res = (await (await sent).json()) as { correct: boolean; message: string };
+        expect(res.correct).toBe(true);
+        expect(res.message).toContain(who === 'a' ? '#1' : '#2');
+        await waitSealed(page, 'signal');
+      });
+    }
+
+    // close: the proclamation; then reveal the word everywhere
+    await con.getByTestId('signal-close').click();
+    await expect(proj.getByTestId('signal-proclamation')).toBeVisible({ timeout: 15_000 });
+    await con.getByTestId('signal-reveal').click();
+    await expect(proj.getByTestId('signal-proclamation')).toContainText(word, { timeout: 15_000 });
+    await proj.waitForTimeout(1500);
+    await proj.screenshot({ path: `${SHOTS}/cipher-signal-proclaim-1920.png` });
+    await pctx.close();
+    await cctx.close();
+    await phone('a', async (page) => {
+      await page.goto('/morse/cipher');
+      await expect(page.getByTestId('cipher-done')).toContainText('#1 on the last signal');
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${SHOTS}/cipher-done-390.png`, fullPage: true });
     });
   });
 

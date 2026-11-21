@@ -23,6 +23,11 @@ export const WHISPER_WORDS: readonly string[] = [
 export const SIGNAL_WORDS: readonly string[] = [
   'ARISE', 'BLAZE', 'BRAVE', 'CLOCK', 'COMET', 'CROWN', 'DREAM', 'EMBER', 'FLAME', 'FROST', 'GLORY', 'GUILD', 'HEART',
   'LIGHT', 'LUNAR', 'MAGIC', 'NIGHT', 'NOVA', 'ORBIT', 'QUEST', 'RAVEN', 'SPARK', 'STORM', 'TORCH', 'UNITY', 'VALOR', 'WAKE',
+  // more, so that with one word per phone two neighbours rarely share one
+  'AMBER', 'ANGEL', 'BEACH', 'BLOOM', 'CANDY', 'CEDAR', 'CHARM', 'CLOUD', 'CORAL', 'DAISY', 'EAGLE', 'FAIRY', 'FEAST',
+  'GHOST', 'GIANT', 'GRAPE', 'HONEY', 'IVORY', 'JEWEL', 'KOALA', 'LEMON', 'LOTUS', 'MANGO', 'MAPLE', 'MELON', 'OASIS',
+  'OCEAN', 'OLIVE', 'PANDA', 'PEARL', 'PIANO', 'PIXEL', 'PLANT', 'QUILT', 'RADIO', 'RIVER', 'ROBOT', 'SHELL', 'SMILE',
+  'SOLAR', 'SPICE', 'STONE', 'SUGAR', 'TIGER', 'TOAST', 'TULIP', 'VIOLA', 'WHALE', 'ZEBRA', 'BISON', 'CABIN', 'DELTA',
 ].filter((w) => w.length >= 4 && w.length <= 5);
 
 const CONS = 'BCDFGHJKLMNPRSTVWZ';

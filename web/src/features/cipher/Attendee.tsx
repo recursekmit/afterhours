@@ -671,10 +671,10 @@ function Soon({ me, n }: { me: CipherMe; n: number }) {
           {over
             ? me.signal.winner
               ? `${GUILD_INFO[me.signal.winner].title} won the race.${me.signal.word ? ` the word was ${me.signal.word}.` : ''}`
-              : 'watch the projector for the result.'
+              : 'the result shows here in a moment.'
             : n === 6
               ? 'keep slip IV handy: someone from another guild will need it.'
-              : 'eyes on the projector when the organisers call the last signal.'}
+              : 'keep your phone in hand: when the organisers fire the last signal, it beeps your own word.'}
         </p>
       </div>
     </TrialCard>
@@ -690,7 +690,22 @@ function Signal({ me }: { me: CipherMe }) {
   const toast = useToast();
   const [guess, setGuess] = useState('');
   const [res, setRes] = useState<GuessResult | null>(null);
+  const [light, setLight] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [plays, setPlays] = useState(0);
+  const pb = useRef<{ stop: () => void } | null>(null);
+  useEffect(() => () => pb.current?.stop(), []);
   const sig = me.signal;
+  const play = () => {
+    const p = sig.play;
+    if (!p) return;
+    pb.current?.stop();
+    setPlaying(true);
+    pb.current = playSignal(p.segments, p.leadInMs, setLight, () => {
+      setPlaying(false);
+      setPlays((n) => n + 1);
+    });
+  };
   const answer = useMutation({
     mutationFn: () => api.post('/api/cipher/signal', { guess }, GuessResultSchema),
     onSuccess: (r) => {
@@ -709,7 +724,7 @@ function Signal({ me }: { me: CipherMe }) {
         <div className={s.soon} data-testid="signal-warned">
           <p className={ui.handBig}>the last signal goes out in</p>
           <Countdown to={sig.fireAt} className={s.bigCount} />
-          <p className={ui.hand}>find a spot where you can see the projector. it plays {sig.firstN > 1 ? `slowly, three times. the first ${sig.firstN} to type it win big.` : 'slowly, three times.'}</p>
+          <p className={ui.hand}>keep your phone in hand, sound up. when it goes out, your phone beeps, flashes and buzzes your own word: nobody else has the same one. {sig.firstN > 1 ? `the first ${sig.firstN} to type theirs win big.` : ''}</p>
         </div>
       )}
       {sig.status === 'live' && (
@@ -717,9 +732,15 @@ function Signal({ me }: { me: CipherMe }) {
           <div className={s.signalLive} data-testid="signal-live">
             <span className={s.liveDot} aria-hidden="true" />
             <p>
-              <b>live on the projector.</b> {sig.letters} letters. {sig.correct} caught it so far.
+              <b>the last signal is live.</b> your word has {sig.letters} letters. {sig.correct} caught theirs so far.
             </p>
           </div>
+          <div className={`${s.flash} ${light ? s.flashOn : ''}`} data-testid="signal-flash">
+            <span className={s.flashText}>{playing ? (light ? '' : 'listen...') : plays ? 'what was it?' : 'tap play: it is your word alone'}</span>
+          </div>
+          <Button tone="pink" icon="play" block onClick={play} disabled={playing || !sig.play} data-testid="signal-play">
+            {plays ? 'play it again' : 'play the last signal'}
+          </Button>
           <form
             className={s.typeRow}
             onSubmit={(e) => {

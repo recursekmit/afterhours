@@ -1,10 +1,12 @@
-// Trial 7, the last signal. The organiser warns ("in 5 minutes") and fires it from the console; the
-// projector flashes and beeps one 4-5 letter word, slowly, looped, with a big chart beside it. Players who
-// sealed trials 1-6 type it: the first N correct win big, every correct answer wins something. Closing it
-// crowns the guild with the most cipher points per member. Server-authoritative: the word lives here; the
-// projector gets its on/off timing, the phones get nothing until the reveal.
-import { type CipherScreen, GUILD_INFO, type GuessResult, type Guild, type SignalFire, type SignalView, farnsworthSignal, isMorseWord, loopSignal } from '@afterhours/shared/features/cipher';
+// Trial 7, the last signal. The organiser warns ("in 5 minutes") and fires it from the console; at that
+// moment every eligible phone gets its OWN 4-5 letter word (no projector: nobody can shout one answer to the
+// hall) and beeps, flashes and buzzes it, replayable like the whisper. Players who sealed trials 1-6 type
+// it: the first N correct win big, every correct answer wins something. Closing it crowns the guild with the
+// most cipher points per member. Server-authoritative: a player's word is derived from the signal's secret
+// word and their id; the phone gets only its on/off timing, and the word after the reveal.
+import { type CipherScreen, GUILD_INFO, type GuessResult, type Guild, type SignalFire, type SignalView, farnsworthSignal, isMorseWord } from '@afterhours/shared/features/cipher';
 import { normaliseWord } from '@afterhours/shared/features/morse';
+import { createHash } from 'node:crypto';
 import { type FeatureContext, all, badRequest, conflict, getPublicAttendee, one, run, tx } from '../../core';
 import { SOURCE, STICKERS, T, buildMe, getPlayer, requireVisible, seal, settings, standings, state, touch } from './service';
 import { SIGNAL_WORDS, candidates } from './words';
@@ -21,8 +23,17 @@ interface SignalRow {
   created_at: number;
 }
 
-/** Rest between loops on the projector (ms). */
-const LOOP_REST_MS = 4000;
+/** The 4-5 letter pool, in a fixed order (a player's word is an index into it). */
+const POOL = SIGNAL_WORDS.filter((w) => w.length >= 4 && w.length <= 5);
+
+/**
+ * This player's word for this signal: stable for the signal, different per player (mostly), and not
+ * guessable without the signal's secret word.
+ */
+export function wordFor(r: { id: number; word: string }, attendeeId: number): string {
+  const h = createHash('sha256').update(`${r.id}:${r.word}:${attendeeId}`).digest();
+  return POOL[h.readUInt32BE(0) % POOL.length] as string;
+}
 
 const latest = (ctx: FeatureContext): SignalRow | undefined => one<SignalRow>(ctx.db, 'SELECT * FROM cipher_signals ORDER BY id DESC LIMIT 1');
 const publish = (ctx: FeatureContext, status: SignalView['status']) => ctx.live.publish('cipher.signal', { status, at: ctx.now() }, 'all');
@@ -123,7 +134,9 @@ export function signalTick(ctx: FeatureContext): void {
 
 function view(ctx: FeatureContext, r: SignalRow | undefined, attendeeId: number | null, trial: number): SignalView {
   const s = settings(ctx);
-  if (!r) return { id: null, status: 'idle', warnAt: null, fireAt: null, closesAt: null, letters: null, eligible: false, answered: null, firstN: s.signalFirstN, correct: 0, word: null, winner: null };
+  if (!r) return { id: null, status: 'idle', warnAt: null, fireAt: null, closesAt: null, letters: null, eligible: false, answered: null, firstN: s.signalFirstN, correct: 0, revealed: false, word: null, winner: null, play: null };
+  const mine = attendeeId === null ? null : wordFor(r, attendeeId);
+  const eligible = r.status === 'live' && trial === T.signal;
   const answered = attendeeId === null ? undefined : one<{ rank: number; points: number }>(ctx.db, 'SELECT rank, points FROM cipher_answers WHERE signal_id = ? AND attendee_id = ?', r.id, attendeeId);
   return {
     id: r.id,
@@ -131,13 +144,16 @@ function view(ctx: FeatureContext, r: SignalRow | undefined, attendeeId: number 
     warnAt: r.warn_at,
     fireAt: r.fire_at,
     closesAt: r.closes_at,
-    letters: r.status === 'warned' ? null : r.word.length,
-    eligible: r.status === 'live' && trial === T.signal,
+    letters: r.status === 'warned' || !mine ? null : mine.length,
+    eligible,
     answered: answered ?? null,
     firstN: s.signalFirstN,
     correct: one<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM cipher_answers WHERE signal_id = ?', r.id)?.n ?? 0,
-    word: r.revealed ? r.word : null,
+    revealed: Boolean(r.revealed),
+    word: r.revealed && mine ? mine : null,
     winner: r.winner,
+    // the phone plays its own word while live, until it is caught
+    play: eligible && mine && !answered ? farnsworthSignal(mine, s.signalWpm, Math.max(2, s.signalWpm * 0.6)) : null,
   };
 }
 
@@ -149,7 +165,8 @@ export function screenSignal(ctx: FeatureContext): { view: SignalView; play: Cip
   const s = settings(ctx);
   const r = current(ctx);
   const v = view(ctx, r, null, 0);
-  const play = r && r.status === 'live' ? loopSignal(farnsworthSignal(r.word, s.signalWpm, Math.max(2, s.signalWpm * 0.6), 1500), s.signalLoops, LOOP_REST_MS) : null;
+  // Every phone has its own word now, so a big screen has nothing to play (kept for the screen's shape).
+  const play = null;
   const first = r
     ? all<{ attendee_id: number; rank: number; guild: Guild }>(
         ctx.db,
@@ -172,13 +189,13 @@ export function adminSignal(ctx: FeatureContext): { view: SignalView; word: stri
 export function answerSignal(ctx: FeatureContext, attendeeId: number, guess: string): GuessResult {
   requireVisible(ctx);
   const r = current(ctx);
-  if (!r || r.status !== 'live') throw conflict(r?.status === 'warned' ? 'The last signal has not been sent yet. Eyes on the projector.' : 'The last signal is not live.');
+  if (!r || r.status !== 'live') throw conflict(r?.status === 'warned' ? 'The last signal has not been sent yet. Keep your phone in hand.' : 'The last signal is not live.');
   const p = getPlayer(ctx, attendeeId);
   if (!p || p.trial < T.signal) throw conflict('Seal the pact first: the last signal is for those who did.');
   const already = one<{ rank: number }>(ctx.db, 'SELECT rank FROM cipher_answers WHERE signal_id = ? AND attendee_id = ?', r.id, attendeeId);
   if (already) return { correct: true, close: false, points: 0, message: `you already caught it: #${already.rank}.`, me: buildMe(ctx, attendeeId) };
-  state(ctx).answers.enforce(`signal:${attendeeId}`, 'Easy: watch the next loop, then answer.');
-  if (normaliseWord(guess) !== r.word) return { correct: false, close: false, points: 0, message: 'not that one. watch the next loop and check the chart.', me: buildMe(ctx, attendeeId) };
+  state(ctx).answers.enforce(`signal:${attendeeId}`, 'Easy: play it again, then answer.');
+  if (normaliseWord(guess) !== wordFor(r, attendeeId)) return { correct: false, close: false, points: 0, message: 'not that one. play it again and check the chart.', me: buildMe(ctx, attendeeId) };
   const s = settings(ctx);
   const res = tx(ctx.db, () => {
     const rank = (one<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM cipher_answers WHERE signal_id = ?', r.id)?.n ?? 0) + 1;
@@ -193,7 +210,7 @@ export function answerSignal(ctx: FeatureContext, attendeeId: number, guess: str
     correct: true,
     close: false,
     points: res.paid,
-    message: res.first ? `#${res.rank}! one of the first ${s.signalFirstN}. the hall heard you.` : `#${res.rank}. caught it. every signal counts for your guild.`,
+    message: res.first ? `#${res.rank}! one of the first ${s.signalFirstN}. your guild heard you.` : `#${res.rank}. caught it. every signal counts for your guild.`,
     me: buildMe(ctx, attendeeId),
   };
 }

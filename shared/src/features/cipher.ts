@@ -11,11 +11,11 @@
 //   4 the whisper       the phone plays a word printed on no slip; decode it
 //   5 the riddle        decode the four edges of slip III; type the one the riddle asks for
 //   6 the pact          scan a partner's slip IV (another guild), or the Oracle's ticket
-//   7 the last signal   the projector sends one word to the whole hall; type it
+//   7 the last signal   the organisers fire it; every phone beeps its own word; type it first
 //
 // Secrets that never travel to a phone before they are solved: the whisper word (only its on/off timing),
 // the echo and riddle words (they are on the player's slips, to be decoded), the partner's edge word, the
-// Oracle's words, the last signal's word (the projector gets its timing; the word after the reveal).
+// Oracle's words, each player's last-signal word (their phone gets its timing; the word after the reveal).
 import { z } from 'zod';
 import { AvatarConfigSchema } from '../avatar';
 import { type SlipEdge, type SlipTicket, SLIP_TICKETS } from '../morse-slip';
@@ -82,7 +82,7 @@ export const TRIAL_INFO: Record<TrialId, { title: string; rule: string }> = {
   whisper: { title: 'the whisper', rule: 'your phone whispers a word printed on no slip. decode it.' },
   riddle: { title: 'the riddle', rule: 'decode all four edges of slip III, then answer the riddle with one of them.' },
   pact: { title: 'the pact', rule: 'find your partner from another guild. scan each other’s slip IV at the edge we name.' },
-  signal: { title: 'the last signal', rule: 'watch the projector. one word, three times. type it before the hall does.' },
+  signal: { title: 'the last signal', rule: 'when the organisers fire it, your phone beeps your own word. decode it before the rest of the hall.' },
 };
 
 export const EDGE_RUNE: Record<SlipEdge, { wind: string; compass: string }> = {
@@ -315,9 +315,12 @@ export const SignalViewSchema = z.object({
   answered: z.object({ rank: z.number().int(), points: z.number().int() }).nullable(),
   firstN: z.number().int(),
   correct: z.number().int(),
-  /** after the reveal only */
+  revealed: z.boolean(),
+  /** after the reveal only: this player's own word */
   word: z.string().nullable(),
   winner: GuildSchema.nullable(),
+  /** while live and not yet caught: the on/off timing of THIS player's word, played on the phone */
+  play: SignalSchema.nullable(),
 });
 export type SignalView = z.infer<typeof SignalViewSchema>;
 

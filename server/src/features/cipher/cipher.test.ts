@@ -1,11 +1,13 @@
 // The Cipher Ticket: every trial's server rules, concurrency and the visibility gate.
 import { type CipherAdmin, type CipherMe, type CipherScreen, type EchoResult, type GuessResult, type ScanResult, DEFAULT_CIPHER_SETTINGS, GUILDS } from '@afterhours/shared/features/cipher';
 import { slipWordKey } from '@afterhours/shared/features/hunt';
+import { MORSE_TABLE } from '@afterhours/shared/features/morse';
 import { reverseReading } from '@afterhours/shared/morse-slip';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { type TestApp, type Jar, adminJar, makeApp, makeKits, req, signedInAttendee } from '../../../test/helpers';
 import { all, one } from '../../core';
 import { judgeEcho, riddleAnswer, standings } from './service';
+import { wordFor } from './signal';
 import { type Words, copyWords, makeTicketSet, tapsFor } from './testkit';
 
 let t: TestApp;
@@ -511,8 +513,10 @@ describe('the last signal', () => {
   }
   const getSerial = (id: number) => one<{ serial: number }>(t.ctx.db, 'SELECT serial FROM cipher_players WHERE attendee_id = ?', id)?.serial ?? null;
   const fire = async (body: Record<string, unknown>) => req(t.app, await adminJar(t.app), 'POST', '/api/cipher/admin/signal', body);
+  /** This player's own word for the latest signal (every phone has its own). */
+  const myWord = (id: number) => wordFor(one<{ id: number; word: string }>(t.ctx.db, 'SELECT id, word FROM cipher_signals ORDER BY id DESC LIMIT 1')!, id);
 
-  it('warn, then it goes live by itself; only the projector gets its timing; first N win big, the rest something', async () => {
+  it('warn, then it goes live by itself; each phone gets the timing of its own word; first N win big, the rest something', async () => {
     const admin = await adminJar(t.app);
     const s = ((await req(t.app, admin, 'GET', '/api/cipher/admin')).json() as CipherAdmin).settings;
     await req(t.app, admin, 'PUT', '/api/cipher/admin/settings', { ...s, signalFirstN: 1 });
@@ -522,21 +526,28 @@ describe('the last signal', () => {
     const warned = await me(ps[0]!.jar);
     expect(warned.signal.status).toBe('warned');
     expect(warned.nextSoon).toBe(false);
+    expect(warned.signal.play).toBeNull();
     expect((await call(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'COMET' })).status).toBe(409);
     t.clock.advance(301_000);
     const scr = (await req(t.app, admin, 'GET', '/api/cipher/screen')).json() as CipherScreen;
     expect(scr.signal.status).toBe('live');
-    expect(scr.signalPlay!.segments.length).toBeGreaterThan(20); // looped
+    expect(scr.signalPlay).toBeNull(); // no projector: the phones play
+    const w0 = myWord(ps[0]!.id);
+    const w1 = myWord(ps[1]!.id);
     const live = await me(ps[0]!.jar);
-    expect(live.signal).toMatchObject({ status: 'live', eligible: true, letters: 5, word: null });
-    expect((await call<GuessResult>(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'comit' })).body.correct).toBe(false);
-    const first = await call<GuessResult>(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'comet' });
+    expect(live.signal).toMatchObject({ status: 'live', eligible: true, letters: w0.length, word: null });
+    // the phone gets the on/off timing of ITS word: an on and an off per dot or dash, less the last off
+    const elements = [...w0].map((c) => MORSE_TABLE[c]!).join('').length;
+    expect(live.signal.play!.segments).toHaveLength(elements * 2 - 1);
+    expect((await call<GuessResult>(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: w0.slice(1) })).body.correct).toBe(false);
+    const first = await call<GuessResult>(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: w0.toLowerCase() });
     expect(first.body).toMatchObject({ correct: true, points: P.signalFirst });
-    const second = await call<GuessResult>(ps[1]!.jar, 'POST', '/api/cipher/signal', { guess: 'COMET' });
+    expect((await me(ps[0]!.jar)).signal.play).toBeNull(); // caught: nothing more to play
+    const second = await call<GuessResult>(ps[1]!.jar, 'POST', '/api/cipher/signal', { guess: w1 });
     expect(second.body).toMatchObject({ correct: true, points: P.signalCorrect });
     expect(second.body.me.trial).toBe(8);
-    // the word never reached a phone before the reveal
-    expect(responses.join('\n').toUpperCase()).not.toMatch(/"COMET"/);
+    // no word reached a phone before the reveal
+    expect(responses.join('\n').toUpperCase()).not.toMatch(new RegExp(`"(${w0}|${w1}|COMET)"`));
     // close: the guild with the most points per member wins, its members get the crown
     expect((await fire({ action: 'close' })).statusCode).toBe(200);
     const closed = (await req(t.app, admin, 'GET', '/api/cipher/screen')).json() as CipherScreen;
@@ -547,7 +558,8 @@ describe('the last signal', () => {
     expect(one(t.ctx.db, "SELECT 1 AS x FROM sticker_unlocks WHERE attendee_id = ? AND sticker_id = 'cipher-champion'", winnerId.id)).toBeTruthy();
     expect((await call(ps[0]!.jar, 'POST', '/api/cipher/signal', { guess: 'COMET' })).status).toBe(409);
     await fire({ action: 'reveal' });
-    expect((await me(ps[0]!.jar)).signal.word).toBe('COMET');
+    expect((await me(ps[0]!.jar)).signal).toMatchObject({ word: w0, revealed: true });
+    expect((await me(ps[1]!.jar)).signal.word).toBe(w1);
   });
 
   it('only players who sealed the pact may answer; first-N under a race; guild maths is points per member', async () => {
@@ -555,8 +567,9 @@ describe('the last signal', () => {
     const [late] = await players(1);
     await scanWord(late!.jar, slip(12, 1).bottom);
     await fire({ action: 'fire', word: 'NOVA' });
-    expect((await call(late!.jar, 'POST', '/api/cipher/signal', { guess: 'NOVA' })).status).toBe(409);
-    const rs = await Promise.all(ps.map((p) => call<GuessResult>(p.jar, 'POST', '/api/cipher/signal', { guess: 'nova' })));
+    expect((await call(late!.jar, 'POST', '/api/cipher/signal', { guess: myWord(late!.id) })).status).toBe(409);
+    expect((await me(late!.jar)).signal.play).toBeNull();
+    const rs = await Promise.all(ps.map((p) => call<GuessResult>(p.jar, 'POST', '/api/cipher/signal', { guess: myWord(p.id) })));
     const ranks = all<{ rank: number }>(t.ctx.db, 'SELECT rank FROM cipher_answers ORDER BY rank').map((r) => r.rank);
     expect(ranks).toEqual([1, 2, 3, 4]);
     expect(rs.filter((r) => r.body.points === P.signalFirst + 0)).toHaveLength(4); // firstN 10

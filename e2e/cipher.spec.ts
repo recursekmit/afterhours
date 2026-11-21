@@ -14,6 +14,7 @@ import { type APIRequestContext, type BrowserContext, chromium, expect, type Pag
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
+import { MORSE_TABLE } from '../shared/src/features/morse';
 import { decodePng } from '../web/src/lib/slips/scanner/testing/png';
 import { cameraScene, type FloatImage, rgbaToFloat } from '../web/src/lib/slips/scanner/testing/synth';
 
@@ -322,7 +323,7 @@ test.describe.serial('the cipher: two phones, two guilds, all seven trials', () 
     });
   });
 
-  test('the last signal: warn, fire, the projector flashes it, both phones answer, the guild is proclaimed, reveal', async ({ browser }) => {
+  test('the last signal: warn, fire, every phone plays its own word, both answer, the guild is crowned, reveal', async ({ browser }) => {
     // console: announce it 5 minutes ahead
     const cctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, baseURL: BASE });
     const con = await cctx.newPage();
@@ -334,55 +335,64 @@ test.describe.serial('the cipher: two phones, two guilds, all seven trials', () 
     await con.getByTestId('signal-fire').scrollIntoViewIfNeeded().catch(() => undefined);
     await con.screenshot({ path: `${SHOTS}/cipher-console-signal-1280.png` });
 
-    const pctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, baseURL: BASE });
-    const proj = await pctx.newPage();
-    await proj.request.post('/api/screen/session', { data: { pin: '1357' } });
-    await api('POST', '/api/admin/screen/pin', { sceneId: null });
-    await proj.goto('/screen');
-    await expect(proj.getByTestId('signal-scene')).toBeVisible({ timeout: 15_000 });
-    await proj.waitForTimeout(800);
-    await proj.screenshot({ path: `${SHOTS}/cipher-signal-warned-1920.png` });
-
     await phone('a', async (page) => {
       await page.goto('/morse/cipher');
       await expect(page.getByTestId('signal-warned')).toBeVisible();
     });
 
-    // fire it from the console
+    // fire it from the console: no projector, every phone gets its own word
     await con.getByTestId('signal-fire').click();
     await expect(con.getByTestId('signal-close')).toBeVisible();
-    await expect(proj.getByTestId('signal-lamp')).toBeVisible({ timeout: 15_000 });
-    await expect(proj.getByTestId('signal-lamp')).toHaveClass(/lampOn/, { timeout: 8000 });
-    await proj.screenshot({ path: `${SHOTS}/cipher-signal-live-1920.png` });
 
-    const word = (await api<{ signalWord: string }>('GET', '/api/cipher/admin')).signalWord;
+    /** Decode a phone's on/off timing back into letters (what a player does by ear and eye). */
+    const decode = (sig: { unitMs: number; segments: number[] }) => {
+      const rev = Object.fromEntries(Object.entries(MORSE_TABLE).map(([k, v]) => [v, k]));
+      let out = '';
+      let cur = '';
+      sig.segments.forEach((ms, i) => {
+        if (i % 2 === 0) cur += ms < 2 * sig.unitMs ? '.' : '-';
+        else if (ms > 2 * sig.unitMs) {
+          out += rev[cur] ?? '?';
+          cur = '';
+        }
+      });
+      return out + (rev[cur] ?? '?');
+    };
+    const words: Record<string, string> = {};
     for (const who of ['a', 'b'] as const) {
       await phone(who, async (page) => {
         await page.goto('/morse/cipher');
         await expect(page.getByTestId('signal-live')).toBeVisible();
+        await page.getByTestId('signal-play').click();
+        await expect(page.getByTestId('signal-flash')).toBeVisible();
+        const me = (await (await page.request.get('/api/cipher/me')).json()) as { signal: { letters: number; play: { unitMs: number; segments: number[] } } };
+        const word = decode(me.signal.play);
+        expect(word).toHaveLength(me.signal.letters);
+        words[who] = word;
+        if (who === 'a') {
+          await page.waitForTimeout(900);
+          await page.screenshot({ path: `${SHOTS}/cipher-signal-390.png`, fullPage: true });
+        }
         await page.getByTestId('signal-guess').fill(word);
-        if (who === 'a') await page.screenshot({ path: `${SHOTS}/cipher-signal-390.png`, fullPage: true });
         const sent = page.waitForResponse((r) => r.url().endsWith('/api/cipher/signal'));
         await page.getByRole('button', { name: 'send' }).click();
         const res = (await (await sent).json()) as { correct: boolean; message: string };
-        expect(res.correct).toBe(true);
+        expect(res.correct, res.message).toBe(true);
         expect(res.message).toContain(who === 'a' ? '#1' : '#2');
         await waitSealed(page, 'signal');
       });
     }
 
-    // close: the proclamation; then reveal the word everywhere
+    // close: the guild is crowned; then reveal each player's word on their own phone
     await con.getByTestId('signal-close').click();
-    await expect(proj.getByTestId('signal-proclamation')).toBeVisible({ timeout: 15_000 });
     await con.getByTestId('signal-reveal').click();
-    await expect(proj.getByTestId('signal-proclamation')).toContainText(word, { timeout: 15_000 });
-    await proj.waitForTimeout(1500);
-    await proj.screenshot({ path: `${SHOTS}/cipher-signal-proclaim-1920.png` });
-    await pctx.close();
+    await expect(con.getByTestId('signal-reveal')).toHaveCount(0, { timeout: 15_000 });
     await cctx.close();
     await phone('a', async (page) => {
       await page.goto('/morse/cipher');
       await expect(page.getByTestId('cipher-done')).toContainText('#1 on the last signal');
+      const me = (await (await page.request.get('/api/cipher/me')).json()) as { signal: { word: string; winner: string | null } };
+      expect(me.signal.word).toBe(words.a);
       await page.waitForTimeout(400);
       await page.screenshot({ path: `${SHOTS}/cipher-done-390.png`, fullPage: true });
     });

@@ -41,9 +41,13 @@ export function SlipCopiesPanel({ setId, onPrint }: { setId: number; onPrint: (r
     },
     onError: (e) => toast(e.message, { kind: 'bad' }),
   });
+  // Releases the whole set (every slip of that serial), e.g. a lost kit or a friend who scanned someone else's.
   const release = useMutation({
-    mutationFn: (copyId: number) => api.post(`/api/hunt/admin/slip-copies/${copyId}/release`, undefined, SlipCopiesSchema),
-    onSuccess: done,
+    mutationFn: (v: { copyId: number; serial: number }) => api.post(`/api/hunt/admin/slip-copies/${v.copyId}/release`, undefined, SlipCopiesSchema),
+    onSuccess: (d, v) => {
+      done(d);
+      toast(`set no. ${pad(v.serial)} released`, { kind: 'good' });
+    },
     onError: (e) => toast(e.message, { kind: 'bad' }),
   });
   const rows = useMemo(() => {
@@ -137,8 +141,16 @@ export function SlipCopiesPanel({ setId, onPrint }: { setId: number; onPrint: (r
                       <span className={s.copyCell}>
                         <b>{c.claimedBy.nickname ?? `#${c.claimedBy.attendeeId}`}</b>
                         {c.claimedAt !== null && <span className={ui.hand}>{time(c.claimedAt)}</span>}
-                        <Button size="sm" tone="paper" ghost loading={release.isPending && release.variables === c.copyId} onClick={() => release.mutate(c.copyId)}>
-                          release
+                        <Button
+                          size="sm"
+                          tone="paper"
+                          ghost
+                          loading={release.isPending && release.variables?.serial === r.serial}
+                          onClick={() => {
+                            if (window.confirm(`Release set no. ${pad(r.serial)}? Every slip of that set is freed, and whoever played on it starts over.`)) release.mutate({ copyId: c.copyId, serial: r.serial });
+                          }}
+                        >
+                          release set
                         </Button>
                       </span>
                     ) : (

@@ -922,11 +922,11 @@ export const hunt = defineFeature({
       return slipSets(ctx, set.trail_id);
     });
 
-    // POST /api/hunt/admin/slip-copies/:id/release  -> SlipCopies (lost slip, or a mistake)
+    // POST /api/hunt/admin/slip-copies/:id/release  -> SlipCopies (lost set, or a mistake): frees every copy of that serial
     app.post('/admin/slip-copies/:id/release', async (req): Promise<SlipCopies> => {
       requireAdmin(req);
       const { id } = parse(IdParam, req.params);
-      return copiesView(ctx, releaseCopy(ctx, id));
+      return copiesView(ctx, releaseCopy(ctx, id).setId);
     });
 
     // GET /api/hunt/admin/slip-sets/:id/answer-key.csv  -> text/csv: the organisers' private serial -> words key

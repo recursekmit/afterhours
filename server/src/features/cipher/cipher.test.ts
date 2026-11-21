@@ -552,3 +552,92 @@ describe('the gate and the views', () => {
     expect(m.points).toBe(0);
   });
 });
+
+describe('a released set (lost kit, or a friend scanned my slips)', () => {
+  const copyOf = (serial: number, n: number) => one<{ id: number }>(t.ctx.db, 'SELECT id FROM hunt_slip_copies WHERE slip_id = ? AND serial = ?', slips[n - 1]!, serial)!.id;
+  const release = async (serial: number, n = 3) => {
+    const admin = await adminJar(t.app);
+    const r = await req(t.app, admin, 'POST', `/api/hunt/admin/slip-copies/${copyOf(serial, n)}/release`);
+    expect(r.statusCode, r.body).toBe(200);
+  };
+  const ledger = (id: number) => all<{ ref: string; points: number }>(t.ctx.db, "SELECT ref, points FROM points_ledger WHERE attendee_id = ? AND source = 'cipher' ORDER BY ref", id);
+
+  it('friend scans my set; the console releases it; I claim it and play; the friend claims their own and plays; nothing paid twice', async () => {
+    const [mine, friend] = await players(2);
+    await throughWinds(friend!.jar, 1); // the friend plays on MY set (serial 1)
+    const fm = await me(friend!.jar);
+    expect(fm.ticket!.serial).toBe(1);
+    expect(fm.trial).toBe(3);
+    const friendPaid = ledger(friend!.id);
+    expect(friendPaid.length).toBeGreaterThan(0);
+    // my scan is refused while the friend holds it
+    expect((await scanWord(mine!.jar, slip(1, 1).bottom)).body.outcome).toBe('taken');
+
+    // releasing any one copy frees all four slips of the set and takes the friend off it
+    await release(1, 3);
+    expect(all(t.ctx.db, `SELECT 1 FROM hunt_slip_copies WHERE serial = 1 AND claimed_by IS NOT NULL AND slip_id IN (${slips.join(',')})`)).toHaveLength(0);
+    expect(one(t.ctx.db, 'SELECT 1 AS x FROM cipher_players WHERE attendee_id = ?', friend!.id)).toBeUndefined();
+    expect(all(t.ctx.db, 'SELECT 1 FROM cipher_seals WHERE attendee_id = ?', friend!.id)).toHaveLength(0);
+    expect((await me(friend!.jar)).ticket).toBeNull();
+
+    // I claim my set fresh and play: paid like anyone
+    const claim = await scanWord(mine!.jar, slip(1, 1).bottom);
+    expect(claim.body.outcome).toBe('claimed');
+    expect(claim.body.me.ticket!.serial).toBe(1);
+    await call(mine!.jar, 'POST', '/api/cipher/oath');
+    for (const e of ['right', 'top', 'left'] as const) await scanWord(mine!.jar, slip(1, 1)[e]);
+    const mm = await me(mine!.jar);
+    expect(mm.trial).toBe(3);
+    expect(mm.points).toBe(P.oath + 4 * P.rune + P.speed);
+    expect(all(t.ctx.db, `SELECT 1 FROM hunt_slip_copies WHERE serial = 1 AND claimed_by = ${mine!.id} AND slip_id IN (${slips.join(',')})`)).toHaveLength(4);
+
+    // the friend claims their own set and plays on: the trials advance, but nothing is paid a second time
+    await throughWinds(friend!.jar, 2);
+    const f2 = await me(friend!.jar);
+    expect(f2.ticket!.serial).toBe(2);
+    expect(f2.trial).toBe(3);
+    expect(ledger(friend!.id)).toEqual(friendPaid);
+    await throughEcho(friend!.jar, 2);
+    expect((await me(friend!.jar)).trial).toBe(4);
+  });
+
+  it('a pact partner of the released player goes back to waiting', async () => {
+    const { distinct } = serialsByGuild();
+    const [a, c] = await players(2);
+    await toPact(a!.jar, a!.id, distinct[0]!);
+    await toPact(c!.jar, c!.id, distinct[1]!);
+    expect((await me(c!.jar)).pact.status).toBe('paired');
+    await release(distinct[0]!, 1);
+    expect((await me(c!.jar)).pact.status).toBe('waiting');
+    expect((await me(a!.jar)).ticket).toBeNull();
+    expect(all(t.ctx.db, "SELECT 1 FROM cipher_pacts WHERE status = 'open'")).toHaveLength(0);
+  });
+
+  it('on a set no longer held (a trail reset freed it): scanning another set starts over; scanning your own keeps going', async () => {
+    const [a, b] = await players(2);
+    await throughWinds(a!.jar, 3);
+    await throughWinds(b!.jar, 4);
+    t.ctx.db.exec('UPDATE hunt_slip_copies SET claimed_by = NULL, claimed_at = NULL WHERE serial IN (3, 4)'); // no listener: like a trail reset
+    // b scans their own slip again: progress kept
+    expect((await scanWord(b!.jar, slip(4, 2).bottom)).body.outcome).toBe('again');
+    expect((await me(b!.jar)).trial).toBe(3);
+    // a scans a different, free set: a fresh claim of that one
+    const r = await scanWord(a!.jar, slip(5, 1).bottom);
+    expect(r.body.outcome).toBe('claimed');
+    expect(r.body.me.ticket!.serial).toBe(5);
+    expect(r.body.me.trial).toBe(1);
+  });
+
+  it('on a set no longer held, a pact player scanning their partner’s slip IV keeps playing', async () => {
+    const { distinct } = serialsByGuild();
+    const [a, c] = await players(2);
+    await toPact(a!.jar, a!.id, distinct[0]!);
+    await toPact(c!.jar, c!.id, distinct[1]!);
+    t.ctx.db.exec(`UPDATE hunt_slip_copies SET claimed_by = NULL, claimed_at = NULL WHERE serial = ${distinct[0]}`); // like a trail reset
+    const ma = await me(a!.jar);
+    expect(ma.pact.status).toBe('paired');
+    const half = await scanWord(a!.jar, slip(distinct[1]!, 4)[ma.pact.scanEdge!]);
+    expect(half.body.outcome).toBe('pact_half');
+    expect(half.body.me.trial).toBe(6);
+  });
+});

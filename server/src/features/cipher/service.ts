@@ -34,8 +34,8 @@ import { SLIP_EDGES, type SlipEdge, encodeWord, reverseReading } from '@afterhou
 import { type FeatureContext, HttpError, RateLimiter, all, badRequest, conflict, one, run, tx } from '../../core';
 import { edgeUnitLimit } from '../hunt/slipwords';
 import { copyEdges, matchCopy } from '../hunt/unique';
-import { claimSerial, copyDesign, copyIdOf, heldSerial, morseChallengeVisible, morseTicketSet, morseTicketSlips, notOpen, setMorseChallengeVisible } from './adapter';
-import { adminPacts, enterPool, pactScan, pactView, pactsSealed, recentPacts, waitingList } from './pact';
+import { claimSerial, copyDesign, copyHolder, copyIdOf, heldSerial, morseChallengeVisible, morseTicketSet, morseTicketSlips, notOpen, setMorseChallengeVisible } from './adapter';
+import { adminPacts, enterPool, leavePacts, pactScan, pactView, pactsSealed, recentPacts, repairPartners, waitingList } from './pact';
 import { adminSignal, screenSignal, signalView } from './signal';
 import { WHISPER_WORDS, candidates, codeWord } from './words';
 
@@ -210,10 +210,33 @@ export function ensureWhisper(ctx: FeatureContext, copyId: number, avoid: readon
 
 const whisperWord = (ctx: FeatureContext, p: PlayerRow, t: Ticket): string => ensureWhisper(ctx, p.copy_id, allWords(ctx, t, p.serial));
 
+/**
+ * Take a player out of the cipher (their set was released, or they are on a set they no longer hold): their
+ * record, seals and open pacts go; a partner goes back to waiting. Points already paid stay in the ledger and
+ * are never paid twice (the ledger's refs), so a fresh start on their own set replays the trials for no points.
+ */
+export function dropPlayer(ctx: FeatureContext, attendeeId: number): void {
+  if (!getPlayer(ctx, attendeeId)) return;
+  tx(ctx.db, () => {
+    const left = leavePacts(ctx, attendeeId);
+    run(ctx.db, 'DELETE FROM cipher_answers WHERE attendee_id = ?', attendeeId);
+    run(ctx.db, 'DELETE FROM cipher_seals WHERE attendee_id = ?', attendeeId);
+    run(ctx.db, 'DELETE FROM cipher_players WHERE attendee_id = ?', attendeeId);
+    repairPartners(ctx, left);
+  });
+  touch(ctx);
+  ctx.live.publish('cipher.me', { at: ctx.now() }, { attendeeId });
+}
+
+/** Whether the player still holds their slip I copy (a console release or a trail reset frees it). */
+const holdsSet = (ctx: FeatureContext, p: PlayerRow): boolean => copyHolder(ctx, p.copy_id) === p.attendee_id;
+
 /** Create the cipher player for a reserved serial (idempotent). */
 function addPlayer(ctx: FeatureContext, attendeeId: number, t: Ticket, serial: number): PlayerRow | null {
   const copyId = copyIdOf(ctx, t.slips[0] as number, serial);
   if (copyId === null) return null;
+  // Anyone else still on this set holds none of it now (it was released, then claimed by this attendee).
+  for (const o of all<{ attendee_id: number }>(ctx.db, 'SELECT attendee_id FROM cipher_players WHERE copy_id = ? AND attendee_id != ?', copyId, attendeeId)) dropPlayer(ctx, o.attendee_id);
   const at = ctx.now();
   run(
     ctx.db,
@@ -385,6 +408,14 @@ export function scan(ctx: FeatureContext, attendeeId: number, read: CipherRead):
   }
 
   let p = ensurePlayer(ctx, attendeeId, t);
+  if (p && !holdsSet(ctx, p) && !whichOfMine(ctx, t, p.serial, keys)) {
+    // a pact player scanning their partner's slip IV (or the Oracle's ticket) is still playing, not starting over
+    const pact = p.trial === T.pact && s.pactOpen ? pactScan(ctx, p, keys, null) : null;
+    if (pact) return result(pact.outcome, pact.message, pact.edge, pact.points);
+    // on a set they no longer hold, scanning something else: start over as a fresh claim
+    dropPlayer(ctx, attendeeId);
+    p = null;
+  }
   if (!p) {
     // the claim: the first person whose reading matches any slip of a serial reserves all four
     const hit = matchAnySlip(ctx, t, keys);

@@ -182,6 +182,25 @@ function breakOpen(ctx: FeatureContext, pact: PactRow): void {
   for (const id of [pact.a_id, pact.b_id]) if (id !== null) run(ctx.db, 'UPDATE cipher_players SET pact_since = ? WHERE attendee_id = ? AND trial = ?', ctx.now(), id, T.pact);
 }
 
+/** A player leaves the cipher (their set was released): break their open pacts, return the partners left behind. */
+export function leavePacts(ctx: FeatureContext, attendeeId: number): number[] {
+  const partners: number[] = [];
+  for (const p of all<PactRow>(ctx.db, "SELECT * FROM cipher_pacts WHERE status = 'open' AND (a_id = ? OR b_id = ?)", attendeeId, attendeeId)) {
+    breakOpen(ctx, p);
+    const other = p.a_id === attendeeId ? p.b_id : p.a_id;
+    if (other !== null) partners.push(other);
+  }
+  return partners;
+}
+
+/** Partners left behind go back to waiting and get a new partner if anyone is free. */
+export function repairPartners(ctx: FeatureContext, partners: readonly number[]): void {
+  for (const id of partners) {
+    tryPair(ctx, id);
+    notify(ctx, id);
+  }
+}
+
 function requirePact(ctx: FeatureContext, attendeeId: number): { p: PlayerRow; view: PactView } {
   requireVisible(ctx);
   const s = settings(ctx);

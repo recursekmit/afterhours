@@ -284,7 +284,7 @@ const Phone4Schema = z
 
 /** Phone: a scanned ID card. `pick` is the participant tapped in the "who are you?" picker. */
 export const IdResolveRequestSchema = z.object({
-  payload: z.string().min(1).max(300),
+  payload: z.string().min(1).max(4000),
   pick: z.number().int().positive().optional(),
 });
 export type IdResolveRequest = z.input<typeof IdResolveRequestSchema>;
@@ -318,7 +318,7 @@ export const IdResolveResponseSchema = z.discriminatedUnion('kind', [
 export type IdResolveResponse = z.infer<typeof IdResolveResponseSchema>;
 
 export const IdSignInRequestSchema = z.object({
-  payload: z.string().min(1).max(300),
+  payload: z.string().min(1).max(4000),
   pick: z.number().int().positive().optional(),
   phone4: Phone4Schema.optional(),
 });
@@ -414,7 +414,7 @@ export const ParticipantSettingsSchema = z.object({ strictPhone: z.boolean() });
 export type ParticipantSettings = z.infer<typeof ParticipantSettingsSchema>;
 
 /** Desk lookup: a scanned card, a roll, part of a roll or a name. */
-export const DeskLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(300) });
+export const DeskLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(4000) });
 export const DeskLookupResponseSchema = z.object({
   /** How the query was read. */
   read: z.enum(['qr', 'roll', 'search']),
@@ -482,7 +482,7 @@ export const GateStatsSchema = z.object({
 });
 export type GateStats = z.infer<typeof GateStatsSchema>;
 
-export const GateLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(300) });
+export const GateLookupRequestSchema = z.object({ q: z.string().trim().min(1).max(4000) });
 export const GateLookupResponseSchema = z.object({
   read: z.enum(['qr', 'roll', 'search']),
   qrSuffix: z.string().nullable(),

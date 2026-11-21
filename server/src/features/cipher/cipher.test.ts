@@ -348,6 +348,152 @@ describe('the riddle (slip III)', () => {
   });
 });
 
+/** Through trials 1-5 by the API, to the pact. */
+async function toPact(jar: Jar, id: number, serial: number) {
+  await throughWinds(jar, serial);
+  await throughEcho(jar, serial);
+  await throughWhisper(jar, id);
+  const m = await me(jar);
+  const ans = riddleAnswer(slip(serial, 3), m.riddle.rule!)!;
+  await call(jar, 'POST', '/api/cipher/riddle', { guess: ans.word });
+}
+/** Serials whose slip I is printed in `n` different designs, plus a same-design twin of the first. */
+function serialsByGuild(): { distinct: number[]; twin: number } {
+  const distinct: number[] = [];
+  const seen = new Set<string>();
+  for (let s = 1; s <= 12; s++) {
+    if (seen.has(designOf(s, 1))) continue;
+    seen.add(designOf(s, 1));
+    distinct.push(s);
+  }
+  const twin = [...Array(12).keys()].map((i) => i + 1).find((s) => s !== distinct[0] && designOf(s, 1) === designOf(distinct[0]!, 1))!;
+  return { distinct, twin };
+}
+
+describe('the pact (slip IV)', () => {
+  it('pairs only across guilds; each scans the other’s slip IV at the named edge, without claiming; both seal it', async () => {
+    const { distinct, twin } = serialsByGuild();
+    const [a, b, c] = await players(3);
+    await toPact(a!.jar, a!.id, distinct[0]!);
+    expect((await me(a!.jar)).pact.status).toBe('waiting');
+    // same guild: no pact
+    await toPact(b!.jar, b!.id, twin);
+    expect((await me(b!.jar)).pact.status).toBe('waiting');
+    expect((await me(a!.jar)).pact.status).toBe('waiting');
+    // another guild: paired with the one waiting longest (a)
+    await toPact(c!.jar, c!.id, distinct[1]!);
+    const ma = await me(a!.jar);
+    const mc = await me(c!.jar);
+    expect(ma.pact.status).toBe('paired');
+    expect(ma.pact.partner).toMatchObject({ nickname: 'player2', guild: designOf(distinct[1]!, 1) });
+    expect(mc.pact.partner).toMatchObject({ nickname: 'player0', guild: designOf(distinct[0]!, 1) });
+    expect(ma.pact.scanEdge).toBe(mc.pact.showEdge);
+    expect(mc.pact.scanEdge).toBe(ma.pact.showEdge);
+    // the partner's words never travel
+    for (const w of Object.values(slip(distinct[1]!, 4))) expect(JSON.stringify(ma)).not.toContain(`"${w}"`);
+    // own slip IV, a wrong edge, another slip of theirs: no
+    expect((await scanWord(a!.jar, slip(distinct[0]!, 4).bottom)).body.message).toContain('your own slip IV');
+    const wrongEdge = (['bottom', 'right', 'top', 'left'] as const).find((e) => e !== ma.pact.scanEdge)!;
+    expect((await scanWord(a!.jar, slip(distinct[1]!, 4)[wrongEdge])).body.message).toContain('wrong edge');
+    expect((await scanWord(a!.jar, slip(distinct[1]!, 2).bottom)).body.message).toContain('their slip II');
+    // the right one: half sealed
+    const half = await scanWord(a!.jar, slip(distinct[1]!, 4)[ma.pact.scanEdge!]);
+    expect(half.body.outcome).toBe('pact_half');
+    expect((await me(c!.jar)).pact.theyScanned).toBe(true);
+    // nothing claimed by a partner scan: every slip of c's serial is still c's
+    expect(all<{ claimed_by: number }>(t.ctx.db, `SELECT claimed_by FROM hunt_slip_copies WHERE serial = ${distinct[1]} AND slip_id IN (${slips.join(',')})`).every((r) => r.claimed_by === c!.id)).toBe(true);
+    const both = await scanWord(c!.jar, slip(distinct[0]!, 4)[mc.pact.scanEdge!]);
+    expect(both.body.outcome).toBe('pact_sealed');
+    expect(both.body.points).toBe(P.pact + P.speed);
+    for (const p of [a!, c!]) {
+      const m = await me(p.jar);
+      expect(m.trial).toBe(7);
+      expect(m.stars[5]!.sealedAt).not.toBeNull();
+    }
+    const admin = await adminJar(t.app);
+    const screen = (await req(t.app, admin, 'GET', '/api/cipher/screen')).json() as { pactsSealed: number; recentPacts: { a: string; b: string }[] };
+    expect(screen.pactsSealed).toBe(1);
+    expect([screen.recentPacts[0]!.a, screen.recentPacts[0]!.b].sort()).toEqual(['player0', 'player2']);
+  });
+
+  it('after the wait with nobody: the Oracle completes it; re-pair before the wait is refused', async () => {
+    const [a] = await players(1);
+    await toPact(a!.jar, a!.id, 1);
+    expect((await me(a!.jar)).pact).toMatchObject({ status: 'waiting', canRepair: false });
+    expect((await call(a!.jar, 'POST', '/api/cipher/pact/oracle')).status).toBe(409);
+    t.clock.advance(181_000);
+    expect((await me(a!.jar)).pact.canRepair).toBe(true);
+    const o = (await call<CipherMe>(a!.jar, 'POST', '/api/cipher/pact/oracle')).body;
+    expect(o.pact.status).toBe('oracle');
+    expect(o.pact.partner).toBeNull();
+    const oracle = DEFAULT_CIPHER_SETTINGS.oracle;
+    // the Oracle's words never travel to the phone
+    expect(JSON.stringify(o)).not.toContain(oracle[o.pact.scanEdge!]);
+    const r = await scanWord(a!.jar, oracle[o.pact.scanEdge!]);
+    expect(r.body.outcome).toBe('pact_sealed');
+    expect(r.body.me.trial).toBe(7);
+  });
+
+  it('re-pair after the wait leaves the silent partner and finds another guild; the console can break a pact', async () => {
+    const { distinct } = serialsByGuild();
+    const [a, b, c] = await players(3);
+    await toPact(a!.jar, a!.id, distinct[0]!);
+    await toPact(b!.jar, b!.id, distinct[1]!);
+    expect((await me(a!.jar)).pact.partner!.nickname).toBe('player1');
+    t.clock.advance(60_000);
+    expect((await call(a!.jar, 'POST', '/api/cipher/pact/repair')).status).toBe(409);
+    await toPact(c!.jar, c!.id, distinct[2]!);
+    expect((await me(c!.jar)).pact.status).toBe('waiting');
+    t.clock.advance(130_000);
+    const re = (await call<CipherMe>(a!.jar, 'POST', '/api/cipher/pact/repair')).body;
+    expect(re.pact.status).toBe('paired');
+    expect(re.pact.partner!.nickname).toBe('player2');
+    expect((await me(b!.jar)).pact.status).toBe('waiting');
+    // console: break a/c; both go back and pair again (a with b, the only other guild free)
+    const admin = await adminJar(t.app);
+    const adm = (await req(t.app, admin, 'GET', '/api/cipher/admin')).json() as CipherAdmin;
+    const open = adm.pacts.find((x) => x.status === 'open')!;
+    expect(adm.players.find((p) => p.nickname === 'player0')!.pact).toBe('player2');
+    expect((await req(t.app, admin, 'POST', `/api/cipher/admin/pacts/${open.id}/break`)).statusCode).toBe(200);
+    const after = (await req(t.app, admin, 'GET', '/api/cipher/admin')).json() as CipherAdmin;
+    expect(after.pacts.filter((x) => x.status === 'open')).toHaveLength(1);
+    expect(after.waiting).toHaveLength(1);
+  });
+
+  it('concurrency: twelve players reach the pact at once; nobody is in two pacts, every pact crosses guilds', async () => {
+    const ps = await players(12);
+    for (const [i, p] of ps.entries()) {
+      await throughWinds(p.jar, i + 1);
+      await throughEcho(p.jar, i + 1);
+      await throughWhisper(p.jar, p.id);
+    }
+    const ms = await Promise.all(ps.map((p) => me(p.jar)));
+    await Promise.all(ps.map((p, i) => call(p.jar, 'POST', '/api/cipher/riddle', { guess: riddleAnswer(slip(i + 1, 3), ms[i]!.riddle.rule!)!.word })));
+    await Promise.all(ps.map((p) => me(p.jar)));
+    const open = all<{ a_id: number; b_id: number }>(t.ctx.db, "SELECT a_id, b_id FROM cipher_pacts WHERE status = 'open'");
+    const ids = open.flatMap((x) => [x.a_id, x.b_id]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(open.length).toBeGreaterThanOrEqual(5);
+    const guild = (id: number) => one<{ guild: string }>(t.ctx.db, 'SELECT guild FROM cipher_players WHERE attendee_id = ?', id)!.guild;
+    for (const x of open) expect(guild(x.a_id)).not.toBe(guild(x.b_id));
+  });
+
+  it('the pact closed: "next trials open soon"; opening it pairs the waiting', async () => {
+    const { distinct } = serialsByGuild();
+    const admin = await adminJar(t.app);
+    const s = ((await req(t.app, admin, 'GET', '/api/cipher/admin')).json() as CipherAdmin).settings;
+    await req(t.app, admin, 'PUT', '/api/cipher/admin/settings', { ...s, pactOpen: false });
+    const [a, b] = await players(2);
+    await toPact(a!.jar, a!.id, distinct[0]!);
+    await toPact(b!.jar, b!.id, distinct[1]!);
+    expect((await me(a!.jar)).nextSoon).toBe(true);
+    await req(t.app, admin, 'PUT', '/api/cipher/admin/settings', { ...s, pactOpen: true });
+    const m = await me(a!.jar);
+    expect(m.nextSoon).toBe(false);
+    expect(m.pact.status).toBe('paired');
+  });
+});
+
 describe('the gate and the views', () => {
   it('the projector shows the guild race and the trial heat; the console the progress', async () => {
     const ps = await players(4);

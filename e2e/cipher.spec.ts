@@ -127,7 +127,7 @@ function parseCsv(text: string): Record<string, string>[] {
   return rows.map((r) => Object.fromEntries(r.split(',').map((v, i) => [cols[i]!, v])));
 }
 
-test.describe.serial('the cipher: two phones, two guilds, trials 1-5', () => {
+test.describe.serial('the cipher: two phones, two guilds, trials 1-6', () => {
   test.describe.configure({ timeout: 180_000 });
   test.beforeAll(async ({ playwright }) => {
     admin = await playwright.request.newContext({ baseURL: BASE });
@@ -287,6 +287,29 @@ test.describe.serial('the cipher: two phones, two guilds, trials 1-5', () => {
       await page.screenshot({ path: `${SHOTS}/cipher-soon-390.png`, fullPage: true });
     });
     await api('PUT', '/api/cipher/admin/settings', { ...adm.settings, pactOpen: true });
+  });
+
+  test('the pact: paired across guilds, each scans the other’s slip IV at the named edge', async () => {
+    for (const [who, other] of [['a', 'b'], ['b', 'a']] as const) {
+      await phone(who, async (page) => {
+        await page.goto('/morse/cipher');
+        await expect(page.getByTestId('pact-partner')).toContainText(`cipher ${other}`, { timeout: 10_000 });
+        const me = (await (await page.request.get('/api/cipher/me')).json()) as { pact: { scanEdge: Edge; partner: { guild: string } } };
+        expect(me.pact.partner.guild).toBe(slip(sets[other], 1).ticket);
+        if (who === 'a') await page.screenshot({ path: `${SHOTS}/cipher-pact-390.png`, fullPage: true });
+        await typeReading(page, word(sets[other], 4, me.pact.scanEdge), who === 'a');
+        if (who === 'a') {
+          await expect(page.getByTestId('pact-you')).toBeVisible();
+          await page.screenshot({ path: `${SHOTS}/cipher-pact-half-390.png`, fullPage: true });
+        } else {
+          await waitSealed(page, 'pact');
+        }
+      });
+    }
+    await phone('a', async (page) => {
+      await page.goto('/morse/cipher');
+      await expect(page.getByTestId('star-pact')).toHaveAttribute('data-sealed', 'yes');
+    });
   });
 
   test('projector: the guild race; console: progress and difficulty', async ({ browser }) => {

@@ -11,6 +11,7 @@ export function useCipher() {
   const q = useQuery({ queryKey: cipherKey, queryFn: () => api.get('/api/cipher/me', CipherMeSchema), refetchInterval: 20_000 });
   useLiveEvent('cipher.me', () => void qc.invalidateQueries({ queryKey: cipherKey }));
   useLiveEvent('cipher.signal', () => void qc.invalidateQueries({ queryKey: cipherKey }));
+  useLiveEvent('hunt.visibility', () => void qc.invalidateQueries({ queryKey: cipherKey }));
   return q;
 }
 
@@ -23,6 +24,7 @@ export function useSetMe() {
 export function useCipherScreen() {
   const q = useQuery({ queryKey: ['cipher', 'screen'], queryFn: () => api.get('/api/cipher/screen', CipherScreenSchema), refetchInterval: 10_000 });
   useLiveEvent('cipher.changed', () => void q.refetch());
+  useLiveEvent('hunt.visibility', () => void q.refetch());
   useLiveEvent('cipher.signal', () => void q.refetch());
   return q;
 }

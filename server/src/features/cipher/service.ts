@@ -34,7 +34,7 @@ import { SLIP_EDGES, type SlipEdge, encodeWord, reverseReading } from '@afterhou
 import { type FeatureContext, HttpError, RateLimiter, all, badRequest, conflict, one, run, tx } from '../../core';
 import { edgeUnitLimit } from '../hunt/slipwords';
 import { copyEdges, matchCopy } from '../hunt/unique';
-import { claimSerial, copyDesign, copyIdOf, heldSerial, morseChallengeVisible, morseTicketSet, morseTicketSlips } from './adapter';
+import { claimSerial, copyDesign, copyIdOf, heldSerial, morseChallengeVisible, morseTicketSet, morseTicketSlips, notOpen, setMorseChallengeVisible } from './adapter';
 import { adminPacts, enterPool, pactScan, pactView, pactsSealed, recentPacts, waitingList } from './pact';
 import { adminSignal, screenSignal, signalView } from './signal';
 import { WHISPER_WORDS, candidates, codeWord } from './words';
@@ -115,8 +115,9 @@ export function saveSettings(ctx: FeatureContext, s: CipherSettings): CipherSett
   return clean;
 }
 
+/** The console's "show to players" button flips hunt's "show morse challenge to players" switch. */
 export function setVisible(ctx: FeatureContext, visible: boolean): void {
-  run(ctx.db, 'UPDATE cipher_config SET visible = ? WHERE id = 1', visible ? 1 : 0);
+  setMorseChallengeVisible(ctx, visible);
   touch(ctx);
 }
 
@@ -355,7 +356,7 @@ function maybeSealWinds(ctx: FeatureContext, attendeeId: number): number {
 // ---------------------------------------------------------------------------
 
 export function requireVisible(ctx: FeatureContext): Ticket {
-  if (!morseChallengeVisible(ctx)) throw new HttpError(403, 'cipher_hidden', 'The cipher ticket is not open yet. Hold on to your slips.');
+  if (!morseChallengeVisible(ctx)) throw notOpen();
   const t = ticketSet(ctx);
   if (!t) throw new HttpError(409, 'cipher_unready', 'The cipher slips are not set up yet. Ask an organiser.');
   return t;

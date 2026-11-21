@@ -175,7 +175,7 @@ export const DEFAULT_CIPHER_SETTINGS: CipherSettings = {
   // roughly 100 to 170). Here: oath 5, runes 20, echo up to 24, whisper 20, riddle 15, pact 20, the last
   // signal 15 or 40, the winning guild 10, plus up to 25 in speed bonuses: about 130 to 180.
   points: { oath: 5, rune: 5, echoStar: 8, whisper: 20, riddle: 15, pact: 20, signalFirst: 40, signalCorrect: 15, champion: 10, speed: 5 },
-  oracle: { bottom: 'SAGE', right: 'ORB', top: 'OMEN', left: 'EYE' },
+  oracle: { bottom: 'SAGE', right: 'SUN', top: 'OMEN', left: 'EYE' },
 };
 
 // ---------------------------------------------------------------------------

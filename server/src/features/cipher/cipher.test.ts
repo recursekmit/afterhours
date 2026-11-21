@@ -1,5 +1,5 @@
 // The Cipher Ticket: every trial's server rules, concurrency and the visibility gate.
-import { type CipherAdmin, type CipherMe, type EchoResult, type GuessResult, type ScanResult, DEFAULT_CIPHER_SETTINGS, GUILDS, designFor, guildForSerial } from '@afterhours/shared/features/cipher';
+import { type CipherAdmin, type CipherMe, type EchoResult, type GuessResult, type ScanResult, DEFAULT_CIPHER_SETTINGS, GUILDS } from '@afterhours/shared/features/cipher';
 import { slipWordKey } from '@afterhours/shared/features/hunt';
 import { reverseReading } from '@afterhours/shared/morse-slip';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -47,6 +47,11 @@ async function throughEcho(jar: Jar, serial: number) {
   return call<EchoResult>(jar, 'POST', '/api/cipher/echo', { presses: tapsFor(slip(serial, 2)[m.echo.edge!], 120, 0.08) });
 }
 
+/** The printed design of slip n of a serial (hunt stores one per copy). */
+function designOf(serial: number, n: number): string {
+  return one<{ design: string }>(t.ctx.db, 'SELECT design FROM hunt_slip_copies WHERE slip_id = ? AND serial = ?', slips[n - 1]!, serial)!.design;
+}
+
 function whisperOf(attendeeId: number): string {
   return one<{ word: string }>(t.ctx.db, 'SELECT w.word FROM cipher_whispers w JOIN cipher_players p ON p.copy_id = w.copy_id WHERE p.attendee_id = ?', attendeeId)!.word;
 }
@@ -73,8 +78,7 @@ describe('the oath: claiming a set of four slips', () => {
     expect(r.status).toBe(200);
     expect(r.body.outcome).toBe('claimed');
     expect(r.body.edge).toBeNull(); // not slip I: no rune yet
-    expect(r.body.me.ticket).toMatchObject({ serial: 2, guild: designFor(2, 1) });
-    expect(r.body.me.ticket!.guild).toBe('wave');
+    expect(r.body.me.ticket).toMatchObject({ serial: 2, guild: designOf(2, 1) });
     // all four slips of serial 2 are now this attendee's (hunt's claim)
     const owners = all<{ claimed_by: number | null }>(t.ctx.db, `SELECT claimed_by FROM hunt_slip_copies WHERE serial = 2 AND slip_id IN (${slips.join(',')})`);
     expect(owners.map((o) => o.claimed_by)).toEqual([a!.id, a!.id, a!.id, a!.id]);
@@ -89,23 +93,11 @@ describe('the oath: claiming a set of four slips', () => {
     expect(rune.body.me.points).toBe(P.oath + P.rune);
   });
 
-  it('guilds: slip I of serials 1..5 is armillary, wave, ginkgo, ruins, armillary; each page holds all four designs', () => {
-    expect([1, 2, 3, 4, 5, 8].map(guildForSerial)).toEqual(['armillary', 'wave', 'ginkgo', 'ruins', 'armillary', 'ruins']);
-    for (const serial of [1, 2, 3, 7]) expect(new Set([1, 2, 3, 4].map((n) => designFor(serial, n))).size).toBe(4);
-  });
-
-  it('a design stored on the copy wins over the rotation', async () => {
-    // hunt may store the printed design per copy (a `design` column); the adapter reads it when present
-    const t2 = await makeApp();
-    const s2 = makeTicketSet(t2.ctx, 4);
-    t2.ctx.db.exec('ALTER TABLE hunt_slip_copies ADD COLUMN design TEXT');
-    t2.ctx.db.prepare('UPDATE hunt_slip_copies SET design = ? WHERE slip_id = ? AND serial = 1').run('ruins', s2.slips[0]!);
-    const w2 = copyWords(t2.ctx, s2.slips);
-    const kit = (await makeKits(t2.app, 1))[0]!;
-    const a = await signedInAttendee(t2.app, kit, 'stored');
-    const r = (await req(t2.app, a.jar, 'POST', '/api/cipher/scan', { text: w2.get(1)![0]!.bottom })).json() as ScanResult;
-    expect(r.me.ticket!.guild).toBe('ruins');
-    await t2.close();
+  it('guilds: the printed design of slip I; every serial holds all four designs, slip I balanced over the set', () => {
+    for (const serial of [1, 2, 3, 7]) expect(new Set([1, 2, 3, 4].map((n) => designOf(serial, n))).size).toBe(4);
+    const counts = new Map<string, number>();
+    for (let serial = 1; serial <= 12; serial++) counts.set(designOf(serial, 1), (counts.get(designOf(serial, 1)) ?? 0) + 1);
+    expect([...counts.values()]).toEqual([3, 3, 3, 3]);
   });
 
   it("someone else's slips are refused; a second set is refused; unknown readings say nothing", async () => {
@@ -138,7 +130,7 @@ describe('the oath: claiming a set of four slips', () => {
     const [a] = await players(1);
     t.ctx.db.prepare('UPDATE hunt_slip_copies SET claimed_by = ?, claimed_at = 1 WHERE slip_id = ? AND serial = 7').run(a!.id, slips[2]!);
     const m = await me(a!.jar);
-    expect(m.ticket).toMatchObject({ serial: 7, guild: 'ginkgo' });
+    expect(m.ticket).toMatchObject({ serial: 7, guild: designOf(7, 1) });
     expect(all(t.ctx.db, `SELECT 1 FROM hunt_slip_copies WHERE serial = 7 AND claimed_by = ${a!.id}`)).toHaveLength(4);
   });
 });

@@ -9,10 +9,11 @@
 .closed { display: grid; justify-items: center; gap: var(--s-3); text-align: center; padding: var(--s-6) var(--s-4); }
 
 /* ---- header: guild plaque, points, streak, clock ---- */
-.header { display: grid; grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); gap: var(--s-2); align-items: stretch; }
+.header { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2); align-items: stretch; }
+.header .guildPlaque { grid-column: 1 / -1; }
 .guildPlaque { display: flex; gap: var(--s-2); align-items: center; padding: var(--s-2); background: var(--guild-ground); border: var(--line) solid var(--gold); border-radius: var(--cut-2); box-shadow: var(--shadow-sm); min-width: 0; }
-.guildPlaque b { display: block; font-family: var(--font-display); font-weight: 700; font-size: var(--step-0); line-height: 1.05; color: var(--gold-bright); }
-.guildPlaque small { display: block; font-family: var(--font-hand); font-style: italic; color: var(--ink-soft); font-size: var(--step--1); }
+.guildPlaque b { display: inline; font-family: var(--font-display); font-weight: 700; font-size: var(--step-1); line-height: 1.05; color: var(--gold-bright); }
+.guildPlaque small { display: inline; margin-left: var(--s-2); font-family: var(--font-hand); font-style: italic; color: var(--ink-soft); font-size: var(--step--1); }
 .guildSwatch { flex: none; width: 22px; height: 22px; background: var(--guild); border: 2px solid var(--gold); border-radius: var(--cut-round); box-shadow: 0 0 0 2px var(--guild-ground), 0 0 0 3px var(--rule); }
 .headStat { display: grid; justify-items: center; align-content: center; padding: var(--s-1) 2px; background: var(--paper-3); border: var(--line-thin) solid var(--rule); border-radius: var(--cut-2); min-width: 0; }
 .headStat small { font-family: var(--font-hand); font-style: italic; font-size: 12px; color: var(--ink-soft); text-align: center; line-height: 1.1; }
@@ -23,6 +24,7 @@
 /* ---- the constellation ---- */
 .constellation { margin: 0; padding: var(--s-2) 0; background: radial-gradient(120% 90% at 50% 40%, var(--paper-3), var(--paper-2)); border: var(--line-thin) solid var(--rule); border-radius: var(--cut-1); box-shadow: var(--shadow-sm); }
 .constellation svg { display: block; width: 100%; height: auto; }
+.cStar { cursor: default; }
 .cLine { stroke: var(--rule-soft); stroke-width: 1.2; stroke-dasharray: 2 4; }
 .cLineLit { stroke: var(--gold); stroke-width: 2; filter: drop-shadow(0 0 3px rgb(245 223 172 / 0.6)); }
 .cShape { fill: none; stroke: var(--gold); stroke-width: 1.2; }
@@ -46,7 +48,7 @@
 .outcome { font-family: var(--font-hand); font-weight: 700; font-size: var(--step-1); padding: var(--s-2) var(--s-3); border: var(--line-thin) solid var(--frame); border-radius: var(--cut-3); background: var(--paper-2); }
 .outcomeGood { background: var(--lime); }
 .outcomeCursed { background: var(--grape); }
-.slipBadge { display: inline-grid; place-items: center; flex: none; min-width: 52px; height: 52px; padding: 0 6px; font-family: var(--font-display); font-weight: 700; font-size: var(--step-0); color: var(--gold-bright); background: var(--wax); border: 2px solid var(--wax-dark); border-radius: var(--cut-round); box-shadow: inset 0 0 0 3px rgb(0 0 0 / 0.15); }
+.slipBadge { display: inline-grid; place-items: center; flex: none; min-width: 52px; height: 52px; padding: 0 6px; font-family: var(--font-display); font-weight: 700; font-size: var(--step-0); color: var(--on-wax); background: var(--wax); border: 2px solid var(--wax-dark); border-radius: var(--cut-round); box-shadow: inset 0 0 0 3px rgb(0 0 0 / 0.15); }
 
 /* ---- how-to drawings ---- */
 .howTo { margin: 0; display: grid; place-items: center; }

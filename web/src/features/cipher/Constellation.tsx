@@ -1,5 +1,5 @@
 /*
-  The constellation map: six stars, one per trial, joined by a line of light as trials are sealed.
+  The constellation map: seven stars, one per trial, joined by a line of light as trials are sealed.
   Sealed stars sit on a red wax drop with their rhythm pips; the current star breathes; the rest wait faint.
 */
 import { type Star, TRIALS, TRIAL_INFO } from '@afterhours/shared/features/cipher';

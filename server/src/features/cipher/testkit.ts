@@ -1,23 +1,17 @@
-// Test fixtures for the cipher tests (not used at runtime): the standalone Morse ticket set as hunt will
-// create it (a kind 'morse' trail "the morse slip", slips I-IV, unique copies, four generated edges on
-// every slip, and slip I's top strip upside down), and taps for a word.
+// Test fixtures for the cipher tests (not used at runtime): hunt's real morse ticket set, every copy's
+// words, and taps for a word.
 import type { Press } from '@afterhours/shared/features/morse';
 import { wordToPatterns } from '@afterhours/shared/features/morse';
-import { type FeatureContext, all, run } from '../../core';
-import { syncCopies } from '../hunt/unique';
-import { MORSE_TICKET_TRAIL_TITLE } from './adapter';
+import { type FeatureContext, all } from '../../core';
+import { createMorseSlip } from '../hunt/morseSlip';
+import { setVisibility } from '../hunt/visibility';
 
+/** The real morse ticket set (hunt's createMorseSlip: slips I-IV, unique, `copies` serials), shown to players. */
 export function makeTicketSet(ctx: FeatureContext, copies = 12): { setId: number; slips: number[]; trailId: number } {
-  const trailId = run(ctx.db, "INSERT INTO hunt_trails (position, kind, title, status, order_mode, shuffle_seed) VALUES (9, 'morse', ?, 'open', 'graph', 'seed')", MORSE_TICKET_TRAIL_TITLE).lastId;
-  const setId = run(ctx.db, "INSERT INTO hunt_slip_sets (trail_id, title, mode, word_pool, copies) VALUES (?, 'the morse slips', 'unique', '[]', ?)", trailId, copies).lastId;
-  const slips: number[] = [];
-  for (let n = 1; n <= 4; n++) {
-    const slipId = run(ctx.db, 'INSERT INTO hunt_slips (set_id, slip_no, label) VALUES (?, ?, ?)', setId, n, `slip ${n}`).lastId;
-    for (const o of ['bottom', 'right', 'top', 'left', ...(n === 1 ? ['extra'] : [])]) run(ctx.db, "INSERT INTO hunt_slip_readings (slip_id, orientation, outcome, message) VALUES (?, ?, 'clue', '')", slipId, o);
-    slips.push(slipId);
-  }
-  syncCopies(ctx, setId);
-  return { setId, slips, trailId };
+  const m = createMorseSlip(ctx, copies);
+  setVisibility(ctx, { morse: true });
+  const slips = all<{ id: number }>(ctx.db, 'SELECT id FROM hunt_slips WHERE set_id = ? ORDER BY slip_no', m.setId).map((r) => r.id);
+  return { setId: m.setId, slips, trailId: m.trailId };
 }
 
 export type Words = Record<'bottom' | 'right' | 'top' | 'left', string>;

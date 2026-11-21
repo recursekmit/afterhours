@@ -534,7 +534,7 @@ function Riddle({ me }: { me: CipherMe }) {
         ))}
       </div>
       <SlipScanLauncher
-        label="scan slip III to read an edge"
+        label="scan slip III"
         hint="slip III: the strip at the bottom is read, decoded on your phone"
         onScan={(scan) => {
           const text = scan.primary?.text;

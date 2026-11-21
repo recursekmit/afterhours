@@ -34,6 +34,11 @@ function attendeeTables(ctx: AppContext): { table: string; column: string }[] {
     for (const c of all<{ name: string }>(ctx.db, `PRAGMA table_info(${name})`)) {
       if (c.name === 'attendee_id' || c.name === 'claimed_by') out.push({ table: name, column: c.name });
     }
+    // Other columns that point at attendees by a foreign key (cipher_pacts.a_id / b_id): their rows go too,
+    // or the attendee row could not be deleted.
+    for (const fk of all<{ table: string; from: string }>(ctx.db, `PRAGMA foreign_key_list(${name})`)) {
+      if (fk.table === 'attendees' && fk.from !== 'attendee_id' && fk.from !== 'claimed_by' && /^[a-z0-9_]+$/.test(fk.from)) out.push({ table: name, column: fk.from });
+    }
   }
   return out;
 }
@@ -54,12 +59,12 @@ export function purgeParticipant(ctx: AppContext, participantId: number, confirm
         if (n) rows[`${t.table} (released)`] = n;
       }
       // Child tables before parents: retry the ones a foreign key holds back until a pass removes nothing.
-      let pending = targets.filter((x) => x.column === 'attendee_id');
+      let pending = targets.filter((x) => x.column !== 'claimed_by');
       for (let pass = 0; pass < 6 && pending.length > 0; pass++) {
         const left: typeof pending = [];
         for (const t of pending) {
           try {
-            const n = run(ctx.db, `DELETE FROM ${t.table} WHERE attendee_id = ?`, a.id).changes;
+            const n = run(ctx.db, `DELETE FROM ${t.table} WHERE ${t.column} = ?`, a.id).changes;
             if (n) rows[t.table] = (rows[t.table] ?? 0) + n;
           } catch {
             left.push(t);

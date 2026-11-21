@@ -48,8 +48,8 @@ export interface SlipScannerProps {
 type Phase = 'starting' | 'live' | 'denied' | 'unsupported';
 
 const GUIDE: Record<FrameResult['status'], string> = {
-  none: 'hold it flat, fill the frame',
-  far: 'closer. let the slip fill the frame',
+  none: 'hold the card 10-15 cm away, the whole card in view',
+  far: 'a little closer: 10-15 cm, the whole card in view',
   ambiguous: "straighten it up. it's between two edges",
   blank: 'this edge is blank. turn it to read another edge',
   unreadable: 'almost. hold still, a bit more light helps',

@@ -693,8 +693,24 @@ export function buildMe(ctx: FeatureContext, attendeeId: number): CipherMe {
   };
 }
 
-export function screenView(ctx: FeatureContext): CipherScreen {
+/** The projector's view. While the morse challenge is hidden a projector (not an admin) gets an empty race. */
+export function screenView(ctx: FeatureContext, opts: { admin?: boolean } = {}): CipherScreen {
   const sig = screenSignal(ctx);
+  if (!morseChallengeVisible(ctx) && !opts.admin) {
+    const zeros = TRIALS.map(() => 0);
+    return {
+      visible: false,
+      players: 0,
+      guilds: GUILDS.map((g, i) => ({ guild: g, members: 0, points: 0, average: 0, rank: i + 1 })),
+      onTrial: zeros,
+      sealed: zeros,
+      pactsSealed: 0,
+      recentPacts: [],
+      signal: sig.view,
+      signalPlay: null,
+      firstAnswers: [],
+    };
+  }
   return {
     visible: morseChallengeVisible(ctx),
     players: one<{ n: number }>(ctx.db, 'SELECT COUNT(*) AS n FROM cipher_players')?.n ?? 0,

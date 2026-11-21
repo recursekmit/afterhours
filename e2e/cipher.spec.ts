@@ -106,7 +106,7 @@ async function waitSealed(page: Page, trial: string) {
     await expect(page.getByTestId(`star-${trial}`)).toHaveAttribute('data-sealed', 'yes', { timeout: 20_000 });
   } catch (e) {
     const me = (await (await page.request.get('/api/cipher/me')).json()) as { trial: number; stars: unknown };
-    throw new Error(`not sealed on screen; server says trial ${me.trial} ${JSON.stringify(me.stars)}; ${String(e)}`.slice(0, 900));
+    throw new Error(`not sealed on screen; server says trial ${me.trial} ${JSON.stringify(me.stars)}; ${String(e)}`.slice(0, 900), { cause: e });
   }
   await page.getByTestId('seal-overlay').click({ timeout: 4000 }).catch(() => undefined);
   await page.getByRole('button', { name: 'stick it in' }).last().click({ timeout: 4000 }).catch(() => undefined);
